@@ -151,7 +151,6 @@ export default function LeaveForm() {
                         <div className="pt-6 flex items-center justify-end gap-4 border-t border-gray-100">
                             <Button
                                 type="button"
-                                variant="outline"
                                 onClick={() => router.back()}
                                 className="px-6 border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                             >

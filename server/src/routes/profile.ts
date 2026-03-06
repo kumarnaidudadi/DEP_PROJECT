@@ -67,6 +67,23 @@ router.get('/', verifyToken, async (req: AuthenticatedRequest, res: Response) =>
     }
 });
 
+// ─── GET All Roles ────────────────────────────────────────────────────
+router.get('/roles', verifyToken, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+        const roles = await prisma.roles.findMany({
+            select: { name: true, description: true }
+        });
+
+        res.json(roles);
+    } catch (error) {
+        console.error('Get roles error:', error);
+        res.status(500).json({ error: 'Failed to get roles' });
+    }
+});
+
 // ─── UPDATE Profile ───────────────────────────────────────────────────
 router.patch('/', verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {

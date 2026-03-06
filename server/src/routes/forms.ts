@@ -53,7 +53,7 @@ router.post('/types', verifyToken, async (req: AuthenticatedRequest, res: Respon
                             workflow_id: workflow.id,
                             step_order: i + 1,
                             step_name: workflow_steps[i].step_name,
-                            approver_role: workflow_steps[i].approver_role || null,
+                            approval_roles: workflow_steps[i].approval_roles || [],
                             is_terminal: workflow_steps[i].is_terminal || false,
                         }
                     });
@@ -92,22 +92,15 @@ router.post('/types', verifyToken, async (req: AuthenticatedRequest, res: Respon
 router.get('/', verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user?.userId;
-        const userRoles = req.user?.roles || [];
+        const userRoles: string[] = req.user?.roles || [];
 
         if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-        let whereClause: any = {};
+        const isAdmin = userRoles.includes('ADMIN');
+        const isHOD = userRoles.includes('HEAD_OF_DEPARTMENT');
 
-        if (userRoles.includes('ADMIN') || userRoles.includes('HOD') || userRoles.includes('APPROVER')) {
-            // Admin/HOD/Approver see all
-            whereClause = {};
-        } else {
-            // Student/Applicant sees only their own
-            whereClause = { submitted_by: userId };
-        }
-
-        const formList = await prisma.forms.findMany({
-            where: whereClause,
+        // Fetch all forms with full context
+        const allForms = await prisma.forms.findMany({
             include: {
                 form_types: {
                     include: {
@@ -117,7 +110,7 @@ router.get('/', verifyToken, async (req: AuthenticatedRequest, res: Response) =>
                     }
                 },
                 users: {
-                    select: { first_name: true, last_name: true, email: true }
+                    select: { first_name: true, last_name: true, email: true, department_id: true }
                 },
                 form_approvals: {
                     orderBy: { decided_at: 'desc' }
@@ -125,6 +118,44 @@ router.get('/', verifyToken, async (req: AuthenticatedRequest, res: Response) =>
             },
             orderBy: { updated_at: 'desc' }
         });
+
+        let formList: any[];
+
+        if (isAdmin) {
+            // ADMIN sees everything
+            formList = allForms;
+        } else if (isHOD) {
+            // HOD sees their own apps + apps from their dept where current step needs HEAD_OF_DEPARTMENT
+            const headEntry = await prisma.department_heads.findFirst({
+                where: { user_id: userId, is_active: true }
+            });
+
+            if (!headEntry) {
+                formList = allForms.filter((f: any) => f.submitted_by === userId);
+            } else {
+                const hodDeptId = headEntry.department_id;
+                formList = allForms.filter((form: any) => {
+                    if (form.submitted_by === userId) return true;
+                    if (form.users?.department_id !== hodDeptId) return false;
+                    const steps = form.form_types?.workflow?.steps || [];
+                    const currentStep = steps.find((s: any) => s.step_name === form.current_status);
+                    if (!currentStep) return false;
+                    return currentStep.approval_roles.includes('HEAD_OF_DEPARTMENT');
+                });
+            }
+        } else if (userRoles.some((r: string) => ['APPROVER', 'AR_DR_ESTT', 'SECTION_INCHARGE'].includes(r))) {
+            // Other approvers: see forms where current step lists their role
+            formList = allForms.filter((form: any) => {
+                if (form.submitted_by === userId) return true;
+                const steps = form.form_types?.workflow?.steps || [];
+                const currentStep = steps.find((s: any) => s.step_name === form.current_status);
+                if (!currentStep) return false;
+                return userRoles.some((r: string) => currentStep.approval_roles.includes(r));
+            });
+        } else {
+            // Regular applicant: only their own
+            formList = allForms.filter((f: any) => f.submitted_by === userId);
+        }
 
         res.json(formList);
     } catch (error) {
