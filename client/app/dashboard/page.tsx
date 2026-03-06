@@ -166,7 +166,11 @@ export default function Dashboard() {
     }, [activeView, fetchFormTypes, fetchApplications, fetchProfile]);
 
     // ─── Helpers ──────────────────────────────────────────────────────
-    const isAdmin = userRoles.includes('ADMIN') || userRoles.includes('HOD') || userRoles.includes('APPROVER');
+    const liveRoles = profile?.roles?.map(r => r.toUpperCase()) || [];
+    const storedRoles = userRoles.map(r => (typeof r === 'string' ? r.toUpperCase() : ''));
+    const allRoles = [...liveRoles, ...storedRoles];
+    const isAdmin = allRoles.includes('ADMIN') || allRoles.includes('HOD') || allRoles.includes('APPROVER');
+
     const isTerminal = (s: string) => ['APPROVED', 'REJECTED'].includes(s);
 
     const myApps = applications.filter(a => a.submitted_by === user?.id);
@@ -275,7 +279,7 @@ export default function Dashboard() {
     };
 
     // SB collapsed width & expanded width
-    const SB_W = sidebarHovered ? 220 : 64;
+    const SB_W = 64;
 
     // ═══════════════════════════════════════════════════════════════════
     // RENDER
@@ -294,8 +298,6 @@ export default function Dashboard() {
 
             {/* ─── LEFT SIDEBAR ─────────────────────────────────────── */}
             <aside
-                onMouseEnter={() => setSidebarHovered(true)}
-                onMouseLeave={() => setSidebarHovered(false)}
                 style={{
                     width: SB_W,
                     minWidth: SB_W,
@@ -303,87 +305,80 @@ export default function Dashboard() {
                     color: '#fff',
                     display: 'flex',
                     flexDirection: 'column',
-                    transition: 'width 0.25s cubic-bezier(.4,0,.2,1), min-width 0.25s cubic-bezier(.4,0,.2,1)',
-                    overflow: 'hidden',
                     zIndex: 20,
                     boxShadow: '2px 0 16px rgba(0,0,0,0.15)',
                 }}
             >
                 {/* Logo */}
                 <div style={{
-                    padding: sidebarHovered ? '20px 16px' : '20px 0',
+                    padding: '20px 0',
                     borderBottom: '1px solid rgba(255,255,255,0.08)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
                     minHeight: '68px',
                 }}>
                     <Building2 size={24} style={{ color: '#60a5fa', flexShrink: 0 }} />
-                    {sidebarHovered && (
-                        <div style={{ whiteSpace: 'nowrap', overflow: 'hidden' }}>
-                            <div style={{ fontWeight: 700, fontSize: '13px', letterSpacing: '0.5px' }}>IIT ROPAR</div>
-                            <div style={{ fontSize: '10px', opacity: 0.5 }}>DEP Portal</div>
-                        </div>
-                    )}
                 </div>
 
                 {/* Nav */}
-                <nav style={{ flex: 1, padding: '8px 0' }}>
+                <nav style={{ flex: 1, padding: '12px 0', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {sidebarItems.map(item => {
                         if (item.admin && !isAdmin) return null;
                         const active = activeView === item.id;
                         return (
-                            <button
-                                key={item.id}
-                                onClick={() => handleSidebarClick(item.id)}
-                                title={!sidebarHovered ? item.label : undefined}
-                                style={{
-                                    width: '100%',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '12px',
-                                    padding: sidebarHovered ? '11px 18px' : '11px 0',
-                                    justifyContent: sidebarHovered ? 'flex-start' : 'center',
-                                    border: 'none',
-                                    background: active ? 'rgba(96,165,250,0.15)' : 'transparent',
-                                    color: active ? '#60a5fa' : 'rgba(255,255,255,0.6)',
-                                    cursor: 'pointer',
-                                    fontSize: '13px',
-                                    fontWeight: active ? 600 : 400,
-                                    borderLeft: active ? '3px solid #60a5fa' : '3px solid transparent',
-                                    transition: 'all 0.15s',
-                                    whiteSpace: 'nowrap',
-                                    position: 'relative',
-                                }}
-                                onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
-                                onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
-                            >
-                                <span style={{ flexShrink: 0 }}>{item.icon}</span>
-                                {sidebarHovered && <span style={{ flex: 1 }}>{item.label}</span>}
-                                {sidebarHovered && item.badge && (
-                                    <span style={{
-                                        background: '#ef4444', color: '#fff', fontSize: '10px', fontWeight: 700,
-                                        padding: '2px 7px', borderRadius: '10px', minWidth: '18px', textAlign: 'center',
-                                    }}>{item.badge}</span>
-                                )}
-                            </button>
+                            <div key={item.id} style={{ position: 'relative' }} className="group">
+                                <button
+                                    onClick={() => handleSidebarClick(item.id)}
+                                    style={{
+                                        width: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '12px 0',
+                                        border: 'none',
+                                        background: active ? 'rgba(96,165,250,0.15)' : 'transparent',
+                                        color: active ? '#60a5fa' : 'rgba(255,255,255,0.6)',
+                                        cursor: 'pointer',
+                                        borderLeft: active ? '3px solid #60a5fa' : '3px solid transparent',
+                                        transition: 'all 0.15s',
+                                    }}
+                                    onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                                    onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+                                >
+                                    <span style={{ flexShrink: 0 }}>{item.icon}</span>
+                                    {item.badge && (
+                                        <span style={{
+                                            position: 'absolute', top: '4px', right: '12px',
+                                            background: '#ef4444', color: '#fff', fontSize: '9px', fontWeight: 700,
+                                            padding: '2px 5px', borderRadius: '10px',
+                                        }}>{item.badge}</span>
+                                    )}
+                                </button>
+                                {/* Tooltip */}
+                                <div className="absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 bg-slate-800 text-white text-xs px-2.5 py-1.5 rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg border border-slate-700 pointer-events-none">
+                                    {item.label}
+                                </div>
+                            </div>
                         );
                     })}
                 </nav>
 
                 {/* Bottom logout */}
-                <div style={{ padding: sidebarHovered ? '12px 16px' : '12px 0', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                    {sidebarHovered && <div style={{ fontSize: '11px', fontWeight: 600, marginBottom: '8px', opacity: 0.7, padding: '0 2px' }}>{user?.name || user?.first_name || 'User'}</div>}
-                    <button onClick={handleLogout} title="Sign Out" style={{
-                        width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-                        justifyContent: sidebarHovered ? 'flex-start' : 'center',
-                        padding: '8px', border: 'none', background: 'rgba(255,255,255,0.06)',
-                        color: 'rgba(255,255,255,0.6)', borderRadius: '6px', cursor: 'pointer', fontSize: '12px',
-                        transition: 'background 0.2s',
-                    }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-                    >
-                        <LogOut size={16} /> {sidebarHovered && 'Sign Out'}
-                    </button>
+                <div style={{ padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ position: 'relative' }} className="group">
+                        <button onClick={handleLogout} style={{
+                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            padding: '12px 0', border: 'none', background: 'transparent',
+                            color: 'rgba(255,255,255,0.6)', cursor: 'pointer', transition: 'background 0.2s',
+                        }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                            <LogOut size={20} />
+                        </button>
+                        <div className="absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 bg-slate-800 text-white text-xs px-2.5 py-1.5 rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg border border-slate-700 pointer-events-none">
+                            Sign Out
+                        </div>
+                    </div>
                 </div>
             </aside>
 
