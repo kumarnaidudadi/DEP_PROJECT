@@ -1,4 +1,6 @@
-import express, { Response } from 'express';
+const fs = require('fs');
+
+const content = `import express, { Response } from 'express';
 import prisma from '../prisma';
 import { verifyToken, AuthenticatedRequest } from '../middleware/authMiddleware';
 
@@ -6,12 +8,12 @@ const router = express.Router();
 
 // ─── HELPER: WORKFLOW ENGINE ─────────────────────────────────────────
 async function finalizeForm(form: any) {
-    const orderNumber = `OO-${form.id}-${Date.now().toString().slice(-6)}`;
-
+    const orderNumber = \`OO-\${form.id}-\${Date.now().toString().slice(-6)}\`;
+    
     const existingOrder = await prisma.office_orders.findUnique({
         where: { form_id: form.id }
     });
-
+    
     if (!existingOrder) {
         await prisma.office_orders.create({
             data: {
@@ -81,19 +83,14 @@ async function advanceWorkflow(formId: number, nextStepOrder: number) {
         }
     } else {
         let assignedApproverId: number | null = null;
-
+        
         for (const role of approvalRoles) {
-            const roleRecord = await prisma.roles.findFirst({
-                where: { name: { equals: role, mode: 'insensitive' } }
-            });
-            const roleIdStr = roleRecord ? roleRecord.id.toString() : role;
-
             if (role === 'HEAD_OF_DEPARTMENT') {
                 if (form.users?.department_id) {
                     const hod = await prisma.department_heads.findFirst({
-                        where: {
+                        where: { 
                             department_id: form.users.department_id,
-                            role_type: { in: ['HEAD_OF_DEPARTMENT', roleIdStr] },
+                            role_type: 'HEAD_OF_DEPARTMENT',
                             is_active: true
                         }
                     });
@@ -105,18 +102,20 @@ async function advanceWorkflow(formId: number, nextStepOrder: number) {
             } else {
                 const deptHead = await prisma.department_heads.findFirst({
                     where: {
-                        role_type: { in: [role, roleIdStr] },
+                        role_type: role,
                         is_active: true,
                         ...(form.users?.department_id ? { department_id: form.users.department_id } : {})
                     }
                 });
-
+                
                 if (deptHead) {
                     assignedApproverId = deptHead.user_id;
                     break;
-                } else if (roleRecord) {
+                } else {
                     const userRole = await prisma.user_roles.findFirst({
-                        where: { role_id: roleRecord.id }
+                        where: {
+                            roles: { name: { equals: role, mode: 'insensitive' } }
+                        }
                     });
                     if (userRole) {
                         assignedApproverId = userRole.user_id;
@@ -125,7 +124,7 @@ async function advanceWorkflow(formId: number, nextStepOrder: number) {
                 }
             }
         }
-
+        
         await prisma.form_approvals.create({
             data: {
                 form_id: form.id,
@@ -170,8 +169,8 @@ router.post('/types', verifyToken, async (req: AuthenticatedRequest, res: Respon
             if (workflow_steps && workflow_steps.length > 0) {
                 const workflow = await tx.workflows.create({
                     data: {
-                        name: workflow_name || `${name} Workflow`,
-                        description: `Workflow for ${name}`,
+                        name: workflow_name || \`\${name} Workflow\`,
+                        description: \`Workflow for \${name}\`,
                     }
                 });
                 workflowId = workflow.id;
@@ -347,7 +346,7 @@ router.get('/:id', verifyToken, async (req: AuthenticatedRequest, res: Response)
 // ─── UPDATE form status (Approve / Reject / Advance) ────────────────────
 router.patch('/:id/status', verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     const id = String(req.params.id);
-    const { decision, remarks } = req.body;
+    const { decision, remarks } = req.body; 
     const userId = req.user?.userId;
 
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -419,7 +418,7 @@ router.patch('/:id/status', verifyToken, async (req: AuthenticatedRequest, res: 
         if (workflow && workflow.steps) {
             const stepNameStr = pendingApproval.stage;
             const currentStep = workflow.steps.find((s: any) => s.step_name === stepNameStr);
-
+            
             if (currentStep) {
                 if (currentStep.is_terminal) {
                     await finalizeForm(form);
@@ -431,10 +430,10 @@ router.patch('/:id/status', verifyToken, async (req: AuthenticatedRequest, res: 
                     await advanceWorkflow(formId, currentStep.step_order + 1);
                 }
             } else {
-                await prisma.forms.update({
-                    where: { id: formId },
-                    data: { current_status: 'APPROVED', updated_at: new Date() }
-                });
+                 await prisma.forms.update({
+                     where: { id: formId },
+                     data: { current_status: 'APPROVED', updated_at: new Date() }
+                 });
             }
         } else {
             await prisma.forms.update({
@@ -452,3 +451,5 @@ router.patch('/:id/status', verifyToken, async (req: AuthenticatedRequest, res: 
 });
 
 export default router;
+`;
+fs.writeFileSync('/Users/tharun/WebDev/DEP_PROJECT/server/src/routes/forms.ts', content);

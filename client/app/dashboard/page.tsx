@@ -200,9 +200,16 @@ export default function Dashboard() {
     const myApps = applications.filter(a => a.submitted_by === user?.id);
     const ongoingApps = myApps.filter(a => !isTerminal(a.current_status));
     const completedApps = myApps.filter(a => isTerminal(a.current_status));
-    // Backend already filters pending apps per role — show everything the backend returned that isn't ours
-    const pendingApps = applications.filter(a => a.submitted_by !== user?.id && !isTerminal(a.current_status));
-    const processedApps = applications.filter(a => isTerminal(a.current_status));
+
+    const pendingApps = applications.filter(a => {
+        if (a.submitted_by === user?.id || isTerminal(a.current_status)) return false;
+        return a.form_approvals?.some(appr => appr.decision === 'PENDING' && appr.approved_by === user?.id);
+    });
+
+    const processedApps = applications.filter(a => {
+        if (a.submitted_by === user?.id || !isTerminal(a.current_status)) return false;
+        return a.form_approvals?.some(appr => appr.decision !== 'PENDING' && appr.approved_by === user?.id);
+    });
 
     // ─── Form Submit ──────────────────────────────────────────────────
     const handleFormSubmit = async () => {
@@ -247,7 +254,7 @@ export default function Dashboard() {
 
             const steps = builderSteps.map((s, i) => ({
                 step_name: s.status,
-                approval_roles: s.approval_roles.length > 0 ? s.approval_roles : ['ADMIN'],
+                approval_roles: s.approval_roles,
                 is_terminal: i === builderSteps.length - 1,
             }));
 
@@ -528,7 +535,8 @@ export default function Dashboard() {
 
                             {/* ALL APPLICATIONS */}
                             {activeView === 'all' && (() => {
-                                const list = appTab === 'ongoing' ? ongoingApps : completedApps;
+                                const baseApps = isAdmin ? applications : myApps;
+                                const list = appTab === 'ongoing' ? baseApps.filter(a => !isTerminal(a.current_status)) : baseApps.filter(a => isTerminal(a.current_status));
                                 return list.length === 0 ? <Empty msg={`No ${appTab} applications`} /> :
                                     list.map(a => (
                                         <ListItem key={a.id} sel={selectedApp?.id === a.id}
