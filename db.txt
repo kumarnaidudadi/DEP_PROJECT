@@ -1,0 +1,128 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.department_heads (
+  id integer NOT NULL DEFAULT nextval('department_heads_id_seq'::regclass),
+  department_id integer NOT NULL,
+  user_id integer NOT NULL,
+  role_type character varying NOT NULL,
+  assigned_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  is_active boolean DEFAULT true,
+  CONSTRAINT department_heads_pkey PRIMARY KEY (id),
+  CONSTRAINT department_heads_department_id_fkey FOREIGN KEY (department_id) REFERENCES public.departments(id),
+  CONSTRAINT department_heads_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.departments (
+  id integer NOT NULL DEFAULT nextval('departments_id_seq'::regclass),
+  name character varying NOT NULL,
+  description text,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT departments_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.form_approvals (
+  id integer NOT NULL DEFAULT nextval('form_approvals_id_seq'::regclass),
+  form_id integer,
+  stage character varying NOT NULL,
+  approved_by integer,
+  decision USER-DEFINED DEFAULT 'PENDING'::approval_decision,
+  remarks text,
+  decided_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  approval_data jsonb DEFAULT '{}'::jsonb,
+  CONSTRAINT form_approvals_pkey PRIMARY KEY (id),
+  CONSTRAINT form_approvals_approved_by_fkey FOREIGN KEY (approved_by) REFERENCES public.users(id),
+  CONSTRAINT form_approvals_form_id_fkey FOREIGN KEY (form_id) REFERENCES public.forms(id)
+);
+CREATE TABLE public.form_status_history (
+  id integer NOT NULL DEFAULT nextval('form_status_history_id_seq'::regclass),
+  form_id integer,
+  old_status USER-DEFINED,
+  new_status USER-DEFINED,
+  changed_by integer,
+  changed_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT form_status_history_pkey PRIMARY KEY (id),
+  CONSTRAINT form_status_history_changed_by_fkey FOREIGN KEY (changed_by) REFERENCES public.users(id),
+  CONSTRAINT form_status_history_form_id_fkey FOREIGN KEY (form_id) REFERENCES public.forms(id)
+);
+CREATE TABLE public.form_types (
+  id integer NOT NULL DEFAULT nextval('form_types_id_seq'::regclass),
+  name character varying NOT NULL,
+  description text,
+  schema_definition jsonb NOT NULL DEFAULT '{}'::jsonb,
+  is_active boolean DEFAULT true,
+  CONSTRAINT form_types_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.forms (
+  id integer NOT NULL DEFAULT nextval('forms_id_seq'::regclass),
+  form_type_id integer,
+  submitted_by integer,
+  current_status USER-DEFINED DEFAULT 'DRAFT'::form_status,
+  submitted_at timestamp without time zone,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  form_data jsonb NOT NULL DEFAULT '{}'::jsonb,
+  CONSTRAINT forms_pkey PRIMARY KEY (id),
+  CONSTRAINT forms_form_type_id_fkey FOREIGN KEY (form_type_id) REFERENCES public.form_types(id),
+  CONSTRAINT forms_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.office_orders (
+  id integer NOT NULL DEFAULT nextval('office_orders_id_seq'::regclass),
+  form_id integer,
+  order_number character varying NOT NULL,
+  issued_by integer,
+  issued_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  pdf_url text,
+  CONSTRAINT office_orders_pkey PRIMARY KEY (id),
+  CONSTRAINT office_orders_form_id_fkey FOREIGN KEY (form_id) REFERENCES public.forms(id),
+  CONSTRAINT office_orders_issued_by_fkey FOREIGN KEY (issued_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.permissions (
+  id integer NOT NULL DEFAULT nextval('permissions_id_seq'::regclass),
+  name character varying NOT NULL,
+  description text,
+  CONSTRAINT permissions_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.role_permissions (
+  role_id integer NOT NULL,
+  permission_id integer NOT NULL,
+  CONSTRAINT role_permissions_pkey PRIMARY KEY (role_id, permission_id),
+  CONSTRAINT role_permissions_permission_id_fkey FOREIGN KEY (permission_id) REFERENCES public.permissions(id),
+  CONSTRAINT role_permissions_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id)
+);
+CREATE TABLE public.roles (
+  id integer NOT NULL DEFAULT nextval('roles_id_seq'::regclass),
+  name character varying NOT NULL,
+  description text,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT roles_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.user_roles (
+  user_id integer NOT NULL,
+  role_id integer NOT NULL,
+  CONSTRAINT user_roles_pkey PRIMARY KEY (user_id, role_id),
+  CONSTRAINT user_roles_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id),
+  CONSTRAINT user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.users (
+  id integer NOT NULL DEFAULT nextval('users_id_seq'::regclass),
+  first_name character varying NOT NULL,
+  middle_name character varying,
+  last_name character varying NOT NULL,
+  email character varying NOT NULL,
+  password_hash text,
+  otp_code text,
+  otp_expiry timestamp without time zone,
+  auth_provider character varying,
+  is_active boolean DEFAULT true,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  department_id integer,
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT users_department_id_fkey FOREIGN KEY (department_id) REFERENCES public.departments(id)
+);
+CREATE TABLE public.workflow_step_templates (
+  id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+  name character varying NOT NULL UNIQUE,
+  description text,
+  schema_template jsonb NOT NULL,
+  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT workflow_step_templates_pkey PRIMARY KEY (id)
+);

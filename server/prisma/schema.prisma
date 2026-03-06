@@ -1,15 +1,16 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
+// ─── AUTH & RBAC (UNTOUCHED) ─────────────────────────────────────────
+
 model permissions {
   id               Int                @id @default(autoincrement())
-  name             String             @unique @db.VarChar(100)
+  name             String             @unique @db.VarChar
   description      String?
   role_permissions role_permissions[]
 }
@@ -25,7 +26,7 @@ model role_permissions {
 
 model roles {
   id               Int                @id @default(autoincrement())
-  name             String             @unique @db.VarChar(50)
+  name             String             @unique @db.VarChar
   description      String?
   created_at       DateTime?          @default(now()) @db.Timestamp(6)
   role_permissions role_permissions[]
@@ -42,14 +43,147 @@ model user_roles {
 }
 
 model users {
-  id            Int          @id @default(autoincrement())
-  first_name    String       @db.VarChar(100)
-  middle_name   String?      @db.VarChar(100)
-  last_name     String       @db.VarChar(100)
-  email         String       @unique @db.VarChar(150)
-  password_hash String
-  is_active     Boolean?     @default(true)
-  created_at    DateTime?    @default(now()) @db.Timestamp(6)
-  updated_at    DateTime?    @default(now()) @db.Timestamp(6)
-  user_roles    user_roles[]
+  id                  Int                   @id @default(autoincrement())
+  first_name          String                @db.VarChar
+  middle_name         String?               @db.VarChar
+  last_name           String                @db.VarChar
+  email               String                @unique @db.VarChar
+  password_hash       String?
+  otp_code            String?
+  otp_expiry          DateTime?
+  auth_provider       String?               @db.VarChar(50)
+  is_active           Boolean?              @default(true)
+  created_at          DateTime?             @default(now()) @db.Timestamp(6)
+  updated_at          DateTime?             @default(now()) @db.Timestamp(6)
+  department_id       Int?
+  department_heads    department_heads[]
+  form_approvals      form_approvals[]
+  form_status_history form_status_history[]
+  forms               forms[]
+  office_orders       office_orders[]
+  user_roles          user_roles[]
+  departments         departments?          @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model department_heads {
+  id            Int         @id @default(autoincrement())
+  department_id Int
+  user_id       Int
+  role_type     String      @db.VarChar(50)
+  assigned_at   DateTime?   @default(now()) @db.Timestamp(6)
+  is_active     Boolean?    @default(true)
+  departments   departments @relation(fields: [department_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users         users       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([department_id, role_type, is_active])
+}
+
+model departments {
+  id               Int                @id @default(autoincrement())
+  name             String             @unique @db.VarChar(150)
+  description      String?
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  department_heads department_heads[]
+  users            users[]
+}
+
+// ─── WORKFLOW ENGINE ─────────────────────────────────────────────────
+
+model workflows {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique @db.VarChar
+  description String?
+  created_at  DateTime?        @default(now()) @db.Timestamp(6)
+  form_types  form_types[]
+  steps       workflow_steps[]
+}
+
+model workflow_steps {
+  id            Int       @id @default(autoincrement())
+  workflow_id   Int
+  step_order    Int
+  step_name     String    @db.VarChar
+  approver_role String?   @db.VarChar
+  is_terminal   Boolean   @default(false)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  workflow      workflows @relation(fields: [workflow_id], references: [id], onDelete: Cascade)
+
+  @@unique([workflow_id, step_order])
+}
+
+/// Reusable step templates for building workflows
+model workflow_step_templates {
+  id              Int       @id @default(autoincrement())
+  name            String    @unique @db.VarChar
+  description     String?
+  schema_template Json
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+}
+
+// ─── FORMS ───────────────────────────────────────────────────────────
+
+model form_types {
+  id                Int       @id @default(autoincrement())
+  name              String    @unique @db.VarChar
+  description       String?
+  schema_definition Json      @default("{}")
+  is_active         Boolean?  @default(true)
+  workflow_id       Int?
+  workflow          workflows? @relation(fields: [workflow_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  forms             forms[]
+}
+
+model forms {
+  id                  Int                   @id @default(autoincrement())
+  form_type_id        Int?
+  submitted_by        Int?
+  current_status      String                @default("DRAFT") @db.VarChar
+  submitted_at        DateTime?             @db.Timestamp(6)
+  updated_at          DateTime?             @default(now()) @db.Timestamp(6)
+  form_data           Json                  @default("{}")
+  form_approvals      form_approvals[]
+  form_status_history form_status_history[]
+  form_types          form_types?           @relation(fields: [form_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users               users?                @relation(fields: [submitted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  office_orders       office_orders?
+
+  @@index([current_status], map: "idx_forms_status")
+  @@index([submitted_by], map: "idx_forms_submitted_by")
+}
+
+model form_approvals {
+  id            Int       @id @default(autoincrement())
+  form_id       Int?
+  stage         String    @db.VarChar
+  approved_by   Int?
+  decision      String    @default("PENDING") @db.VarChar
+  remarks       String?
+  decided_at    DateTime? @default(now()) @db.Timestamp(6)
+  approval_data Json?     @default("{}")
+  users         users?    @relation(fields: [approved_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  forms         forms?    @relation(fields: [form_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([form_id], map: "idx_approvals_form")
+}
+
+model form_status_history {
+  id         Int       @id @default(autoincrement())
+  form_id    Int?
+  old_status String?   @db.VarChar
+  new_status String?   @db.VarChar
+  changed_by Int?
+  changed_at DateTime? @default(now()) @db.Timestamp(6)
+  users      users?    @relation(fields: [changed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  forms      forms?    @relation(fields: [form_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model office_orders {
+  id           Int       @id @default(autoincrement())
+  form_id      Int?      @unique
+  order_number String    @unique @db.VarChar(100)
+  issued_by    Int?
+  issued_at    DateTime? @default(now()) @db.Timestamp(6)
+  pdf_url      String?
+  forms        forms?    @relation(fields: [form_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users        users?    @relation(fields: [issued_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }

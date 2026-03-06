@@ -1,0 +1,115 @@
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 4 errors:
+./app/login/page.tsx:7:1
+Module not found: Can't resolve '@/components/ui/button'
+[0m [90m  5 |[39m [36mimport[39m { [33mGoogleLogin[39m } [36mfrom[39m [32m'@react-oauth/google'[39m[33m;[39m
+ [90m  6 |[39m [36mimport[39m api [36mfrom[39m [32m'@/lib/api'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  7 |[39m [36mimport[39m { [33mButton[39m } [36mfrom[39m [32m'@/components/ui/button'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  8 |[39m [36mimport[39m { [33mCard[39m[33m,[39m [33mCardContent[39m[33m,[39m [33mCardHeader[39m[33m,[39m [33mCardTitle[39m[33m,[39m [33mCardDescription[39m } [36mfrom[39m [32m'@/components/ui/card'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m { [33mInput[39m } [36mfrom[39m [32m'@/components/ui/input'[39m[33m;[39m
+ [90m 10 |[39m [36mimport[39m { [33mLabel[39m } [36mfrom[39m [32m'@/components/ui/label'[39m[33m;[39m[0m
+
+Import map: aliased to relative './components/ui/button' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./app/login/page.tsx [Client Component Browser]
+    ./app/login/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/login/page.tsx [Client Component SSR]
+    ./app/login/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./app/login/page.tsx:8:1
+Module not found: Can't resolve '@/components/ui/card'
+[0m [90m  6 |[39m [36mimport[39m api [36mfrom[39m [32m'@/lib/api'[39m[33m;[39m
+ [90m  7 |[39m [36mimport[39m { [33mButton[39m } [36mfrom[39m [32m'@/components/ui/button'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  8 |[39m [36mimport[39m { [33mCard[39m[33m,[39m [33mCardContent[39m[33m,[39m [33mCardHeader[39m[33m,[39m [33mCardTitle[39m[33m,[39m [33mCardDescription[39m } [36mfrom[39m [32m'@/components/ui/card'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m  9 |[39m [36mimport[39m { [33mInput[39m } [36mfrom[39m [32m'@/components/ui/input'[39m[33m;[39m
+ [90m 10 |[39m [36mimport[39m { [33mLabel[39m } [36mfrom[39m [32m'@/components/ui/label'[39m[33m;[39m
+ [90m 11 |[39m [36mimport[39m { [33mLoader2[39m[33m,[39m [33mAlertCircle[39m } [36mfrom[39m [32m'lucide-react'[39m[33m;[39m[0m
+
+Import map: aliased to relative './components/ui/card' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./app/login/page.tsx [Client Component Browser]
+    ./app/login/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/login/page.tsx [Client Component SSR]
+    ./app/login/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./app/login/page.tsx:9:1
+Module not found: Can't resolve '@/components/ui/input'
+[0m [90m  7 |[39m [36mimport[39m { [33mButton[39m } [36mfrom[39m [32m'@/components/ui/button'[39m[33m;[39m
+ [90m  8 |[39m [36mimport[39m { [33mCard[39m[33m,[39m [33mCardContent[39m[33m,[39m [33mCardHeader[39m[33m,[39m [33mCardTitle[39m[33m,[39m [33mCardDescription[39m } [36mfrom[39m [32m'@/components/ui/card'[39m[33m;[39m
+[31m[1m>[22m[39m[90m  9 |[39m [36mimport[39m { [33mInput[39m } [36mfrom[39m [32m'@/components/ui/input'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 10 |[39m [36mimport[39m { [33mLabel[39m } [36mfrom[39m [32m'@/components/ui/label'[39m[33m;[39m
+ [90m 11 |[39m [36mimport[39m { [33mLoader2[39m[33m,[39m [33mAlertCircle[39m } [36mfrom[39m [32m'lucide-react'[39m[33m;[39m
+ [90m 12 |[39m[0m
+
+Import map: aliased to relative './components/ui/input' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./app/login/page.tsx [Client Component Browser]
+    ./app/login/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/login/page.tsx [Client Component SSR]
+    ./app/login/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./app/login/page.tsx:10:1
+Module not found: Can't resolve '@/components/ui/label'
+[0m [90m  8 |[39m [36mimport[39m { [33mCard[39m[33m,[39m [33mCardContent[39m[33m,[39m [33mCardHeader[39m[33m,[39m [33mCardTitle[39m[33m,[39m [33mCardDescription[39m } [36mfrom[39m [32m'@/components/ui/card'[39m[33m;[39m
+ [90m  9 |[39m [36mimport[39m { [33mInput[39m } [36mfrom[39m [32m'@/components/ui/input'[39m[33m;[39m
+[31m[1m>[22m[39m[90m 10 |[39m [36mimport[39m { [33mLabel[39m } [36mfrom[39m [32m'@/components/ui/label'[39m[33m;[39m
+ [90m    |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 11 |[39m [36mimport[39m { [33mLoader2[39m[33m,[39m [33mAlertCircle[39m } [36mfrom[39m [32m'lucide-react'[39m[33m;[39m
+ [90m 12 |[39m
+ [90m 13 |[39m [36mexport[39m [36mdefault[39m [36mfunction[39m [33mLoginPage[39m() {[0m
+
+Import map: aliased to relative './components/ui/label' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./app/login/page.tsx [Client Component Browser]
+    ./app/login/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/login/page.tsx [Client Component SSR]
+    ./app/login/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (./app/login/page.tsx:7:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./app/login/page.tsx:8:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./app/login/page.tsx:9:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./app/login/page.tsx:10:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
