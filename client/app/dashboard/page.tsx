@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import {
     FilePlus, FileText, Clock, CheckCircle, XCircle, LogOut,
-    ChevronRight, Loader2, Send, ClipboardList, AlertCircle, Building2,
+    ChevronRight, ChevronDown, Loader2, Send, ClipboardList, AlertCircle, Building2,
     LayoutDashboard, User, Plus, Trash2, GripVertical, Upload
 } from 'lucide-react';
 
@@ -15,7 +15,7 @@ interface WorkflowStep {
     id: number;
     step_order: number;
     step_name: string;
-    approver_role: string | null;
+    approval_roles: string[];
     is_terminal: boolean;
 }
 
@@ -87,9 +87,10 @@ interface BuilderStep {
     status: string;
     approval_roles: string[];
     fields: BuilderField[];
+    showAllRoles?: boolean;
 }
 
-const FIELD_TYPES = ['text', 'textarea', 'date', 'bool', 'signature', 'number'];
+const FIELD_TYPES = ['text', 'textarea', 'date', 'bool', 'signature', 'number', 'department', 'role', 'date_from_to'];
 
 // ═══════════════════════════════════════════════════════════════════════
 // DASHBOARD
@@ -132,10 +133,15 @@ export default function Dashboard() {
     const [builderSteps, setBuilderSteps] = useState<BuilderStep[]>([{ status: 'Draft', approval_roles: [], fields: [{ name: '', type: 'text', required: true }] }]);
     const [creating, setCreating] = useState(false);
     const [createSuccess, setCreateSuccess] = useState(false);
+    const [editingFormId, setEditingFormId] = useState<number | null>(null);
     const [availableRoles, setAvailableRoles] = useState<string[]>([]);
+    const [availableDepartments, setAvailableDepartments] = useState<any[]>([]);
 
     // Profile
     const [sigUploading, setSigUploading] = useState(false);
+
+    // Search
+    const [searchQuery, setSearchQuery] = useState('');
 
     // ─── Auth Check ───────────────────────────────────────────────────
     useEffect(() => {
@@ -176,12 +182,20 @@ export default function Dashboard() {
         catch (e) { console.error('Failed to fetch roles', e); }
     }, []);
 
+    const fetchDepartments = useCallback(async () => {
+        try { const r = await api.get('/profile/departments'); setAvailableDepartments(r.data); }
+        catch (e) { console.error('Failed to fetch departments', e); }
+    }, []);
+
     useEffect(() => {
         if (activeView === 'new' || activeView === 'create_form') fetchFormTypes();
-        if (activeView === 'create_form') fetchRoles();
+        if (activeView === 'create_form' || activeView === 'new') {
+            fetchRoles();
+            fetchDepartments();
+        }
         else if (activeView === 'all' || activeView === 'pending' || activeView === 'dashboard') fetchApplications();
         else if (activeView === 'profile') fetchProfile();
-    }, [activeView, fetchFormTypes, fetchApplications, fetchProfile, fetchRoles]);
+    }, [activeView, fetchFormTypes, fetchApplications, fetchProfile, fetchRoles, fetchDepartments]);
 
     // ─── Helpers ──────────────────────────────────────────────────────
     const liveRoles = profile?.roles?.map(r => r.toUpperCase()) || [];
@@ -258,22 +272,64 @@ export default function Dashboard() {
                 is_terminal: i === builderSteps.length - 1,
             }));
 
-            await api.post('/forms/types', {
+            const payload = {
                 name: newFormName.trim(),
                 description: newFormDesc.trim(),
                 schema_definition: schema,
                 workflow_steps: steps,
-            });
+            };
+
+            if (editingFormId) {
+                await api.put(`/forms/types/${editingFormId}`, payload);
+            } else {
+                await api.post('/forms/types', payload);
+            }
 
             setCreateSuccess(true);
             setNewFormName(''); setNewFormDesc('');
             setBuilderSteps([{ status: 'Draft', approval_roles: [], fields: [{ name: '', type: 'text', required: true }] }]);
-            fetchFormTypes();
-            setTimeout(() => setCreateSuccess(false), 3000);
+            setEditingFormId(null);
+            setTimeout(() => { setCreateSuccess(false); fetchFormTypes(); }, 2000);
         } catch (e: any) {
-            console.error('Create form type failed', e);
-            alert(e.response?.data?.error || 'Failed to create form type');
-        } finally { setCreating(false); }
+            console.error('Failed to save form type', e);
+            alert(e.response?.data?.error || 'Failed to save the form type');
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const handleEditFormType = (ft: FormType) => {
+        setEditingFormId(ft.id);
+        setNewFormName(ft.name);
+        setNewFormDesc(ft.description || '');
+
+        // Reconstruct builderSteps from schema_definition & workflow
+        if (ft.schema_definition && ft.workflow) {
+            const stepsMap = (ft.workflow.steps || []).map((dbStep, i) => {
+                const schemaKey = String(i + 1);
+                const stepSchemaArr = ft.schema_definition[schemaKey];
+
+                // Parse fields filtering out the status element
+                const fields: BuilderField[] = [];
+                if (Array.isArray(stepSchemaArr)) {
+                    stepSchemaArr.forEach(item => {
+                        if (item.name) fields.push({ name: item.name, type: item.type || 'text', required: item.required === true });
+                    });
+                }
+                // if no fields mapped for this step yet, add a blank one
+                if (fields.length === 0) fields.push({ name: '', type: 'text', required: true });
+
+                return {
+                    status: dbStep.step_name,
+                    approval_roles: dbStep.approval_roles || [],
+                    fields
+                };
+            });
+            if (stepsMap.length > 0) setBuilderSteps(stepsMap);
+        }
+
+        setActiveView('create_form');
+        setSelectedFormType(null);
     };
 
     // ─── Signature Upload ─────────────────────────────────────────────
@@ -291,7 +347,7 @@ export default function Dashboard() {
     const handleLogout = () => { localStorage.removeItem('token'); localStorage.removeItem('user'); router.push('/login'); };
 
     const handleSidebarClick = (v: SidebarView) => {
-        setActiveView(v); setSelectedFormType(null); setSelectedApp(null); setFormData({}); setSubmitSuccess(false);
+        setActiveView(v); setSelectedFormType(null); setSelectedApp(null); setFormData({}); setSubmitSuccess(false); setSearchQuery('');
     };
 
     // ─── Schema field renderer ────────────────────────────────────────
@@ -482,8 +538,21 @@ export default function Dashboard() {
                     </div>
                 )}
 
+                {/* Search */}
+                {(activeView === 'all' || activeView === 'pending' || activeView === 'new') && (
+                    <div style={{ padding: '10px 16px 0' }}>
+                        <input
+                            type="text"
+                            placeholder={activeView === 'new' ? 'Search forms...' : 'Search applications...'}
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            style={{ width: '100%', padding: '8px 12px', fontSize: '13px', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }}
+                        />
+                    </div>
+                )}
+
                 {/* List */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0', marginTop: '10px' }}>
                     {loading ? <Spin /> : (
                         <>
                             {/* DASHBOARD */}
@@ -500,21 +569,44 @@ export default function Dashboard() {
                             {activeView === 'new' && (
                                 <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
                                     <div style={{ flex: 1 }}>
-                                        {formTypes.length === 0 ? <Empty msg="No forms available" /> :
-                                            formTypes.map(ft => (
-                                                <ListItem key={ft.id} sel={selectedFormType?.id === ft.id}
-                                                    onClick={() => { setSelectedFormType(ft); setSelectedApp(null); setFormData({}); setSubmitSuccess(false); }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                        <IconBox sel={selectedFormType?.id === ft.id}><FileText size={14} /></IconBox>
-                                                        <div>
-                                                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#1f2937' }}>{ft.name}</div>
-                                                            <div style={{ fontSize: '11px', color: '#9ca3af' }}>{ft.description || 'Click to fill'}</div>
+                                        {(() => {
+                                            const filteredForms = formTypes.filter(ft => ft.name.toLowerCase().includes(searchQuery.toLowerCase()) || ft.description?.toLowerCase().includes(searchQuery.toLowerCase()));
+                                            return filteredForms.length === 0 ? <Empty msg="No forms available" /> :
+                                                filteredForms.map(ft => (
+                                                    <ListItem key={ft.id} sel={selectedFormType?.id === ft.id}
+                                                        onClick={() => {
+                                                            setSelectedFormType(ft); setSelectedApp(null); setSubmitSuccess(false);
+
+                                                            // Pre-fill smart fields
+                                                            const initialData: Record<string, any> = {};
+                                                            const fields = getSchemaFields(ft.schema_definition);
+                                                            fields.forEach(f => {
+                                                                if (f.type === 'department' && profile?.department) {
+                                                                    initialData[f.key] = profile.department;
+                                                                } else if (f.type === 'role' && liveRoles.length > 0) {
+                                                                    initialData[f.key] = liveRoles[0];
+                                                                } else if (f.type === 'date_from_to') {
+                                                                    // Default to today for 'from' and tomorrow for 'to'
+                                                                    const today = new Date();
+                                                                    const tomorrow = new Date(today);
+                                                                    tomorrow.setDate(today.getDate() + 1);
+                                                                    initialData[`${f.key}_from`] = today.toISOString().split('T')[0];
+                                                                    initialData[`${f.key}_to`] = tomorrow.toISOString().split('T')[0];
+                                                                }
+                                                            });
+                                                            setFormData(initialData);
+                                                        }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                            <IconBox sel={selectedFormType?.id === ft.id}><FileText size={14} /></IconBox>
+                                                            <div>
+                                                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#1f2937' }}>{ft.name}</div>
+                                                                <div style={{ fontSize: '11px', color: '#9ca3af' }}>{ft.description || 'Click to fill'}</div>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <ChevronRight size={14} style={{ color: '#d1d5db' }} />
-                                                </ListItem>
-                                            ))
-                                        }
+                                                        <ChevronRight size={14} style={{ color: '#d1d5db' }} />
+                                                    </ListItem>
+                                                ))
+                                        })()}
                                     </div>
                                     {isAdmin && (
                                         <button
@@ -536,7 +628,8 @@ export default function Dashboard() {
                             {/* ALL APPLICATIONS */}
                             {activeView === 'all' && (() => {
                                 const baseApps = isAdmin ? applications : myApps;
-                                const list = appTab === 'ongoing' ? baseApps.filter(a => !isTerminal(a.current_status)) : baseApps.filter(a => isTerminal(a.current_status));
+                                let list = appTab === 'ongoing' ? baseApps.filter(a => !isTerminal(a.current_status)) : baseApps.filter(a => isTerminal(a.current_status));
+                                if (searchQuery) list = list.filter(a => a.form_types?.name.toLowerCase().includes(searchQuery.toLowerCase()) || a.users?.first_name.toLowerCase().includes(searchQuery.toLowerCase()) || a.users?.last_name.toLowerCase().includes(searchQuery.toLowerCase()));
                                 return list.length === 0 ? <Empty msg={`No ${appTab} applications`} /> :
                                     list.map(a => (
                                         <ListItem key={a.id} sel={selectedApp?.id === a.id}
@@ -554,7 +647,8 @@ export default function Dashboard() {
 
                             {/* PENDING WORK */}
                             {activeView === 'pending' && (() => {
-                                const list = appTab === 'ongoing' ? pendingApps : processedApps;
+                                let list = appTab === 'ongoing' ? pendingApps : processedApps;
+                                if (searchQuery) list = list.filter(a => a.form_types?.name.toLowerCase().includes(searchQuery.toLowerCase()) || a.users?.first_name.toLowerCase().includes(searchQuery.toLowerCase()) || a.users?.last_name.toLowerCase().includes(searchQuery.toLowerCase()));
                                 return list.length === 0 ? <Empty msg={`No ${appTab === 'ongoing' ? 'pending' : 'completed'} items`} /> :
                                     list.map(a => (
                                         <ListItem key={a.id} sel={selectedApp?.id === a.id}
@@ -610,7 +704,17 @@ export default function Dashboard() {
                     <div style={{ padding: '32px 40px', maxWidth: '700px', margin: '0 auto' }}>
                         {submitSuccess ? <SuccessMsg /> : (
                             <>
-                                <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1f2937', margin: '0 0 4px' }}>{selectedFormType.name}</h1>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                    <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1f2937', margin: 0 }}>{selectedFormType.name}</h1>
+                                    {isAdmin && (
+                                        <button
+                                            onClick={() => handleEditFormType(selectedFormType)}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                                        >
+                                            <FileText size={14} /> Edit Form
+                                        </button>
+                                    )}
+                                </div>
                                 <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 24px' }}>{selectedFormType.description || 'Fill in the details below.'}</p>
 
                                 {/* Workflow badge */}
@@ -652,6 +756,44 @@ export default function Dashboard() {
                                                         <input type="checkbox" checked={formData[f.key] === true || formData[f.key] === 'true'} onChange={e => setFormData({ ...formData, [f.key]: e.target.checked })}
                                                             style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#2563eb' }} />
                                                         <span style={{ marginLeft: '10px', fontSize: '13px', color: '#4b5563' }}>{f.label}</span>
+                                                    </div>
+                                                ) : f.type === 'department' ? (
+                                                    <select value={formData[f.key] || ''} onChange={e => setFormData({ ...formData, [f.key]: e.target.value })}
+                                                        style={{ ...inputStyle, background: '#fff' }}>
+                                                        <option value="">Select Department...</option>
+                                                        {availableDepartments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                                                    </select>
+                                                ) : f.type === 'role' ? (
+                                                    <select value={formData[f.key] || ''} onChange={e => setFormData({ ...formData, [f.key]: e.target.value })}
+                                                        style={{ ...inputStyle, background: '#fff' }}>
+                                                        <option value="">Select Role...</option>
+                                                        {availableRoles.map(o => <option key={o} value={o}>{o}</option>)}
+                                                    </select>
+                                                ) : f.type === 'date_from_to' ? (
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <input type="date" value={formData[`${f.key}_from`] || ''}
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                const currentTo = formData[`${f.key}_to`];
+                                                                if (currentTo && val > currentTo) {
+                                                                    alert('From Date cannot be later than To Date');
+                                                                } else {
+                                                                    setFormData({ ...formData, [`${f.key}_from`]: val });
+                                                                }
+                                                            }}
+                                                            style={{ ...inputStyle, flex: 1 }} />
+                                                        <span style={{ display: 'flex', alignItems: 'center', color: '#6b7280' }}>to</span>
+                                                        <input type="date" value={formData[`${f.key}_to`] || ''}
+                                                            onChange={e => {
+                                                                const val = e.target.value;
+                                                                const currentFrom = formData[`${f.key}_from`];
+                                                                if (currentFrom && val < currentFrom) {
+                                                                    alert('To Date cannot be earlier than From Date');
+                                                                } else {
+                                                                    setFormData({ ...formData, [`${f.key}_to`]: val });
+                                                                }
+                                                            }}
+                                                            style={{ ...inputStyle, flex: 1 }} />
                                                     </div>
                                                 ) : (
                                                     <input type={f.type} value={formData[f.key] || ''} onChange={e => setFormData({ ...formData, [f.key]: e.target.value })}
@@ -795,11 +937,29 @@ export default function Dashboard() {
                                             />
                                         </div>
                                         <div style={{ flex: 1, marginRight: '16px' }}>
-                                            <label style={labelStyle}>Approval Roles</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                                <label style={{ ...labelStyle, marginBottom: 0 }}>Approval Roles</label>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const newSteps = [...builderSteps];
+                                                        newSteps[stepIndex].showAllRoles = !newSteps[stepIndex].showAllRoles;
+                                                        setBuilderSteps(newSteps);
+                                                    }}
+                                                    style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', color: '#3b82f6', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                                                >
+                                                    {step.showAllRoles ? <ChevronDown size={14} style={{ marginRight: '4px' }} /> : <ChevronRight size={14} style={{ marginRight: '4px' }} />}
+                                                    {step.showAllRoles ? 'Hide extra roles' : 'Show all roles'}
+                                                </button>
+                                            </div>
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', background: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', padding: '8px' }}>
                                                 {availableRoles.length === 0 && <span style={{ fontSize: '12px', color: '#9ca3af' }}>Loading roles...</span>}
                                                 {availableRoles.map(role => {
+                                                    const isPrimary = ['HEAD_OF_DEPARTMENT', 'SECTION_INCHARGE', 'AR_DR_ESTT', 'REGISTRAR'].includes(role);
                                                     const selected = step.approval_roles.includes(role);
+
+                                                    if (!step.showAllRoles && !isPrimary && !selected) return null;
+
                                                     return (
                                                         <button
                                                             key={role}
@@ -904,7 +1064,7 @@ export default function Dashboard() {
                                         <button
                                             onClick={() => {
                                                 const newSteps = [...builderSteps];
-                                                newSteps[stepIndex].fields.push({ name: '', type: 'text', required: false });
+                                                newSteps[stepIndex].fields.push({ name: '', type: 'text', required: true });
                                                 setBuilderSteps(newSteps);
                                             }}
                                             style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', border: '1px solid #d1d5db', color: '#374151', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', marginTop: '8px' }}
@@ -917,7 +1077,7 @@ export default function Dashboard() {
 
                             <button
                                 onClick={() => {
-                                    setBuilderSteps([...builderSteps, { status: '', approval_roles: [], fields: [{ name: '', type: 'text', required: false }] }]);
+                                    setBuilderSteps([...builderSteps, { status: '', approval_roles: [], fields: [{ name: '', type: 'text', required: true }] }]);
                                 }}
                                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#dbeafe', border: '1px dashed #3b82f6', color: '#1d4ed8', padding: '12px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
                             >
@@ -971,7 +1131,7 @@ export default function Dashboard() {
                     </div>
                 )}
             </main>
-        </div>
+        </div >
     );
 }
 

@@ -84,6 +84,23 @@ router.get('/roles', verifyToken, async (req: AuthenticatedRequest, res: Respons
     }
 });
 
+// ─── GET All Departments ──────────────────────────────────────────────
+router.get('/departments', verifyToken, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+        const departments = await prisma.departments.findMany({
+            select: { id: true, name: true }
+        });
+
+        res.json(departments);
+    } catch (error) {
+        console.error('Get departments error:', error);
+        res.status(500).json({ error: 'Failed to get departments' });
+    }
+});
+
 // ─── UPDATE Profile ───────────────────────────────────────────────────
 router.patch('/', verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
