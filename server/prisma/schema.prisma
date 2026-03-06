@@ -56,6 +56,7 @@ model users {
   created_at          DateTime?             @default(now()) @db.Timestamp(6)
   updated_at          DateTime?             @default(now()) @db.Timestamp(6)
   department_id       Int?
+  signature_url       String?
   department_heads    department_heads[]
   form_approvals      form_approvals[]
   form_status_history form_status_history[]

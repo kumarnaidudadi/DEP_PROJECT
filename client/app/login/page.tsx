@@ -46,15 +46,8 @@ export default function LoginPage() {
             localStorage.setItem('token', token);
             localStorage.setItem('user', JSON.stringify(user));
 
-            // Role-based redirection
-            const roles = user.roles || [];
-            if (roles.includes('ADMIN')) {
-                router.push('/dashboard/admin');
-            } else if (roles.includes('APPROVER')) {
-                router.push('/dashboard/approver');
-            } else {
-                router.push('/dashboard/applicant');
-            }
+            // Redirect to unified dashboard (it handles roles internally)
+            router.push('/dashboard');
         } catch (err: any) {
             console.error('Verify OTP failed:', err);
             setError(err.response?.data?.error || 'Invalid OTP. Please try again.');
@@ -78,15 +71,8 @@ export default function LoginPage() {
             localStorage.setItem('token', token);
             localStorage.setItem('user', JSON.stringify(user));
 
-            // Role-based redirection
-            const roles = user.roles || [];
-            if (roles.includes('ADMIN')) {
-                router.push('/dashboard/admin');
-            } else if (roles.includes('APPROVER')) {
-                router.push('/dashboard/approver');
-            } else {
-                router.push('/dashboard/applicant');
-            }
+            // Redirect to unified dashboard (it handles roles internally)
+            router.push('/dashboard');
         } catch (err: any) {
             console.error('Google login failed:', err);
             const errorMessage = err.response?.data?.error || 'Google login failed';

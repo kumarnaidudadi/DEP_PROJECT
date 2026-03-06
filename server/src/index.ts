@@ -10,6 +10,7 @@ import cors from 'cors';
 import prisma from './prisma';
 import authRoutes from './routes/auth';
 import formRoutes from './routes/forms';
+import profileRoutes from './routes/profile';
 import path from 'path';
 
 const app = express();
@@ -26,6 +27,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/forms', formRoutes);
 app.use('/api/applications', formRoutes); // Alias for backward compat
+app.use('/api/profile', profileRoutes);
 
 // Serve uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
