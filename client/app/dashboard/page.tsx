@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import {
@@ -69,6 +69,9 @@ interface FieldDef {
     type: string;
     required: boolean;
     options?: string[];
+    min?: number;
+    max?: number;
+    subFields?: { key: string; label: string; type: string }[];
 }
 
 interface WfStepDef {
@@ -81,6 +84,10 @@ interface BuilderField {
     name: string;
     type: string;
     required: boolean;
+    options?: string[];
+    min?: number;
+    max?: number;
+    subFields?: { name: string; type: string }[];
 }
 
 interface BuilderStep {
@@ -90,7 +97,18 @@ interface BuilderStep {
     showAllRoles?: boolean;
 }
 
-const FIELD_TYPES = ['text', 'textarea', 'date', 'bool', 'signature', 'number', 'department', 'role', 'date_from_to'];
+const FIELD_TYPES = [
+    'text', 'number', 'date', 'date_from_to',
+    'bool', 'select', 'textarea', 'signature',
+    'department', 'role', 'tuple', 'list',
+];
+
+const FIELD_TYPE_LABELS: Record<string, string> = {
+    text: 'Text', number: 'Number', date: 'Date', date_from_to: 'Date Range',
+    bool: 'Yes / No', select: 'Select (Options)', textarea: 'Long Text',
+    signature: 'Signature', department: 'Department', role: 'Role',
+    tuple: 'Group (Tuple)', list: 'Repeating List',
+};
 
 // ═══════════════════════════════════════════════════════════════════════
 // DASHBOARD
@@ -322,7 +340,11 @@ export default function Dashboard() {
                     ...s.fields.filter(f => f.name.trim()).map(f => ({
                         name: f.name.trim(),
                         type: f.type,
-                        required: f.required
+                        required: f.required,
+                        ...(f.options?.length ? { options: f.options.filter(Boolean) } : {}),
+                        ...(f.min !== undefined ? { min: f.min } : {}),
+                        ...(f.max !== undefined ? { max: f.max } : {}),
+                        ...(f.subFields?.length ? { subFields: f.subFields } : {}),
                     }))
                 ];
             });
@@ -373,8 +395,16 @@ export default function Dashboard() {
                 // Parse fields filtering out the status element
                 const fields: BuilderField[] = [];
                 if (Array.isArray(stepSchemaArr)) {
-                    stepSchemaArr.forEach(item => {
-                        if (item.name) fields.push({ name: item.name, type: item.type || 'text', required: item.required === true });
+                    stepSchemaArr.forEach((item: any) => {
+                        if (item.name) fields.push({
+                            name: item.name,
+                            type: item.type || 'text',
+                            required: item.required === true,
+                            options: item.options,
+                            min: item.min,
+                            max: item.max,
+                            subFields: item.subFields,
+                        });
                     });
                 }
                 // if no fields mapped for this step yet, add a blank one
@@ -419,7 +449,6 @@ export default function Dashboard() {
     const getSchemaFields = (schema: any): FieldDef[] => {
         if (schema?.fields && Array.isArray(schema.fields)) return schema.fields;
 
-        // Handle new JSON schema structure (only fields from step 1 for applicants)
         if (schema && typeof schema === 'object' && Array.isArray(schema['1'])) {
             const fields: FieldDef[] = [];
             schema['1'].forEach((item: any) => {
@@ -429,6 +458,16 @@ export default function Dashboard() {
                         label: item.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
                         type: item.type || 'text',
                         required: item.required === true || item.required === 'true',
+                        options: item.options,
+                        min: item.min,
+                        max: item.max,
+                        subFields: Array.isArray(item.subFields)
+                            ? item.subFields.map((sf: any) => ({
+                                key: sf.name.replace(/\s+/g, '_'),
+                                label: sf.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+                                type: sf.type || 'text',
+                            }))
+                            : undefined,
                     });
                 }
             });
@@ -438,7 +477,7 @@ export default function Dashboard() {
         if (!schema || typeof schema !== 'object' || Object.keys(schema).length === 0) {
             return [
                 { key: 'name', label: 'Full Name', type: 'text', required: true },
-                { key: 'department', label: 'Department', type: 'text', required: true },
+                { key: 'department', label: 'Department', type: 'department', required: true },
                 { key: 'leave_type', label: 'Leave Type', type: 'select', required: true, options: ['Casual Leave', 'Earned Leave', 'Sick Leave'] },
                 { key: 'start_date', label: 'Start Date', type: 'date', required: true },
                 { key: 'end_date', label: 'End Date', type: 'date', required: true },
@@ -448,6 +487,7 @@ export default function Dashboard() {
         return Object.entries(schema).map(([k, v]: [string, any]) => ({
             key: k, label: v?.label || k.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
             type: v?.type || 'text', required: v?.required ?? false,
+            options: v?.options, min: v?.min, max: v?.max,
         }));
     };
 
@@ -952,6 +992,8 @@ export default function Dashboard() {
                     </div>
                 )}
 
+
+
                 {/* APPLICATION DETAIL */}
                 {selectedApp && (
                     <div style={{ padding: '32px 40px', maxWidth: '700px', margin: '0 auto' }}>
@@ -1223,244 +1265,378 @@ export default function Dashboard() {
                 )}
 
                 {/* ─── CREATE FORM (Admin) ──────────────────────────── */}
-                {activeView === 'create_form' && (
-                    <div style={{ padding: '32px 40px', maxWidth: '740px', margin: '0 auto' }}>
-                        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1f2937', margin: '0 0 4px' }}>Create New Form</h1>
-                        <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 24px' }}>Define a custom application form with fields and approval workflow.</p>
+                {
+                    activeView === 'create_form' && (
+                        <div style={{ padding: '32px 40px', maxWidth: '740px', margin: '0 auto' }}>
+                            <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1f2937', margin: '0 0 4px' }}>Create New Form</h1>
+                            <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 24px' }}>Define a custom application form with fields and approval workflow.</p>
 
-                        {createSuccess && (
-                            <div style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px', color: '#166534', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <CheckCircle size={16} /> Form created successfully!
-                            </div>
-                        )}
-
-                        {/* Basic info */}
-                        <Panel title="Form Details">
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                                <div style={{ gridColumn: 'span 2' }}>
-                                    <label style={labelStyle}>Form Title *</label>
-                                    <input value={newFormName} onChange={e => setNewFormName(e.target.value)} placeholder="e.g. Leave Application" style={inputStyle} />
+                            {createSuccess && (
+                                <div style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px', color: '#166534', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <CheckCircle size={16} /> Form created successfully!
                                 </div>
-                                <div style={{ gridColumn: 'span 2' }}>
-                                    <label style={labelStyle}>Description</label>
-                                    <input value={newFormDesc} onChange={e => setNewFormDesc(e.target.value)} placeholder="Brief description..." style={inputStyle} />
-                                </div>
-                            </div>
-                        </Panel>
+                            )}
 
-                        {/* Dynamic Step Builder */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            {builderSteps.map((step, stepIndex) => (
-                                <Panel key={stepIndex} title={`Step ${stepIndex + 1}`}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                        <div style={{ flex: 1, marginRight: '16px' }}>
-                                            <label style={labelStyle}>Status Name *</label>
-                                            <input
-                                                value={step.status}
-                                                onChange={e => {
-                                                    const newSteps = [...builderSteps];
-                                                    newSteps[stepIndex].status = e.target.value;
-                                                    setBuilderSteps(newSteps);
-                                                }}
-                                                placeholder="e.g. HOD Approval"
-                                                style={inputStyle}
-                                            />
-                                        </div>
-                                        <div style={{ flex: 1, marginRight: '16px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                                <label style={{ ...labelStyle, marginBottom: 0 }}>Approval Roles</label>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
+                            {/* Basic info */}
+                            <Panel title="Form Details">
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                                    <div style={{ gridColumn: 'span 2' }}>
+                                        <label style={labelStyle}>Form Title *</label>
+                                        <input value={newFormName} onChange={e => setNewFormName(e.target.value)} placeholder="e.g. Leave Application" style={inputStyle} />
+                                    </div>
+                                    <div style={{ gridColumn: 'span 2' }}>
+                                        <label style={labelStyle}>Description</label>
+                                        <input value={newFormDesc} onChange={e => setNewFormDesc(e.target.value)} placeholder="Brief description..." style={inputStyle} />
+                                    </div>
+                                </div>
+                            </Panel>
+
+                            {/* Dynamic Step Builder */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                {builderSteps.map((step, stepIndex) => (
+                                    <Panel key={stepIndex} title={`Step ${stepIndex + 1}`}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                            <div style={{ flex: 1, marginRight: '16px' }}>
+                                                <label style={labelStyle}>Status Name *</label>
+                                                <input
+                                                    value={step.status}
+                                                    onChange={e => {
                                                         const newSteps = [...builderSteps];
-                                                        newSteps[stepIndex].showAllRoles = !newSteps[stepIndex].showAllRoles;
+                                                        newSteps[stepIndex].status = e.target.value;
                                                         setBuilderSteps(newSteps);
                                                     }}
-                                                    style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', color: '#3b82f6', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
-                                                >
-                                                    {step.showAllRoles ? <ChevronDown size={14} style={{ marginRight: '4px' }} /> : <ChevronRight size={14} style={{ marginRight: '4px' }} />}
-                                                    {step.showAllRoles ? 'Hide extra roles' : 'Show all roles'}
-                                                </button>
+                                                    placeholder="e.g. HOD Approval"
+                                                    style={inputStyle}
+                                                />
                                             </div>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', background: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', padding: '8px' }}>
-                                                {availableRoles.length === 0 && <span style={{ fontSize: '12px', color: '#9ca3af' }}>Loading roles...</span>}
-                                                {availableRoles.map(role => {
-                                                    const isPrimary = ['HEAD_OF_DEPARTMENT', 'SECTION_INCHARGE', 'AR_DR_ESTT', 'REGISTRAR'].includes(role);
-                                                    const selected = step.approval_roles.includes(role);
-
-                                                    if (!step.showAllRoles && !isPrimary && !selected) return null;
-
-                                                    return (
-                                                        <button
-                                                            key={role}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                const newSteps = [...builderSteps];
-                                                                const current = newSteps[stepIndex].approval_roles;
-                                                                newSteps[stepIndex].approval_roles = selected
-                                                                    ? current.filter(r => r !== role)
-                                                                    : [...current, role];
-                                                                setBuilderSteps(newSteps);
-                                                            }}
-                                                            style={{
-                                                                padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', border: 'none',
-                                                                background: selected ? '#2563eb' : '#e5e7eb',
-                                                                color: selected ? '#fff' : '#374151',
-                                                                transition: 'all 0.15s'
-                                                            }}
-                                                        >
-                                                            {role}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                        {builderSteps.length > 1 && (
-                                            <button
-                                                onClick={() => {
-                                                    if (window.confirm('Are you sure you want to remove this step?')) {
-                                                        const newSteps = [...builderSteps];
-                                                        newSteps.splice(stepIndex, 1);
-                                                        setBuilderSteps(newSteps);
-                                                    }
-                                                }}
-                                                style={{ padding: '8px 12px', background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, marginTop: '16px' }}
-                                            >
-                                                <Trash2 size={14} /> Remove Step
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {/* Fields List */}
-                                    <div style={{ background: '#f9fafb', padding: '16px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                                        <div style={{ fontSize: '12px', fontWeight: 600, color: '#4b5563', marginBottom: '12px' }}>Fields for this step</div>
-
-                                        {step.fields.map((field, fieldIndex) => (
-                                            <div key={fieldIndex} style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginBottom: '12px', paddingBottom: '12px', borderBottom: fieldIndex < step.fields.length - 1 ? '1px dashed #d1d5db' : 'none' }}>
-                                                <div style={{ flex: 2 }}>
-                                                    <label style={labelStyle}>Field Name</label>
-                                                    <input
-                                                        value={field.name}
-                                                        onChange={e => {
-                                                            const newSteps = [...builderSteps];
-                                                            newSteps[stepIndex].fields[fieldIndex].name = e.target.value;
-                                                            setBuilderSteps(newSteps);
-                                                        }}
-                                                        placeholder="e.g. designation"
-                                                        style={inputStyleSm}
-                                                    />
-                                                </div>
-                                                <div style={{ flex: 1.5 }}>
-                                                    <label style={labelStyle}>Type</label>
-                                                    <select
-                                                        value={field.type}
-                                                        onChange={e => {
-                                                            const newSteps = [...builderSteps];
-                                                            newSteps[stepIndex].fields[fieldIndex].type = e.target.value;
-                                                            setBuilderSteps(newSteps);
-                                                        }}
-                                                        style={{ ...inputStyleSm, background: '#fff' }}
-                                                    >
-                                                        {FIELD_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                                                    </select>
-                                                </div>
-                                                <div style={{ display: 'flex', alignItems: 'center', paddingBottom: '8px', gap: '4px' }}>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={field.required}
-                                                        onChange={e => {
-                                                            const newSteps = [...builderSteps];
-                                                            newSteps[stepIndex].fields[fieldIndex].required = e.target.checked;
-                                                            setBuilderSteps(newSteps);
-                                                        }}
-                                                    />
-                                                    <label style={{ fontSize: '12px', color: '#4b5563', marginRight: '8px' }}>Required</label>
+                                            <div style={{ flex: 1, marginRight: '16px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                                    <label style={{ ...labelStyle, marginBottom: 0 }}>Approval Roles</label>
                                                     <button
+                                                        type="button"
                                                         onClick={() => {
-                                                            if (window.confirm('Are you sure you want to remove this field?')) {
-                                                                const newSteps = [...builderSteps];
-                                                                newSteps[stepIndex].fields.splice(fieldIndex, 1);
-                                                                setBuilderSteps(newSteps);
-                                                            }
+                                                            const newSteps = [...builderSteps];
+                                                            newSteps[stepIndex].showAllRoles = !newSteps[stepIndex].showAllRoles;
+                                                            setBuilderSteps(newSteps);
                                                         }}
-                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                                        style={{ display: 'flex', alignItems: 'center', background: 'none', border: 'none', color: '#3b82f6', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
                                                     >
-                                                        <Trash2 size={16} />
+                                                        {step.showAllRoles ? <ChevronDown size={14} style={{ marginRight: '4px' }} /> : <ChevronRight size={14} style={{ marginRight: '4px' }} />}
+                                                        {step.showAllRoles ? 'Hide extra roles' : 'Show all roles'}
                                                     </button>
                                                 </div>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', background: '#fff', border: '1px solid #d1d5db', borderRadius: '8px', padding: '8px' }}>
+                                                    {availableRoles.length === 0 && <span style={{ fontSize: '12px', color: '#9ca3af' }}>Loading roles...</span>}
+                                                    {availableRoles.map(role => {
+                                                        const isPrimary = ['HEAD_OF_DEPARTMENT', 'SECTION_INCHARGE', 'AR_DR_ESTT', 'REGISTRAR'].includes(role);
+                                                        const selected = step.approval_roles.includes(role);
+
+                                                        if (!step.showAllRoles && !isPrimary && !selected) return null;
+
+                                                        return (
+                                                            <button
+                                                                key={role}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newSteps = [...builderSteps];
+                                                                    const current = newSteps[stepIndex].approval_roles;
+                                                                    newSteps[stepIndex].approval_roles = selected
+                                                                        ? current.filter(r => r !== role)
+                                                                        : [...current, role];
+                                                                    setBuilderSteps(newSteps);
+                                                                }}
+                                                                style={{
+                                                                    padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', border: 'none',
+                                                                    background: selected ? '#2563eb' : '#e5e7eb',
+                                                                    color: selected ? '#fff' : '#374151',
+                                                                    transition: 'all 0.15s'
+                                                                }}
+                                                            >
+                                                                {role}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
-                                        ))}
+                                            {builderSteps.length > 1 && (
+                                                <button
+                                                    onClick={() => {
+                                                        if (window.confirm('Are you sure you want to remove this step?')) {
+                                                            const newSteps = [...builderSteps];
+                                                            newSteps.splice(stepIndex, 1);
+                                                            setBuilderSteps(newSteps);
+                                                        }
+                                                    }}
+                                                    style={{ padding: '8px 12px', background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, marginTop: '16px' }}
+                                                >
+                                                    <Trash2 size={14} /> Remove Step
+                                                </button>
+                                            )}
+                                        </div>
 
-                                        <button
-                                            onClick={() => {
-                                                const newSteps = [...builderSteps];
-                                                newSteps[stepIndex].fields.push({ name: '', type: 'text', required: true });
-                                                setBuilderSteps(newSteps);
-                                            }}
-                                            style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', border: '1px solid #d1d5db', color: '#374151', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', marginTop: '8px' }}
-                                        >
-                                            <Plus size={14} /> Add Field
-                                        </button>
-                                    </div>
-                                </Panel>
-                            ))}
+                                        {/* Fields List */}
+                                        <div style={{ background: '#f9fafb', padding: '16px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#4b5563', marginBottom: '12px' }}>Fields for this step</div>
 
-                            <button
-                                onClick={() => {
-                                    setBuilderSteps([...builderSteps, { status: '', approval_roles: [], fields: [{ name: '', type: 'text', required: true }] }]);
-                                }}
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#dbeafe', border: '1px dashed #3b82f6', color: '#1d4ed8', padding: '12px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
-                            >
-                                <Plus size={16} /> Add new Step
-                            </button>
+                                            {step.fields.map((field, fieldIndex) => (
+                                                <div key={fieldIndex} style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: fieldIndex < step.fields.length - 1 ? '1px dashed #d1d5db' : 'none' }}>
+                                                    {/* Row 1: name / type / required / delete */}
+                                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+                                                        <div style={{ flex: 2 }}>
+                                                            <label style={labelStyle}>Field Name</label>
+                                                            <input
+                                                                value={field.name}
+                                                                onChange={e => {
+                                                                    const newSteps = [...builderSteps];
+                                                                    newSteps[stepIndex].fields[fieldIndex].name = e.target.value;
+                                                                    setBuilderSteps(newSteps);
+                                                                }}
+                                                                placeholder="e.g. designation"
+                                                                style={inputStyleSm}
+                                                            />
+                                                        </div>
+                                                        <div style={{ flex: 1.5 }}>
+                                                            <label style={labelStyle}>Type</label>
+                                                            <select
+                                                                value={field.type}
+                                                                onChange={e => {
+                                                                    const newSteps = [...builderSteps];
+                                                                    newSteps[stepIndex].fields[fieldIndex].type = e.target.value;
+                                                                    setBuilderSteps(newSteps);
+                                                                }}
+                                                                style={{ ...inputStyleSm, background: '#fff' }}
+                                                            >
+                                                                {FIELD_TYPES.map(t => <option key={t} value={t}>{FIELD_TYPE_LABELS[t] || t}</option>)}
+                                                            </select>
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', paddingBottom: '8px', gap: '4px' }}>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={field.required}
+                                                                onChange={e => {
+                                                                    const newSteps = [...builderSteps];
+                                                                    newSteps[stepIndex].fields[fieldIndex].required = e.target.checked;
+                                                                    setBuilderSteps(newSteps);
+                                                                }}
+                                                            />
+                                                            <label style={{ fontSize: '12px', color: '#4b5563', marginRight: '8px' }}>Required</label>
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (window.confirm('Remove this field?')) {
+                                                                        const newSteps = [...builderSteps];
+                                                                        newSteps[stepIndex].fields.splice(fieldIndex, 1);
+                                                                        setBuilderSteps(newSteps);
+                                                                    }
+                                                                }}
+                                                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    {/* Row 2: contextual config */}
+                                                    {field.type === 'select' && (
+                                                        <div style={{ marginTop: '8px' }}>
+                                                            <label style={labelStyle}>Options</label>
+                                                            {(field.options || []).map((opt, optIdx) => (
+                                                                <div key={optIdx} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                                                    <input
+                                                                        value={opt}
+                                                                        onChange={e => {
+                                                                            const newSteps = [...builderSteps];
+                                                                            const opts = [...(newSteps[stepIndex].fields[fieldIndex].options || [])];
+                                                                            opts[optIdx] = e.target.value;
+                                                                            newSteps[stepIndex].fields[fieldIndex].options = opts;
+                                                                            setBuilderSteps(newSteps);
+                                                                        }}
+                                                                        placeholder={`Option ${optIdx + 1}`}
+                                                                        style={{ ...inputStyleSm, flex: 1 }}
+                                                                    />
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const newSteps = [...builderSteps];
+                                                                            const opts = [...(newSteps[stepIndex].fields[fieldIndex].options || [])];
+                                                                            opts.splice(optIdx, 1);
+                                                                            newSteps[stepIndex].fields[fieldIndex].options = opts;
+                                                                            setBuilderSteps(newSteps);
+                                                                        }}
+                                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px', flexShrink: 0 }}
+                                                                        title="Remove option"
+                                                                    >×</button>
+                                                                </div>
+                                                            ))}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newSteps = [...builderSteps];
+                                                                    const opts = [...(newSteps[stepIndex].fields[fieldIndex].options || []), ''];
+                                                                    newSteps[stepIndex].fields[fieldIndex].options = opts;
+                                                                    setBuilderSteps(newSteps);
+                                                                }}
+                                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '2px', background: '#f0f9ff', border: '1px solid #bae6fd', color: '#0369a1', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                                                            >
+                                                                <Plus size={11} /> Add Option
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    {field.type === 'number' && (
+                                                        <div style={{ marginTop: '8px', display: 'flex', gap: '10px' }}>
+                                                            <div style={{ flex: 1 }}>
+                                                                <label style={labelStyle}>Min value</label>
+                                                                <input type="number" value={field.min ?? ''} onChange={e => {
+                                                                    const newSteps = [...builderSteps];
+                                                                    newSteps[stepIndex].fields[fieldIndex].min = e.target.value === '' ? undefined : Number(e.target.value);
+                                                                    setBuilderSteps(newSteps);
+                                                                }} style={inputStyleSm} placeholder="e.g. 0" />
+                                                            </div>
+                                                            <div style={{ flex: 1 }}>
+                                                                <label style={labelStyle}>Max value</label>
+                                                                <input type="number" value={field.max ?? ''} onChange={e => {
+                                                                    const newSteps = [...builderSteps];
+                                                                    newSteps[stepIndex].fields[fieldIndex].max = e.target.value === '' ? undefined : Number(e.target.value);
+                                                                    setBuilderSteps(newSteps);
+                                                                }} style={inputStyleSm} placeholder="optional" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {(field.type === 'tuple' || field.type === 'list') && (
+                                                        <div style={{ marginTop: '8px', background: '#f0f4ff', borderRadius: '6px', padding: '10px 12px' }}>
+                                                            <label style={{ ...labelStyle, marginBottom: '8px', display: 'block' }}>
+                                                                Columns
+                                                            </label>
+                                                            {(field.subFields || []).map((sf, sfIdx) => (
+                                                                <div key={sfIdx} style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '6px' }}>
+                                                                    <input
+                                                                        value={sf.name}
+                                                                        onChange={e => {
+                                                                            const newSteps = [...builderSteps];
+                                                                            const sfs = [...(newSteps[stepIndex].fields[fieldIndex].subFields || [])];
+                                                                            sfs[sfIdx] = { ...sfs[sfIdx], name: e.target.value };
+                                                                            newSteps[stepIndex].fields[fieldIndex].subFields = sfs;
+                                                                            setBuilderSteps(newSteps);
+                                                                        }}
+                                                                        placeholder="Column name"
+                                                                        style={{ ...inputStyleSm, flex: 2 }}
+                                                                    />
+                                                                    <select
+                                                                        value={sf.type}
+                                                                        onChange={e => {
+                                                                            const newSteps = [...builderSteps];
+                                                                            const sfs = [...(newSteps[stepIndex].fields[fieldIndex].subFields || [])];
+                                                                            sfs[sfIdx] = { ...sfs[sfIdx], type: e.target.value };
+                                                                            newSteps[stepIndex].fields[fieldIndex].subFields = sfs;
+                                                                            setBuilderSteps(newSteps);
+                                                                        }}
+                                                                        style={{ ...inputStyleSm, flex: 1, background: '#fff' }}
+                                                                    >
+                                                                        {['text', 'number', 'date', 'bool', 'select'].map(t => (
+                                                                            <option key={t} value={t}>{FIELD_TYPE_LABELS[t] || t}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const newSteps = [...builderSteps];
+                                                                            const sfs = [...(newSteps[stepIndex].fields[fieldIndex].subFields || [])];
+                                                                            sfs.splice(sfIdx, 1);
+                                                                            newSteps[stepIndex].fields[fieldIndex].subFields = sfs;
+                                                                            setBuilderSteps(newSteps);
+                                                                        }}
+                                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px', flexShrink: 0 }}
+                                                                        title="Remove column"
+                                                                    >×</button>
+                                                                </div>
+                                                            ))}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newSteps = [...builderSteps];
+                                                                    const sfs = [...(newSteps[stepIndex].fields[fieldIndex].subFields || []), { name: '', type: 'text' }];
+                                                                    newSteps[stepIndex].fields[fieldIndex].subFields = sfs;
+                                                                    setBuilderSteps(newSteps);
+                                                                }}
+                                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '2px', background: '#e0e7ff', border: '1px solid #a5b4fc', color: '#3730a3', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}
+                                                            >
+                                                                <Plus size={11} /> Add Column
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+
+                                            <button
+                                                onClick={() => {
+                                                    const newSteps = [...builderSteps];
+                                                    newSteps[stepIndex].fields.push({ name: '', type: 'text', required: true });
+                                                    setBuilderSteps(newSteps);
+                                                }}
+                                                style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fff', border: '1px solid #d1d5db', color: '#374151', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', marginTop: '8px' }}
+                                            >
+                                                <Plus size={14} /> Add Field
+                                            </button>
+                                        </div>
+                                    </Panel>
+                                ))}
+
+                                <button
+                                    onClick={() => {
+                                        setBuilderSteps([...builderSteps, { status: '', approval_roles: [], fields: [{ name: '', type: 'text', required: true }] }]);
+                                    }}
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', background: '#dbeafe', border: '1px dashed #3b82f6', color: '#1d4ed8', padding: '12px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+                                >
+                                    <Plus size={16} /> Add new Step
+                                </button>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', margin: '24px 0' }}>
+                                <BtnSecondary onClick={() => { setActiveView('dashboard'); setNewFormName(''); setNewFormDesc(''); setBuilderSteps([{ status: 'Draft', approval_roles: [], fields: [{ name: '', type: 'text', required: true }] }]); }}>Cancel</BtnSecondary>
+                                <BtnPrimary onClick={handleCreateFormType} disabled={creating}>
+                                    {creating ? <><Loader2 size={14} className="animate-spin" /> Creating...</> : <><CheckCircle size={14} /> Save Form</>}
+                                </BtnPrimary>
+                            </div>
                         </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', margin: '24px 0' }}>
-                            <BtnSecondary onClick={() => { setActiveView('dashboard'); setNewFormName(''); setNewFormDesc(''); setBuilderSteps([{ status: 'Draft', approval_roles: [], fields: [{ name: '', type: 'text', required: true }] }]); }}>Cancel</BtnSecondary>
-                            <BtnPrimary onClick={handleCreateFormType} disabled={creating}>
-                                {creating ? <><Loader2 size={14} className="animate-spin" /> Creating...</> : <><CheckCircle size={14} /> Create Form</>}
-                            </BtnPrimary>
-                        </div>
-                    </div>
-                )}
+                    )}
 
                 {/* ─── PROFILE ──────────────────────────────────────── */}
-                {activeView === 'profile' && (
-                    <div style={{ padding: '32px 40px', maxWidth: '600px', margin: '0 auto' }}>
-                        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1f2937', margin: '0 0 24px' }}>Profile</h1>
+                {
+                    activeView === 'profile' && (
+                        <div style={{ padding: '32px 40px', maxWidth: '600px', margin: '0 auto' }}>
+                            <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1f2937', margin: '0 0 24px' }}>Profile</h1>
 
-                        <Panel title="Personal Information">
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                                <InfoRow label="Display Name" value={profile?.display_name || user?.name || '—'} />
-                                <InfoRow label="Email" value={profile?.email || user?.email || '—'} />
-                                <InfoRow label="Role" value={profile?.roles?.join(', ') || '—'} />
-                                <InfoRow label="Department" value={profile?.department || '—'} />
-                            </div>
-                        </Panel>
-
-                        <Panel title="Digital Signature">
-                            {profile?.signature_url ? (
-                                <div style={{ marginBottom: '16px' }}>
-                                    <img src={`http://localhost:4000${profile.signature_url}`} alt="Signature" style={{ maxHeight: '80px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fff' }} />
+                            <Panel title="Personal Information">
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                                    <InfoRow label="Display Name" value={profile?.display_name || user?.name || '—'} />
+                                    <InfoRow label="Email" value={profile?.email || user?.email || '—'} />
+                                    <InfoRow label="Role" value={profile?.roles?.join(', ') || '—'} />
+                                    <InfoRow label="Department" value={profile?.department || '—'} />
                                 </div>
-                            ) : (
-                                <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '12px' }}>No signature uploaded yet.</p>
-                            )}
-                            <label style={{
-                                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                                padding: '10px 20px', border: '2px dashed #d1d5db', borderRadius: '8px',
-                                fontSize: '13px', color: '#2563eb', fontWeight: 600, cursor: 'pointer',
-                                transition: 'border-color 0.2s',
-                            }}>
-                                <Upload size={16} />
-                                {sigUploading ? 'Uploading...' : 'Upload Signature'}
-                                <input type="file" accept="image/*" style={{ display: 'none' }}
-                                    onChange={e => { if (e.target.files?.[0]) handleSigUpload(e.target.files[0]); }} />
-                            </label>
-                        </Panel>
-                    </div>
-                )}
-            </main>
+                            </Panel>
+
+                            <Panel title="Digital Signature">
+                                {profile?.signature_url ? (
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <img src={`http://localhost:4000${profile.signature_url}`} alt="Signature" style={{ maxHeight: '80px', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px', background: '#fff' }} />
+                                    </div>
+                                ) : (
+                                    <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '12px' }}>No signature uploaded yet.</p>
+                                )}
+                                <label style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '8px',
+                                    padding: '10px 20px', border: '2px dashed #d1d5db', borderRadius: '8px',
+                                    fontSize: '13px', color: '#2563eb', fontWeight: 600, cursor: 'pointer',
+                                    transition: 'border-color 0.2s',
+                                }}>
+                                    <Upload size={16} />
+                                    {sigUploading ? 'Uploading...' : 'Upload Signature'}
+                                    <input type="file" accept="image/*" style={{ display: 'none' }}
+                                        onChange={e => { if (e.target.files?.[0]) handleSigUpload(e.target.files[0]); }} />
+                                </label>
+                            </Panel>
+                        </div>
+                    )
+                }
+            </main >
         </div >
     );
 }
@@ -1624,3 +1800,140 @@ function SuccessMsg() {
         </div>
     );
 }
+
+// ─── SignaturePad ────────────────────────────────────────────────────────────
+function SignaturePad({ fieldKey, value, onChange }: { fieldKey: string; value: string; onChange: (val: string) => void }) {
+    const canvasRef = React.useRef<HTMLCanvasElement>(null);
+    const drawing = React.useRef(false);
+
+    React.useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.strokeStyle = '#1f2937';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        if (value) {
+            const img = new Image();
+            img.onload = () => ctx.drawImage(img, 0, 0);
+            img.src = value;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const getPos = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        const rect = canvasRef.current!.getBoundingClientRect();
+        const scaleX = canvasRef.current!.width / rect.width;
+        const scaleY = canvasRef.current!.height / rect.height;
+        return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+    };
+
+    const startDraw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        drawing.current = true;
+        const ctx = canvasRef.current!.getContext('2d')!;
+        const pos = getPos(e);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+    };
+
+    const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (!drawing.current) return;
+        const ctx = canvasRef.current!.getContext('2d')!;
+        const pos = getPos(e);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+    };
+
+    const endDraw = () => {
+        if (!drawing.current) return;
+        drawing.current = false;
+        onChange(canvasRef.current!.toDataURL());
+    };
+
+    const clear = () => {
+        const canvas = canvasRef.current!;
+        canvas.getContext('2d')!.clearRect(0, 0, canvas.width, canvas.height);
+        onChange('');
+    };
+
+    return (
+        <div>
+            <canvas
+                ref={canvasRef}
+                width={600} height={140}
+                onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
+                style={{ border: '1px solid #d1d5db', borderRadius: '8px', background: '#fafafa', cursor: 'crosshair', width: '100%', height: '140px', display: 'block' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                <span style={{ fontSize: '11px', color: '#9ca3af' }}>Draw your signature above</span>
+                <button type="button" onClick={clear} style={{ fontSize: '11px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Clear</button>
+            </div>
+            {value && <div style={{ fontSize: '11px', color: '#16a34a', marginTop: '4px' }}>✓ Signature captured</div>}
+        </div>
+    );
+}
+
+// ─── ListField ───────────────────────────────────────────────────────────────
+function ListField({ fieldKey, subFields, value, onChange }: {
+    fieldKey: string;
+    subFields: { key: string; label: string; type: string }[];
+    value: Record<string, any>[];
+    onChange: (val: Record<string, any>[]) => void;
+}) {
+    const addRow = () => onChange([...value, {}]);
+    const removeRow = (i: number) => onChange(value.filter((_, idx) => idx !== i));
+    const updateCell = (rowIdx: number, colKey: string, val: any) =>
+        onChange(value.map((row, i) => i === rowIdx ? { ...row, [colKey]: val } : row));
+
+    if (subFields.length === 0) return (
+        <div style={{ fontSize: '12px', color: '#9ca3af', padding: '8px 0' }}>No sub-fields defined. Configure them in the Form Builder.</div>
+    );
+
+    return (
+        <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                    <tr style={{ background: '#f9fafb' }}>
+                        {subFields.map(sf => (
+                            <th key={sf.key} style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600, color: '#6b7280', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>
+                                {sf.label}
+                            </th>
+                        ))}
+                        <th style={{ width: '36px', borderBottom: '1px solid #e5e7eb' }} />
+                    </tr>
+                </thead>
+                <tbody>
+                    {value.length === 0 && (
+                        <tr><td colSpan={subFields.length + 1} style={{ padding: '12px', textAlign: 'center', color: '#9ca3af' }}>No entries yet. Click "Add Row" below.</td></tr>
+                    )}
+                    {value.map((row, rowIdx) => (
+                        <tr key={rowIdx} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            {subFields.map(sf => (
+                                <td key={sf.key} style={{ padding: '5px 6px' }}>
+                                    <input
+                                        type={sf.type === 'number' ? 'number' : sf.type === 'date' ? 'date' : 'text'}
+                                        value={row[sf.key] ?? ''}
+                                        onChange={e => updateCell(rowIdx, sf.key, e.target.value)}
+                                        style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' as const }}
+                                    />
+                                </td>
+                            ))}
+                            <td style={{ padding: '5px 4px', textAlign: 'center' }}>
+                                <button type="button" onClick={() => removeRow(rowIdx)}
+                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                                    <Trash2 size={14} />
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+            <button type="button" onClick={addRow}
+                style={{ marginTop: '8px', display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#f3f4f6', border: '1px solid #d1d5db', color: '#374151', padding: '5px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>
+                <Plus size={12} /> Add Row
+            </button>
+        </div>
+    );
+}
+

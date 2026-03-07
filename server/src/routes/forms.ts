@@ -217,6 +217,78 @@ router.post('/types', verifyToken, async (req: AuthenticatedRequest, res: Respon
     }
 });
 
+// ─── PUT /types/:id — Update an existing form type ─────────────────────────
+router.put('/types/:id', verifyToken, async (req: AuthenticatedRequest, res: Response) => {
+    const id = Number(req.params.id);
+    const { name, description, schema_definition, workflow_steps } = req.body;
+
+    if (!name) return res.status(400).json({ error: 'Form type name is required' });
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid form type id' });
+
+    try {
+        const result = await prisma.$transaction(async (tx: any) => {
+            // Fetch existing form type to get workflow_id
+            const existing = await tx.form_types.findUnique({
+                where: { id },
+                include: { workflow: true }
+            });
+            if (!existing) throw new Error('NOT_FOUND');
+
+            let workflowId: number | null = existing.workflow_id;
+
+            if (workflow_steps && workflow_steps.length > 0) {
+                if (workflowId) {
+                    // Delete old steps and replace
+                    await tx.workflow_steps.deleteMany({ where: { workflow_id: workflowId } });
+                    // Update workflow name
+                    await tx.workflows.update({
+                        where: { id: workflowId },
+                        data: { name: `${name} Workflow` }
+                    });
+                } else {
+                    // Create a new workflow
+                    const workflow = await tx.workflows.create({
+                        data: { name: `${name} Workflow`, description: `Workflow for ${name}` }
+                    });
+                    workflowId = workflow.id;
+                }
+                for (let i = 0; i < workflow_steps.length; i++) {
+                    await tx.workflow_steps.create({
+                        data: {
+                            workflow_id: workflowId!,
+                            step_order: i + 1,
+                            step_name: workflow_steps[i].step_name,
+                            approval_roles: workflow_steps[i].approval_roles || [],
+                            is_terminal: workflow_steps[i].is_terminal || false,
+                        }
+                    });
+                }
+            }
+
+            const updated = await tx.form_types.update({
+                where: { id },
+                data: {
+                    name,
+                    description: description || '',
+                    schema_definition: schema_definition || {},
+                    workflow_id: workflowId,
+                },
+                include: {
+                    workflow: { include: { steps: { orderBy: { step_order: 'asc' } } } }
+                }
+            });
+            return updated;
+        });
+
+        res.json(result);
+    } catch (error: any) {
+        console.error('Update form type error:', error);
+        if (error.message === 'NOT_FOUND') return res.status(404).json({ error: 'Form type not found' });
+        if (error.code === 'P2002') return res.status(409).json({ error: 'A form type with this name already exists' });
+        res.status(500).json({ error: 'Failed to update form type' });
+    }
+});
+
 // ─── GET all forms (filtered by role) ──────────────────────────────────
 router.get('/', verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
