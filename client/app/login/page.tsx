@@ -132,7 +132,7 @@ export default function LoginPage() {
                                         onChange={(e) => setEmail(e.target.value)}
                                         required
                                         disabled={isLoading}
-                                        className="pl-12 h-14 bg-white border border-gray-200 shadow-sm rounded-xl text-[15px] focus:ring-2 focus:ring-blue-500 font-medium placeholder:font-normal placeholder:text-gray-400"
+                                        className="pl-12 h-14 bg-white border border-gray-200 shadow-sm rounded-xl text-[15px] text-black focus:ring-2 focus:ring-blue-500 font-medium placeholder:font-normal placeholder:text-gray-400"
                                     />
                                 </div>
                             </div>
@@ -177,7 +177,7 @@ export default function LoginPage() {
                                         required
                                         disabled={isLoading}
                                         maxLength={6}
-                                        className="pl-12 h-14 bg-white border border-gray-200 shadow-sm rounded-xl text-xl tracking-widest focus:ring-2 focus:ring-blue-500 font-medium text-center tracking-[0.5em]"
+                                        className="pl-12 h-14 bg-white border border-gray-200 shadow-sm rounded-xl text-xl text-black tracking-widest focus:ring-2 focus:ring-blue-500 font-medium text-center tracking-[0.5em]"
                                     />
                                 </div>
                             </div>
