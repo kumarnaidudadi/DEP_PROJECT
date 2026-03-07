@@ -1146,10 +1146,27 @@ export default function Dashboard() {
                                                         {fieldsInStep.map((f: any) => {
                                                             const { key: k, value: v } = f;
                                                             return (
-                                                                <div key={k} style={{ gridColumn: String(v).length > 50 && !String(v).startsWith('/uploads/signatures') ? 'span 2' : 'auto' }}>
+                                                                <div key={k} style={{ gridColumn: (Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('/uploads/signatures'))) ? 'span 2' : 'auto' }}>
                                                                     <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k.replace(/_/g, ' ')}</div>
                                                                     {typeof v === 'string' && v.startsWith('/uploads/signatures') ? (
                                                                         <img src={`http://localhost:4000${v}`} alt="Signature" style={{ maxHeight: '60px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#fff', padding: '4px' }} />
+                                                                    ) : Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' ? (
+                                                                        <div style={{ marginTop: '6px', overflowX: 'auto', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
+                                                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                                                                                <thead style={{ background: '#f9fafb' }}>
+                                                                                    <tr>
+                                                                                        {Object.keys(v[0]).map(col => <th key={col} style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontWeight: 600, textTransform: 'capitalize' }}>{col.replace(/_/g, ' ')}</th>)}
+                                                                                    </tr>
+                                                                                </thead>
+                                                                                <tbody>
+                                                                                    {v.map((row, idx) => (
+                                                                                        <tr key={idx} style={{ borderBottom: idx === v.length - 1 ? 'none' : '1px solid #f3f4f6' }}>
+                                                                                            {Object.values(row).map((cell: any, cIdx) => <td key={cIdx} style={{ padding: '6px 8px' }}>{String(cell || '—')}</td>)}
+                                                                                        </tr>
+                                                                                    ))}
+                                                                                </tbody>
+                                                                            </table>
+                                                                        </div>
                                                                     ) : (
                                                                         <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>{String(v) || '—'}</div>
                                                                     )}
@@ -1170,10 +1187,27 @@ export default function Dashboard() {
                                         <Panel key="unmapped" title="Other Details" style={{ marginBottom: 0 }}>
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                                                 {unmappedFields.map(([k, v]) => (
-                                                    <div key={k} style={{ gridColumn: String(v).length > 50 && !String(v).startsWith('/uploads/signatures') ? 'span 2' : 'auto' }}>
+                                                    <div key={k} style={{ gridColumn: (Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('/uploads/signatures'))) ? 'span 2' : 'auto' }}>
                                                         <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k.replace(/_/g, ' ')}</div>
                                                         {typeof v === 'string' && v.startsWith('/uploads/signatures') ? (
                                                             <img src={`http://localhost:4000${v}`} alt="Signature" style={{ maxHeight: '60px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#fff', padding: '4px' }} />
+                                                        ) : Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' ? (
+                                                            <div style={{ marginTop: '6px', overflowX: 'auto', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
+                                                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                                                                    <thead style={{ background: '#f9fafb' }}>
+                                                                        <tr>
+                                                                            {Object.keys(v[0]).map(col => <th key={col} style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontWeight: 600, textTransform: 'capitalize' }}>{col.replace(/_/g, ' ')}</th>)}
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {v.map((row, idx) => (
+                                                                            <tr key={idx} style={{ borderBottom: idx === v.length - 1 ? 'none' : '1px solid #f3f4f6' }}>
+                                                                                {Object.values(row).map((cell: any, cIdx) => <td key={cIdx} style={{ padding: '6px 8px' }}>{String(cell || '—')}</td>)}
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
                                                         ) : (
                                                             <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>{String(v) || '—'}</div>
                                                         )}
