@@ -24,7 +24,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage,
-    limits: { fileSize: 2 * 1024 * 1024 },
+    limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         if (file.mimetype.startsWith('image/')) cb(null, true);
         else cb(new Error('Only images are allowed'));
@@ -56,7 +56,7 @@ router.get('/', verifyToken, async (req: AuthenticatedRequest, res: Response) =>
             last_name: user.last_name,
             email: user.email,
             department_id: user.department_id,
-            signature_url: (user as any).signature_url || null,
+            signature_url: user.signature_url,
             display_name: [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' '),
             roles: user.user_roles.map((ur: any) => ur.roles.name),
             department: user.departments?.name || null,

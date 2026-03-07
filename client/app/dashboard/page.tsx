@@ -125,6 +125,7 @@ export default function Dashboard() {
 
     // Approval
     const [remarks, setRemarks] = useState('');
+    const [approvalData, setApprovalData] = useState<Record<string, any>>({});
     const [actionLoading, setActionLoading] = useState(false);
 
     // Create form builder
@@ -228,6 +229,28 @@ export default function Dashboard() {
     // ─── Form Submit ──────────────────────────────────────────────────
     const handleFormSubmit = async () => {
         if (!selectedFormType) return;
+
+        // Validation for required fields
+        const schemaFields = getSchemaFields(selectedFormType.schema_definition);
+        const missingFields: string[] = [];
+
+        schemaFields.forEach(f => {
+            if (f.required) {
+                if (f.type === 'date_from_to') {
+                    if (!formData[`${f.key}_from`] || !formData[`${f.key}_to`]) {
+                        missingFields.push(f.label);
+                    }
+                } else if (!formData[f.key]) {
+                    missingFields.push(f.label);
+                }
+            }
+        });
+
+        if (missingFields.length > 0) {
+            alert(`Please fill in all required fields:\n- ${missingFields.join('\n- ')}`);
+            return;
+        }
+
         setSubmitting(true); setSubmitSuccess(false);
         try {
             await api.post('/forms', { form_type_id: selectedFormType.id, form_data: formData });
@@ -241,10 +264,48 @@ export default function Dashboard() {
     // ─── Approve / Reject ─────────────────────────────────────────────
     const handleDecision = async (decision: 'APPROVED' | 'REJECTED') => {
         if (!selectedApp) return;
+
+        // Validation for approval fields
+        if (decision === 'APPROVED') {
+            const steps = selectedApp.form_types?.workflow?.steps || [];
+            const schema = selectedApp.form_types?.schema_definition || {};
+            const approvalFields = getApprovalFields(schema, steps, selectedApp.current_status);
+
+            for (const f of approvalFields) {
+                if (f.required && !approvalData[f.key]) {
+                    alert(`${f.label} is required to approve this step.`);
+                    return;
+                }
+            }
+        }
+
         setActionLoading(true);
-        try { await api.patch(`/forms/${selectedApp.id}/status`, { decision, remarks }); setRemarks(''); setSelectedApp(null); fetchApplications(); }
+        try {
+            await api.patch(`/forms/${selectedApp.id}/status`, { decision, remarks, approvalData });
+            setRemarks('');
+            setApprovalData({});
+            setSelectedApp(null);
+            fetchApplications();
+        }
         catch (e) { console.error('Decision failed', e); alert('Failed to update'); }
         finally { setActionLoading(false); }
+    };
+
+    // ─── Download PDF ─────────────────────────────────────────────────
+    const handleDownloadPdf = async (appId: number, appName: string) => {
+        try {
+            const response = await api.get(`/forms/${appId}/download`, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `${appName.replace(/\s+/g, '_')}_${appId}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (e) {
+            console.error('Download failed', e);
+            alert('Failed to download PDF. Please try again.');
+        }
     };
 
     // ─── Create Form Type ─────────────────────────────────────────────
@@ -340,7 +401,11 @@ export default function Dashboard() {
             fd.append('signature', file);
             const r = await api.post('/profile/signature', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
             setProfile(prev => prev ? { ...prev, signature_url: r.data.signature_url } : prev);
-        } catch (e) { console.error('Sig upload failed', e); alert('Failed to upload'); }
+        } catch (e: any) {
+            console.error('Sig upload failed', e);
+            const errorMsg = e.response?.data?.error || e.message || 'Failed to upload';
+            alert(`Upload failed: ${errorMsg}. Max file size is 5MB and only image formats (JPG, PNG) are supported.`);
+        }
         finally { setSigUploading(false); }
     };
 
@@ -384,6 +449,31 @@ export default function Dashboard() {
             key: k, label: v?.label || k.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
             type: v?.type || 'text', required: v?.required ?? false,
         }));
+    };
+
+    const getApprovalFields = (schema: any, steps: any[], currentStatus: string): FieldDef[] => {
+        if (!schema || typeof schema !== 'object') return [];
+        const currentStep = steps.find(s => s.step_name === currentStatus);
+        if (!currentStep) return [];
+
+        const stepOrder = String(currentStep.step_order);
+        const stepConfig = schema[stepOrder];
+
+        if (Array.isArray(stepConfig)) {
+            const fields: FieldDef[] = [];
+            stepConfig.forEach((item: any) => {
+                if (item.name) {
+                    fields.push({
+                        key: item.name.replace(/\s+/g, '_'),
+                        label: item.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+                        type: item.type || 'text',
+                        required: item.required === true || item.required === 'true',
+                    });
+                }
+            });
+            return fields;
+        }
+        return [];
     };
 
     // SB collapsed width & expanded width
@@ -719,16 +809,40 @@ export default function Dashboard() {
 
                                 {/* Workflow badge */}
                                 {selectedFormType.workflow && selectedFormType.workflow.steps.length > 0 && (
-                                    <div style={{ background: '#f0f9ff', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px', border: '1px solid #bae6fd' }}>
-                                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#0369a1', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Approval Workflow</div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                                    <div style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #f0f9ff 50%, #ecfeff 100%)', borderRadius: '12px', padding: '16px 20px', marginBottom: '20px', border: '1px solid #bfdbfe', boxShadow: '0 1px 4px rgba(37,99,235,0.06)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
+                                            <div style={{ width: '4px', height: '14px', borderRadius: '2px', background: 'linear-gradient(180deg, #3b82f6, #2563eb)' }} />
+                                            <span style={{ fontSize: '10px', fontWeight: 700, color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Approval Workflow</span>
+                                            <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500, marginLeft: 'auto' }}>{selectedFormType.workflow.steps.length} steps</span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px 0' }}>
                                             {selectedFormType.workflow.steps.map((s, i) => (
-                                                <span key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    <span style={{ fontSize: '11px', color: '#1e40af', fontWeight: 500, background: '#dbeafe', padding: '2px 8px', borderRadius: '10px' }}>
-                                                        {s.step_name.replace(/_/g, ' ')}
-                                                    </span>
-                                                    {i < selectedFormType.workflow!.steps.length - 1 && <ChevronRight size={10} style={{ color: '#93c5fd' }} />}
-                                                </span>
+                                                <div key={s.id} style={{ display: 'flex', alignItems: 'center' }}>
+                                                    <div className="group" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'default' }}>
+                                                        <div style={{
+                                                            width: '32px', height: '32px', borderRadius: '50%',
+                                                            background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                                                            color: '#fff', fontSize: '13px', fontWeight: 700,
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            boxShadow: '0 2px 8px rgba(37,99,235,0.3)',
+                                                            transition: 'transform 0.2s, box-shadow 0.2s',
+                                                        }}
+                                                            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.15)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(37,99,235,0.45)'; }}
+                                                            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(37,99,235,0.3)'; }}
+                                                        >
+                                                            {i + 1}
+                                                        </div>
+                                                        {/* Tooltip */}
+                                                        <div className="absolute left-1/2 -translate-x-1/2 bottom-[calc(100%+8px)] bg-slate-800 text-white text-xs px-3 py-2 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-xl border border-slate-700 pointer-events-none">
+                                                            {s.step_name.replace(/_/g, ' ')}
+                                                            <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid #1e293b' }} />
+                                                        </div>
+                                                    </div>
+                                                    {/* Connector line */}
+                                                    {i < selectedFormType.workflow!.steps.length - 1 && (
+                                                        <div style={{ width: '40px', height: '2px', background: 'linear-gradient(90deg, #93c5fd, #bfdbfe)', borderRadius: '1px', margin: '0 4px' }} />
+                                                    )}
+                                                </div>
                                             ))}
                                         </div>
                                     </div>
@@ -795,6 +909,30 @@ export default function Dashboard() {
                                                             }}
                                                             style={{ ...inputStyle, flex: 1 }} />
                                                     </div>
+                                                ) : f.type === 'signature' ? (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: '#f9fafb', border: '1px dashed #d1d5db', borderRadius: '8px' }}>
+                                                        {profile?.signature_url ? (
+                                                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#374151' }}>
+                                                                <input type="checkbox" checked={formData[f.key] === profile.signature_url}
+                                                                    onChange={e => setFormData({ ...formData, [f.key]: e.target.checked ? profile.signature_url : '' })}
+                                                                    style={{ width: '16px', height: '16px', accentColor: '#2563eb' }} />
+                                                                Attach my saved signature
+                                                                <img src={`http://localhost:4000${profile.signature_url}`} alt="Saved Signature" style={{ height: '30px', marginLeft: 'auto', background: 'white', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '2px' }} />
+                                                            </label>
+                                                        ) : (
+                                                            <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                <span>No signature saved in profile.</span>
+                                                                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', color: '#2563eb', cursor: 'pointer', background: '#fff', fontWeight: 600 }}>
+                                                                    <Upload size={12} />
+                                                                    {sigUploading ? 'Uploading...' : 'Upload Now'}
+                                                                    <input type="file" accept="image/*" style={{ display: 'none' }}
+                                                                        onChange={async e => {
+                                                                            if (e.target.files?.[0]) await handleSigUpload(e.target.files[0]);
+                                                                        }} />
+                                                                </label>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 ) : (
                                                     <input type={f.type} value={formData[f.key] || ''} onChange={e => setFormData({ ...formData, [f.key]: e.target.value })}
                                                         style={inputStyle} />
@@ -824,57 +962,249 @@ export default function Dashboard() {
                                     {selectedApp.users ? `${selectedApp.users.first_name} ${selectedApp.users.last_name}` : ''} · {new Date(selectedApp.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
                                 </p>
                             </div>
-                            <Badge status={selectedApp.current_status} lg />
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                                <Badge status={selectedApp.current_status} lg />
+                                {selectedApp.current_status === 'APPROVED' && (
+                                    <button onClick={() => handleDownloadPdf(selectedApp.id, selectedApp.form_types?.name || 'Application')}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', border: 'none', background: '#2563eb', color: '#fff', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(37,99,235,0.3)', transition: 'background 0.2s' }}
+                                        onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
+                                        onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}>
+                                        <FileText size={14} /> Download PDF
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
                         {/* Workflow progress */}
-                        {selectedApp.form_types?.workflow && (
-                            <Panel title="Workflow Progress">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                                    {selectedApp.form_types.workflow.steps.map((step, i) => {
-                                        const steps = selectedApp.form_types!.workflow!.steps;
-                                        const curIdx = steps.findIndex(s => s.step_name === selectedApp.current_status);
-                                        const isPast = curIdx > i || selectedApp.current_status === 'APPROVED';
-                                        const isCur = step.step_name === selectedApp.current_status;
-                                        return (
-                                            <span key={step.id} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                <span style={{
-                                                    fontSize: '11px', fontWeight: isCur ? 700 : 500,
-                                                    color: isPast ? '#16a34a' : isCur ? '#2563eb' : '#9ca3af',
-                                                    background: isPast ? '#dcfce7' : isCur ? '#dbeafe' : '#f3f4f6',
-                                                    padding: '3px 10px', borderRadius: '10px',
-                                                    border: isCur ? '1px solid #93c5fd' : 'none',
-                                                }}>{step.step_name.replace(/_/g, ' ')}</span>
-                                                {i < steps.length - 1 && <ChevronRight size={10} style={{ color: '#d1d5db' }} />}
-                                            </span>
-                                        );
-                                    })}
-                                    <ChevronRight size={10} style={{ color: '#d1d5db' }} />
-                                    <span style={{
-                                        fontSize: '11px', fontWeight: isTerminal(selectedApp.current_status) ? 700 : 500,
-                                        color: selectedApp.current_status === 'APPROVED' ? '#16a34a' : selectedApp.current_status === 'REJECTED' ? '#dc2626' : '#9ca3af',
-                                        background: selectedApp.current_status === 'APPROVED' ? '#dcfce7' : selectedApp.current_status === 'REJECTED' ? '#fee2e2' : '#f3f4f6',
-                                        padding: '3px 10px', borderRadius: '10px',
-                                    }}>{isTerminal(selectedApp.current_status) ? selectedApp.current_status : 'Done'}</span>
-                                </div>
-                            </Panel>
-                        )}
-
-                        {/* Form Data */}
-                        <Panel title="Application Details">
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                                {Object.entries(selectedApp.form_data || {}).map(([k, v]) => (
-                                    <div key={k} style={{ gridColumn: String(v).length > 50 ? 'span 2' : 'auto' }}>
-                                        <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k.replace(/_/g, ' ')}</div>
-                                        <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>{String(v) || '—'}</div>
+                        {selectedApp.form_types?.workflow && (() => {
+                            const steps = selectedApp.form_types.workflow.steps;
+                            const curIdx = steps.findIndex(s => s.step_name === selectedApp.current_status);
+                            const isApproved = selectedApp.current_status === 'APPROVED';
+                            const isRejected = selectedApp.current_status === 'REJECTED';
+                            const isDone = isApproved || isRejected;
+                            return (
+                                <Panel title="Workflow Progress">
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 0' }}>
+                                        {steps.map((step, i) => {
+                                            const isPast = curIdx > i || isApproved;
+                                            const isCur = step.step_name === selectedApp.current_status;
+                                            const circleGradient = isPast
+                                                ? 'linear-gradient(135deg, #22c55e, #16a34a)'
+                                                : isCur
+                                                    ? 'linear-gradient(135deg, #3b82f6, #2563eb)'
+                                                    : '#e5e7eb';
+                                            const circleShadow = isPast
+                                                ? '0 2px 8px rgba(22,163,74,0.3)'
+                                                : isCur
+                                                    ? '0 2px 8px rgba(37,99,235,0.35), 0 0 0 3px rgba(59,130,246,0.15)'
+                                                    : 'none';
+                                            const lineColor = isPast ? '#22c55e' : '#e5e7eb';
+                                            return (
+                                                <div key={step.id} style={{ display: 'flex', alignItems: 'center' }}>
+                                                    <div className="group" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'default' }}>
+                                                        <div style={{
+                                                            width: '32px', height: '32px', borderRadius: '50%',
+                                                            background: circleGradient,
+                                                            color: isPast || isCur ? '#fff' : '#9ca3af',
+                                                            fontSize: isPast ? '14px' : '13px', fontWeight: 700,
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            boxShadow: circleShadow,
+                                                            transition: 'transform 0.2s, box-shadow 0.2s',
+                                                        }}
+                                                            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.15)'; }}
+                                                            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+                                                        >
+                                                            {isPast ? '✓' : i + 1}
+                                                        </div>
+                                                        {/* Tooltip */}
+                                                        <div className="absolute left-1/2 -translate-x-1/2 bottom-[calc(100%+8px)] bg-slate-800 text-white text-xs px-3 py-2 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-xl border border-slate-700 pointer-events-none">
+                                                            {step.step_name.replace(/_/g, ' ')}
+                                                            <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid #1e293b' }} />
+                                                        </div>
+                                                    </div>
+                                                    {/* Connector line */}
+                                                    {i < steps.length - 1 && (
+                                                        <div style={{ width: '40px', height: '2px', background: lineColor, borderRadius: '1px', margin: '0 4px', transition: 'background 0.3s' }} />
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                        {/* Final Done/Approved/Rejected node */}
+                                        <div style={{ width: '40px', height: '2px', background: isDone ? (isApproved ? '#22c55e' : '#ef4444') : '#e5e7eb', borderRadius: '1px', margin: '0 4px', transition: 'background 0.3s' }} />
+                                        <div className="group" style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'default' }}>
+                                            <div style={{
+                                                width: '32px', height: '32px', borderRadius: '50%',
+                                                background: isApproved ? 'linear-gradient(135deg, #22c55e, #16a34a)' : isRejected ? 'linear-gradient(135deg, #ef4444, #dc2626)' : '#e5e7eb',
+                                                color: isDone ? '#fff' : '#9ca3af',
+                                                fontSize: '14px', fontWeight: 700,
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                boxShadow: isApproved ? '0 2px 8px rgba(22,163,74,0.3)' : isRejected ? '0 2px 8px rgba(239,68,68,0.3)' : 'none',
+                                                transition: 'transform 0.2s',
+                                            }}
+                                                onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.15)'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+                                            >
+                                                {isApproved ? '✓' : isRejected ? '✕' : '⋯'}
+                                            </div>
+                                            <div className="absolute left-1/2 -translate-x-1/2 bottom-[calc(100%+8px)] bg-slate-800 text-white text-xs px-3 py-2 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-xl border border-slate-700 pointer-events-none">
+                                                {isApproved ? 'Approved' : isRejected ? 'Rejected' : 'Pending'}
+                                                <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid #1e293b' }} />
+                                            </div>
+                                        </div>
                                     </div>
-                                ))}
-                            </div>
-                        </Panel>
+                                </Panel>
+                            );
+                        })()}
+
+                        {/* Form Data Grouped by Steps */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '20px' }}>
+                            {(() => {
+                                const panels: any[] = [];
+                                const schema = selectedApp.form_types?.schema_definition || {};
+                                const stepsKeys = Object.keys(schema).sort((a, b) => Number(a) - Number(b));
+                                const renderedFields = new Set<string>();
+
+                                stepsKeys.forEach(stepKey => {
+                                    const stepConfig = schema[stepKey];
+                                    if (Array.isArray(stepConfig) && stepConfig.length > 0) {
+                                        const statusObj = stepConfig[0] || {};
+                                        // Default "Draft" -> "Applicant"
+                                        const panelTitle = statusObj.status === 'Draft' ? 'Applicant' : statusObj.status;
+
+                                        let sourceData: any = {};
+                                        if (stepKey === '1' || statusObj.status === 'Draft') {
+                                            sourceData = selectedApp.form_data || {};
+                                        } else {
+                                            const approval = (selectedApp.form_approvals || []).find((a: any) => a.stage === statusObj.status && a.decision === 'APPROVED');
+                                            if (approval && approval.approval_data) {
+                                                sourceData = approval.approval_data;
+                                            }
+                                        }
+
+                                        const fieldsInStep = stepConfig.slice(1).map((f: any) => {
+                                            const normalizedName = f.name?.replace(/\s+/g, '_');
+                                            if (!normalizedName) return [];
+
+                                            if (f.type === 'date_from_to') {
+                                                return [
+                                                    { key: `${normalizedName}_from`, value: sourceData[`${normalizedName}_from`] },
+                                                    { key: `${normalizedName}_to`, value: sourceData[`${normalizedName}_to`] }
+                                                ];
+                                            } else {
+                                                return [{ key: normalizedName, value: sourceData[normalizedName] }];
+                                            }
+                                        }).flat().filter((obj: any) => obj.key && obj.value !== undefined && obj.value !== '');
+
+                                        if (fieldsInStep.length > 0) {
+                                            fieldsInStep.forEach((f: any) => renderedFields.add(f.key));
+
+                                            panels.push(
+                                                <Panel key={`step-${stepKey}`} title={panelTitle} style={{ marginBottom: 0 }}>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                                                        {fieldsInStep.map((f: any) => {
+                                                            const { key: k, value: v } = f;
+                                                            return (
+                                                                <div key={k} style={{ gridColumn: String(v).length > 50 && !String(v).startsWith('/uploads/signatures') ? 'span 2' : 'auto' }}>
+                                                                    <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k.replace(/_/g, ' ')}</div>
+                                                                    {typeof v === 'string' && v.startsWith('/uploads/signatures') ? (
+                                                                        <img src={`http://localhost:4000${v}`} alt="Signature" style={{ maxHeight: '60px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#fff', padding: '4px' }} />
+                                                                    ) : (
+                                                                        <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>{String(v) || '—'}</div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </Panel>
+                                            );
+                                        }
+                                    }
+                                });
+
+                                // Unmapped Fields
+                                const unmappedFields = Object.entries(selectedApp.form_data || {}).filter(([k, v]) => !renderedFields.has(k) && v !== '' && v !== null);
+                                if (unmappedFields.length > 0) {
+                                    panels.push(
+                                        <Panel key="unmapped" title="Other Details" style={{ marginBottom: 0 }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                                                {unmappedFields.map(([k, v]) => (
+                                                    <div key={k} style={{ gridColumn: String(v).length > 50 && !String(v).startsWith('/uploads/signatures') ? 'span 2' : 'auto' }}>
+                                                        <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k.replace(/_/g, ' ')}</div>
+                                                        {typeof v === 'string' && v.startsWith('/uploads/signatures') ? (
+                                                            <img src={`http://localhost:4000${v}`} alt="Signature" style={{ maxHeight: '60px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#fff', padding: '4px' }} />
+                                                        ) : (
+                                                            <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>{String(v) || '—'}</div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </Panel>
+                                    );
+                                }
+
+                                return panels;
+                            })()}
+                        </div>
 
                         {/* Approve / Reject */}
                         {canApprove && activeView === 'pending' && !isTerminal(selectedApp.current_status) && (
                             <Panel title="Take Action">
+                                {(() => {
+                                    const approvalFields = getApprovalFields(
+                                        selectedApp.form_types?.schema_definition || {},
+                                        selectedApp.form_types?.workflow?.steps || [],
+                                        selectedApp.current_status
+                                    );
+
+                                    if (approvalFields.length > 0) {
+                                        return (
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                                                {approvalFields.map(f => (
+                                                    <div key={f.key} style={{ gridColumn: f.type === 'textarea' || f.type === 'signature' ? 'span 2' : 'auto' }}>
+                                                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>
+                                                            {f.label} {f.required && <span style={{ color: '#ef4444' }}>*</span>}
+                                                        </label>
+                                                        {f.type === 'textarea' ? (
+                                                            <textarea value={approvalData[f.key] || ''} onChange={e => setApprovalData({ ...approvalData, [f.key]: e.target.value })} rows={3} style={inputStyle} />
+                                                        ) : f.type === 'select' ? (
+                                                            <select value={approvalData[f.key] || ''} onChange={e => setApprovalData({ ...approvalData, [f.key]: e.target.value })} style={{ ...inputStyle, background: '#fff' }}>
+                                                                <option value="">Select...</option>
+                                                                {(f.options || []).map(o => <option key={o} value={o}>{o}</option>)}
+                                                            </select>
+                                                        ) : f.type === 'bool' ? (
+                                                            <div style={{ display: 'flex', alignItems: 'center', height: '100%', padding: '0 8px' }}>
+                                                                <input type="checkbox" checked={approvalData[f.key] === true || approvalData[f.key] === 'true'} onChange={e => setApprovalData({ ...approvalData, [f.key]: e.target.checked })} style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#2563eb' }} />
+                                                                <span style={{ marginLeft: '10px', fontSize: '13px', color: '#4b5563' }}>{f.label}</span>
+                                                            </div>
+                                                        ) : f.type === 'signature' ? (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: '#f9fafb', border: '1px dashed #d1d5db', borderRadius: '8px' }}>
+                                                                {profile?.signature_url ? (
+                                                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: '#374151' }}>
+                                                                        <input type="checkbox" checked={approvalData[f.key] === profile.signature_url} onChange={e => setApprovalData({ ...approvalData, [f.key]: e.target.checked ? profile.signature_url : '' })} style={{ width: '16px', height: '16px', accentColor: '#2563eb' }} />
+                                                                        Attach my saved signature
+                                                                        <img src={`http://localhost:4000${profile.signature_url}`} alt="Saved Signature" style={{ height: '30px', marginLeft: 'auto', background: 'white', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '2px' }} />
+                                                                    </label>
+                                                                ) : (
+                                                                    <div style={{ fontSize: '12px', color: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                        <span>No signature saved in profile.</span>
+                                                                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', color: '#2563eb', cursor: 'pointer', background: '#fff', fontWeight: 600 }}>
+                                                                            <Upload size={12} />
+                                                                            {sigUploading ? 'Uploading...' : 'Upload Now'}
+                                                                            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => { if (e.target.files?.[0]) await handleSigUpload(e.target.files[0]); }} />
+                                                                        </label>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <input type={f.type} value={approvalData[f.key] || ''} onChange={e => setApprovalData({ ...approvalData, [f.key]: e.target.value })} style={inputStyle} />
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })()}
                                 <textarea placeholder="Remarks (optional)..." value={remarks} onChange={e => setRemarks(e.target.value)} rows={2}
                                     style={{ ...inputStyle, marginBottom: '14px' }} />
                                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -1088,7 +1418,7 @@ export default function Dashboard() {
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', margin: '24px 0' }}>
                             <BtnSecondary onClick={() => { setActiveView('dashboard'); setNewFormName(''); setNewFormDesc(''); setBuilderSteps([{ status: 'Draft', approval_roles: [], fields: [{ name: '', type: 'text', required: true }] }]); }}>Cancel</BtnSecondary>
                             <BtnPrimary onClick={handleCreateFormType} disabled={creating}>
-                                {creating ? <><Loader2 size={14} className="animate-spin" /> Creating...</> : <><CheckCircle size={14} /> Save Form</>}
+                                {creating ? <><Loader2 size={14} className="animate-spin" /> Creating...</> : <><CheckCircle size={14} /> Create Form</>}
                             </BtnPrimary>
                         </div>
                     </div>
@@ -1220,9 +1550,9 @@ function Badge({ status, lg }: { status: string; lg?: boolean }) {
     );
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({ title, children, style = {} }: { title: string; children: React.ReactNode; style?: React.CSSProperties }) {
     return (
-        <div style={{ background: '#fff', borderRadius: '10px', padding: '20px', marginBottom: '16px', border: '1px solid #e5e7eb' }}>
+        <div style={{ background: '#fff', borderRadius: '10px', padding: '20px', marginBottom: '16px', border: '1px solid #e5e7eb', ...style }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{title}</div>
             {children}
         </div>

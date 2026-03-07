@@ -1,6 +1,9 @@
 import express, { Response } from 'express';
 import prisma from '../prisma';
 import { verifyToken, AuthenticatedRequest } from '../middleware/authMiddleware';
+import { PDFDocument, rgb } from 'pdf-lib';
+import fs from 'fs';
+import path from 'path';
 
 const router = express.Router();
 
@@ -136,6 +139,7 @@ async function advanceWorkflow(formId: number, nextStepOrder: number) {
         });
     }
 }
+
 
 
 // ─── GET all form types (with workflow steps) ──────────────────────────
@@ -347,7 +351,7 @@ router.get('/:id', verifyToken, async (req: AuthenticatedRequest, res: Response)
 // ─── UPDATE form status (Approve / Reject / Advance) ────────────────────
 router.patch('/:id/status', verifyToken, async (req: AuthenticatedRequest, res: Response) => {
     const id = String(req.params.id);
-    const { decision, remarks } = req.body;
+    const { decision, remarks, approvalData } = req.body;
     const userId = req.user?.userId;
 
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -405,6 +409,8 @@ router.patch('/:id/status', verifyToken, async (req: AuthenticatedRequest, res: 
             return res.status(400).json({ error: 'No pending approval stage found for this form.' });
         }
 
+        const mergedFormData = { ...(form.form_data as any || {}), ...(approvalData || {}) };
+
         await prisma.form_approvals.update({
             where: { id: pendingApproval.id },
             data: {
@@ -412,6 +418,7 @@ router.patch('/:id/status', verifyToken, async (req: AuthenticatedRequest, res: 
                 remarks: remarks || '',
                 decided_at: new Date(),
                 approved_by: userId,
+                approval_data: approvalData || {}
             }
         });
 
@@ -425,21 +432,25 @@ router.patch('/:id/status', verifyToken, async (req: AuthenticatedRequest, res: 
                     await finalizeForm(form);
                     await prisma.forms.update({
                         where: { id: formId },
-                        data: { current_status: 'APPROVED', updated_at: new Date() }
+                        data: { current_status: 'APPROVED', updated_at: new Date(), form_data: mergedFormData }
                     });
                 } else {
+                    await prisma.forms.update({
+                        where: { id: formId },
+                        data: { form_data: mergedFormData }
+                    });
                     await advanceWorkflow(formId, currentStep.step_order + 1);
                 }
             } else {
                 await prisma.forms.update({
                     where: { id: formId },
-                    data: { current_status: 'APPROVED', updated_at: new Date() }
+                    data: { current_status: 'APPROVED', updated_at: new Date(), form_data: mergedFormData }
                 });
             }
         } else {
             await prisma.forms.update({
                 where: { id: formId },
-                data: { current_status: 'APPROVED', updated_at: new Date() }
+                data: { current_status: 'APPROVED', updated_at: new Date(), form_data: mergedFormData }
             });
         }
 
@@ -448,6 +459,135 @@ router.patch('/:id/status', verifyToken, async (req: AuthenticatedRequest, res: 
     } catch (error: any) {
         console.error('Status update error:', error);
         res.status(500).json({ error: error.message || 'Failed to update status' });
+    }
+});
+
+// ─── DOWNLOAD filled PDF ──────────────────────────────────────────────────
+router.get('/:id/download', verifyToken, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const id = Number(req.params.id);
+        const form = await prisma.forms.findUnique({
+            where: { id },
+            include: { users: true, form_approvals: true }
+        });
+
+        if (!form) return res.status(404).json({ error: 'Form not found' });
+
+        // Currently hardcoding the Air India template for demo purposes
+        // In a real scenario, map form_type.name to the specific template file
+        const templatePath = path.join(__dirname, '../../../forms/Permission to travel by airline other than air india.pdf');
+
+        if (!fs.existsSync(templatePath)) {
+            return res.status(500).json({ error: 'PDF template not found on server' });
+        }
+
+        const pdfBytes = fs.readFileSync(templatePath);
+        const pdfDoc = await PDFDocument.load(pdfBytes);
+        const pages = pdfDoc.getPages();
+        const p = pages[0]; // Assuming one-page form
+        const { height } = p.getSize();
+
+        // Helper to draw text using traditional Top-Left as (0,0) (converts to bottom-left automatically)
+        const draw = (txt: string | null | undefined, x: number, y: number, size = 11) => {
+            if (!txt) return;
+            p.drawText(String(txt), { x, y: height - y, size, color: rgb(0.1, 0.25, 0.5) }); // Dark blue to easily see injected text
+        };
+
+        const fd = form.form_data as any;
+
+        const getFd = (keySub: string) => {
+            const keys = Object.keys(fd || {});
+            const found = keys.find(k => k.toLowerCase().includes(keySub.toLowerCase()));
+            return found ? fd[found] : '';
+        };
+
+        const nameText = fd.Name || form.users?.first_name || '';
+        const desigText = getFd('Designation');
+        const deptText = getFd('Department');
+        const onwardText = getFd('from'); // matches visit_dates_from
+        const returnText = getFd('to');   // matches visit_dates_to
+        const placeText = getFd('place');
+        const purposeText = getFd('purpose');
+        const sectorsText = getFd('sectors');
+        const reasonsText = getFd('reason_for_travel');
+        const mhrdObj = getFd('mhrd');
+        const mhrdText = typeof mhrdObj === 'boolean' ? (mhrdObj ? 'Yes' : 'No') : String(mhrdObj || '');
+        const budgetText = getFd('budget');
+
+        // Coordinates mapping translated precisely against layout schema (17.28 points)
+        draw(nameText, 310, 172);
+        draw(desigText, 310, 198);
+        draw(deptText, 310, 218);
+        draw(onwardText, 320, 262, 10);
+        draw(returnText, 435, 262, 10);
+        draw(placeText, 310, 287);
+        draw(purposeText, 310, 309);
+        draw(String(sectorsText).substring(0, 50), 310, 338);
+        draw(String(reasonsText).substring(0, 50), 310, 392);
+        draw(mhrdText, 435, 432);
+        draw(String(budgetText).substring(0, 50), 310, 475);
+
+        // Helper for embedding signatures dynamically
+        const embedSig = async (sigUrl: string | undefined | null, targetY: number, targetX: number = 350) => {
+            if (!sigUrl || typeof sigUrl !== 'string' || !sigUrl.includes('/uploads/')) return;
+            try {
+                const cleanUrl = sigUrl.split('?')[0].replace(/^\/+/, '');
+                const sigPath = path.join(__dirname, '../../', cleanUrl);
+
+                if (fs.existsSync(sigPath)) {
+                    const sigImageBytes = fs.readFileSync(sigPath);
+                    let sigImage;
+
+                    if (sigPath.toLowerCase().endsWith('.png')) {
+                        sigImage = await pdfDoc.embedPng(sigImageBytes);
+                    } else if (sigPath.toLowerCase().match(/\.jpe?g$/)) {
+                        sigImage = await pdfDoc.embedJpg(sigImageBytes);
+                    }
+
+                    if (sigImage) {
+                        p.drawImage(sigImage, {
+                            x: targetX,
+                            y: height - targetY,
+                            width: 100, // max width
+                            height: 38, // max height
+                        });
+                        const dateStr = form.updated_at ? new Date(form.updated_at).toLocaleDateString() : new Date().toLocaleDateString();
+                        draw(dateStr, targetX + 20, targetY + 5, 9); // Add date beneath signature
+                    }
+                }
+            } catch (e) {
+                console.error("Signature embed failed:", e);
+            }
+        };
+
+        const applicantSig = getFd('applicant') || form.users?.signature_url;
+        await embedSig(applicantSig, 578, 350);
+
+        // Process advanced approvals
+        if (form.form_approvals && Array.isArray(form.form_approvals)) {
+            const getStageSig = (stageStart: string) => {
+                const app = form.form_approvals.find((a: any) => a.stage && a.stage.toLowerCase().includes(stageStart) && a.decision === 'APPROVED');
+                if (!app || !app.approval_data) return null;
+                const ad = app.approval_data as any;
+                for (const key of Object.keys(ad)) {
+                    if (typeof ad[key] === 'string' && ad[key].includes('/uploads/')) return ad[key];
+                }
+                return null;
+            };
+
+            await embedSig(getStageSig('hod') || getStageSig('recommendation'), 630, 200);
+            await embedSig(getStageSig('dean'), 670, 80);
+            await embedSig(getStageSig('director'), 730, 80);
+        }
+
+        const outBytes = await pdfDoc.save();
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="Application_${form.id}.pdf"`);
+        res.send(Buffer.from(outBytes));
+
+    } catch (error) {
+        console.error('Download PDF error:', error);
+        res.status(500).json({ error: 'Failed to generate PDF' });
     }
 });
 
