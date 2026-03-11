@@ -1,0 +1,22 @@
+// ─── Form Type Service ─────────────────────────────────────────────────────────
+// Admin-only API functions for managing form type definitions.
+
+import api from '@/lib/api';
+import { FormType } from '@/types';
+
+export interface FormTypePayload {
+    name: string;
+    description: string;
+    schema_definition: any;
+    workflow_steps: { step_name: string; approval_roles: string[]; is_terminal: boolean }[];
+}
+
+export async function createFormType(payload: FormTypePayload): Promise<FormType> {
+    const res = await api.post('/forms/types', payload);
+    return res.data;
+}
+
+export async function updateFormType(id: number, payload: FormTypePayload): Promise<FormType> {
+    const res = await api.put(`/forms/types/${id}`, payload);
+    return res.data;
+}

@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GoogleLogin } from '@react-oauth/google';
-import api from '@/lib/api';
 import { Button, Input, Label } from '@/components/ui';
 import { Loader2, AlertCircle, Mail, KeyRound, ShieldCheck, ChevronRight } from 'lucide-react';
+import { sendOtp, verifyOtp, googleLogin } from '@/services/authService';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -22,7 +22,7 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
-            await api.post('/auth/send-otp', { email });
+            await sendOtp(email);
             setStep('otp');
         } catch (err: any) {
             console.error('Send OTP failed:', err);
@@ -39,8 +39,7 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
-            const res = await api.post('/auth/verify-otp', { email, otp });
-            const { token, user } = res.data;
+            const { token, user } = await verifyOtp(email, otp);
 
             // Store session
             localStorage.setItem('token', token);
@@ -62,11 +61,7 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
-            const res = await api.post('/auth/google', {
-                token: credentialResponse.credential,
-            });
-
-            const { token, user } = res.data;
+            const { token, user } = await googleLogin(credentialResponse.credential);
 
             localStorage.setItem('token', token);
             localStorage.setItem('user', JSON.stringify(user));

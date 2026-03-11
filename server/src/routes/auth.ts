@@ -1,23 +1,30 @@
+// ─── routes/auth.ts ───────────────────────────────────────────────────────────
+// Composition root for authentication routes.
+// Sole responsibility: wire up dependencies and register route handlers.
+// No business logic here — all logic lives in AuthService.
+
 import express from 'express';
-import {
-    register,
-    login,
-    googleLogin,
-    sendOtp,
-    verifyOtp,
-} from '../controllers/AuthController';
+import { AuthController } from '../controllers/AuthController';
+import { AuthService } from '../services/AuthService';
+import { UserRepository } from '../repositories/UserRepository';
+import prismaClient from '../prisma';
 
 const router = express.Router();
 
-// ─── Email + Password ─────────────────────────────────────────────────
-router.post('/register', register);
-router.post('/login', login);
+// ─── Dependency Injection (manual composition root) ────────────────────────
+const userRepo = new UserRepository(prismaClient);
+const authService = new AuthService(userRepo);
+const controller = new AuthController(authService);
 
-// ─── Google OAuth ─────────────────────────────────────────────────────
-router.post('/google', googleLogin);
+// ─── Email + Password ──────────────────────────────────────────────────────
+router.post('/register', controller.register);
+router.post('/login', controller.login);
 
-// ─── Email OTP ────────────────────────────────────────────────────────
-router.post('/send-otp', sendOtp);
-router.post('/verify-otp', verifyOtp);
+// ─── Google OAuth ──────────────────────────────────────────────────────────
+router.post('/google', controller.googleLogin);
+
+// ─── Email OTP ─────────────────────────────────────────────────────────────
+router.post('/send-otp', controller.sendOtp);
+router.post('/verify-otp', controller.verifyOtp);
 
 export default router;
