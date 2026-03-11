@@ -67,6 +67,20 @@ export class FormController {
         }
     };
 
+    deleteFormType = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        const id = Number(req.params.id);
+        const roles = req.user?.roles || [];
+
+        try {
+            await this.formService.deleteFormType(id, roles);
+            res.json({ message: 'Form type deleted successfully' });
+        } catch (e: any) {
+            console.error('[FormController] deleteFormType:', e.message);
+            if (e.message === 'UNAUTHORIZED') res.status(403).json({ error: 'Only admins can delete form types' });
+            else res.status(500).json({ error: 'Failed to delete form type.' });
+        }
+    };
+
     // ── Forms ──────────────────────────────────────────────────────────────
 
     getForms = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -139,6 +153,20 @@ export class FormController {
             else res.status(500).json({ error: e.message || 'Failed to update status' });
         }
     };
+
+    deleteForm = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        const id = Number(req.params.id);
+        const roles = req.user?.roles || [];
+
+        try {
+            await this.formService.deleteForm(id, roles);
+            res.json({ message: 'Form deleted successfully' });
+        } catch (e: any) {
+            console.error('[FormController] deleteForm:', e.message);
+            if (e.message === 'UNAUTHORIZED') res.status(403).json({ error: 'Only admins can delete forms' });
+            else res.status(500).json({ error: 'Failed to delete form' });
+        }
+    }
 
     // ── PDF Download ───────────────────────────────────────────────────────
 

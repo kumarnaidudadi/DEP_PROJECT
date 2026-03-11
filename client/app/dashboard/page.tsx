@@ -37,7 +37,7 @@ export default function Dashboard() {
     const { user, userRoles, logout } = useAuth();
     const {
         formTypes, setFormTypes, applications, setApplications, loading,
-        fetchFormTypes, fetchApplications, submitForm, makeDecision, triggerDownloadPdf,
+        fetchFormTypes, fetchApplications, submitForm, makeDecision, triggerDownloadPdf, deleteApplication
     } = useForms();
     const {
         profile, setProfile, availableRoles, availableDepartments,
@@ -228,6 +228,19 @@ export default function Dashboard() {
         setSelectedFormType(null);
     };
 
+    const handleDeleteFormType = async (ft: FormType) => {
+        try {
+            await formTypeSvc.deleteFormType(ft.id);
+            alert(`Form type "${ft.name}" deleted successfully.`);
+            setFormTypes(prev => prev.filter(f => f.id !== ft.id));
+            if (selectedFormType?.id === ft.id) {
+                setSelectedFormType(null);
+            }
+        } catch (e: any) {
+            alert(e.response?.data?.error || 'Failed to delete the form type.');
+        }
+    };
+
     // ── Determine which middle/right panels to show ───────────────────────────
     const showWelcome = activeView === 'dashboard' && !selectedApp;
     const showAppDetail = !!selectedApp;
@@ -325,7 +338,9 @@ export default function Dashboard() {
                         liveRoles={liveRoles}
                         onSelectFormType={setSelectedFormType} onFormDataChange={setFormData}
                         onSubmit={handleFormSubmit} onCancel={() => { setSelectedFormType(null); setFormData({}); }}
-                        onEditFormType={handleEditFormType} onCreateFormType={() => handleSidebarClick('create_form')}
+                        onEditFormType={handleEditFormType}
+                        onDeleteFormType={handleDeleteFormType}
+                        onCreateFormType={() => handleSidebarClick('create_form')}
                         onSigUpload={handleSigUpload}
                     />
                 )}
@@ -340,6 +355,7 @@ export default function Dashboard() {
                         onRemarks={setRemarks} onApprovalData={setApprovalData}
                         onDecision={handleDecision} onDownloadPdf={handleDownloadPdf}
                         onSigUpload={handleSigUpload}
+                        isAdmin={isAdmin}
                     />
                 )}
 

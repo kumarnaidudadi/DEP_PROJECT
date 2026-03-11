@@ -25,12 +25,14 @@ const controller = new FormController(formService, pdfService);
 router.get('/types', controller.getFormTypes);
 router.post('/types', verifyToken, controller.createFormType);
 router.put('/types/:id', verifyToken, controller.updateFormType);
+router.delete('/types/:id', verifyToken, controller.deleteFormType);
 
 // ─── Form / Application Routes ─────────────────────────────────────────────
 router.get('/', verifyToken, controller.getForms);
 router.post('/', verifyToken, controller.createForm);
 router.get('/:id', verifyToken, controller.getFormById);
 router.patch('/:id/status', verifyToken, controller.updateFormStatus);
+router.delete('/:id', verifyToken, controller.deleteForm);
 router.get('/:id/download', verifyToken, controller.downloadPdf);
 
 export default router;

@@ -10,6 +10,7 @@ export interface IFormRepository {
     findById(id: number): Promise<any | null>;
     findAll(whereClause: object): Promise<any[]>;
     create(dto: CreateFormDto): Promise<any>;
+    delete(id: number): Promise<void>;
     updateStatus(id: number, status: string, extra?: object): Promise<any>;
     updateFormData(id: number, formData: object): Promise<any>;
 
@@ -23,6 +24,7 @@ export interface IFormRepository {
     findAllFormTypes(): Promise<any[]>;
     createFormType(data: object): Promise<any>;
     updateFormType(id: number, data: object): Promise<any>;
+    deleteFormType(id: number): Promise<void>;
 
     // ── Workflows ──────────────────────────────────────────────────────────
     createWorkflow(data: object): Promise<any>;

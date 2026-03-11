@@ -71,6 +71,10 @@ export class FormRepository implements IFormRepository {
         });
     }
 
+    async delete(id: number): Promise<void> {
+        await this.prisma.forms.delete({ where: { id } });
+    }
+
     async updateStatus(id: number, status: string, extra?: object): Promise<any> {
         return this.prisma.forms.update({
             where: { id },
@@ -125,6 +129,13 @@ export class FormRepository implements IFormRepository {
 
     async updateFormType(id: number, data: object): Promise<any> {
         return this.prisma.form_types.update({ where: { id }, data: data as any });
+    }
+
+    async deleteFormType(id: number): Promise<void> {
+        await this.prisma.form_types.update({
+            where: { id },
+            data: { is_active: false }
+        });
     }
 
     // ── Workflows ──────────────────────────────────────────────────────────

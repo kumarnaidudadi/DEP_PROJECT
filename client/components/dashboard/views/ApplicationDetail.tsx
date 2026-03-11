@@ -25,6 +25,7 @@ interface Props {
     onDecision: (d: 'APPROVED' | 'REJECTED') => void;
     onDownloadPdf: (id: number, name: string) => void;
     onSigUpload: (file: File) => void;
+    isAdmin?: boolean;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -38,7 +39,7 @@ const isTerminal = (s: string) => ['APPROVED', 'REJECTED'].includes(s);
 export default function ApplicationDetail({
     app, canApprove, isInPendingView, profile, sigUploading,
     remarks, approvalData, actionLoading,
-    onRemarks, onApprovalData, onDecision, onDownloadPdf, onSigUpload,
+    onRemarks, onApprovalData, onDecision, onDownloadPdf, onSigUpload, isAdmin
 }: Props) {
     const isApproved = app.current_status === 'APPROVED';
     const isRejected = app.current_status === 'REJECTED';
