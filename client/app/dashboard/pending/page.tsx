@@ -1,15 +1,15 @@
 'use client';
 // ─── /dashboard/pending ─────────────────────────────────────────────────────────
-// Pending Work: list (middle panel) + detail (right panel)
+// Pending Work: Full width grid view with top toggles and modal for details
 
 import React, { useEffect, useState } from 'react';
-import { Loader2, Search } from 'lucide-react';
+import { Loader2, Search, X, ClipboardCheck, Clock, CheckCircle, Filter } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useForms } from '@/hooks/useForms';
 import { useProfile } from '@/hooks/useProfile';
 import { Application, AppTab } from '@/types';
-import PendingWorkView from '@/components/dashboard/views/PendingWorkView';
 import ApplicationDetail from '@/components/dashboard/views/ApplicationDetail';
+import StatusBadge from '@/components/dashboard/StatusBadge';
 
 const isTerminal = (s: string) => ['APPROVED', 'REJECTED'].includes(s);
 
@@ -19,6 +19,9 @@ export default function PendingWorkPage() {
     const { profile, sigUploading, fetchProfile, handleSigUpload } = useProfile();
 
     const [searchQuery, setSearchQuery] = useState('');
+    const [filterFormType, setFilterFormType] = useState<string>('all');
+    const [filterStatus, setFilterStatus] = useState<string>('all');
+    const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
     const [appTab, setAppTab] = useState<AppTab>('ongoing');
     const [selectedApp, setSelectedApp] = useState<Application | null>(null);
     const [remarks, setRemarks] = useState('');
@@ -55,55 +58,251 @@ export default function PendingWorkPage() {
         triggerDownloadPdf(id, `${name.replace(/\s+/g, '_')}_${id}.pdf`);
     };
 
+    // Filter list based on tabs and search
+    let list = appTab === 'ongoing' ? pendingApps : processedApps;
+
+    if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        list = list.filter(a =>
+            a.form_types?.name.toLowerCase().includes(q) ||
+            a.users?.first_name.toLowerCase().includes(q) ||
+            a.users?.last_name.toLowerCase().includes(q)
+        );
+    }
+
+    if (filterFormType !== 'all') {
+        list = list.filter(a => a.form_types?.name === filterFormType);
+    }
+    if (filterStatus !== 'all') {
+        list = list.filter(a => a.current_status === filterStatus);
+    }
+
+    const allPendingViewApps = [...pendingApps, ...processedApps];
+    const uniqueFormTypes = Array.from(new Set(allPendingViewApps.map(a => a.form_types?.name).filter(Boolean)));
+    const uniqueStatuses = Array.from(new Set(allPendingViewApps.map(a => a.current_status).filter(Boolean)));
+
+    // Apply sorting
+    list.sort((a, b) => {
+        const timeA = new Date(a.submitted_at).getTime();
+        const timeB = new Date(b.submitted_at).getTime();
+        return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+    });
+
     return (
-        <div style={{ display: 'flex', flex: 1, height: '100%', overflow: 'hidden' }}>
-            {/* Middle Panel */}
-            <div style={{ width: '280px', minWidth: '280px', background: '#fff', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <div style={{ padding: '20px 18px 14px', borderBottom: '1px solid #f0f0f0' }}>
-                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>Pending Work</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '7px 12px' }}>
-                        <Search size={13} style={{ color: '#9ca3af', flexShrink: 0 }} />
-                        <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: '12px', color: '#374151', width: '100%' }} />
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '10px' }}>
-                        {(['ongoing', 'completed'] as AppTab[]).map(tab => (
-                            <button key={tab} onClick={() => setAppTab(tab)} style={{ flex: 1, padding: '7px 14px', border: 'none', background: appTab === tab ? '#2563eb' : '#f3f4f6', color: appTab === tab ? '#fff' : '#6b7280', fontSize: '11px', fontWeight: 600, borderRadius: '6px', cursor: 'pointer', textTransform: 'capitalize' }}>
-                                {tab}
-                            </button>
-                        ))}
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#f8fafc' }}>
+            {/* Top Navigation & Controls */}
+            <div style={{ padding: '24px 32px', background: '#fff', borderBottom: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>Pending Work</h1>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        {/* Filters */}
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <select 
+                                value={filterFormType}
+                                onChange={e => setFilterFormType(e.target.value)}
+                                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: '13px', color: '#4b5563', outline: 'none', cursor: 'pointer', maxWidth: '200px', textOverflow: 'ellipsis' }}
+                            >
+                                <option value="all">All Form Types</option>
+                                {uniqueFormTypes.map(ft => (
+                                    <option key={ft} value={ft}>{ft}</option>
+                                ))}
+                            </select>
+
+                            <select 
+                                value={filterStatus}
+                                onChange={e => setFilterStatus(e.target.value)}
+                                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: '13px', color: '#4b5563', outline: 'none', cursor: 'pointer', textTransform: 'capitalize', maxWidth: '150px', textOverflow: 'ellipsis' }}
+                            >
+                                <option value="all">All Statuses</option>
+                                {uniqueStatuses.map(s => (
+                                    <option key={s} value={s}>{s?.replace(/_/g, ' ').toLowerCase()}</option>
+                                ))}
+                            </select>
+
+                            <select 
+                                value={sortOrder}
+                                onChange={e => setSortOrder(e.target.value as 'asc' | 'desc')}
+                                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: '13px', color: '#4b5563', outline: 'none', cursor: 'pointer' }}
+                            >
+                                <option value="desc">Newest First</option>
+                                <option value="asc">Oldest First</option>
+                            </select>
+                        </div>
+
+                        {/* Search Bar */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px 16px', width: '250px' }}>
+                            <Search size={16} style={{ color: '#9ca3af', flexShrink: 0 }} />
+                            <input 
+                                value={searchQuery} 
+                                onChange={e => setSearchQuery(e.target.value)} 
+                                placeholder="Search applications..." 
+                                style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: '14px', color: '#374151', width: '100%' }} 
+                            />
+                        </div>
                     </div>
                 </div>
-                <div style={{ flex: 1, overflowY: 'auto' }}>
-                    {loading && <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}><Loader2 size={22} className="animate-spin" style={{ color: '#9ca3af' }} /></div>}
-                    {!loading && (
-                        <PendingWorkView
-                            pendingApps={pendingApps} processedApps={processedApps}
-                            selectedApp={selectedApp} appTab={appTab} searchQuery={searchQuery}
-                            onSelect={setSelectedApp}
-                        />
-                    )}
+
+                {/* Toggles */}
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button 
+                        onClick={() => setAppTab('ongoing')} 
+                        style={{ 
+                            padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px',
+                            border: '1px solid', borderColor: appTab === 'ongoing' ? '#3b82f6' : '#e5e7eb',
+                            background: appTab === 'ongoing' ? '#eff6ff' : '#fff',
+                            color: appTab === 'ongoing' ? '#1d4ed8' : '#6b7280',
+                            borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px',
+                            transition: 'all 0.2s',
+                        }}
+                    >
+                        <Clock size={16} />
+                        Needs Review
+                        {pendingApps.length > 0 && (
+                            <span style={{ background: appTab === 'ongoing' ? '#3b82f6' : '#e5e7eb', color: appTab === 'ongoing' ? '#fff' : '#4b5563', padding: '2px 8px', borderRadius: '12px', fontSize: '12px', marginLeft: '4px' }}>
+                                {pendingApps.length}
+                            </span>
+                        )}
+                    </button>
+                    <button 
+                        onClick={() => setAppTab('completed')} 
+                        style={{ 
+                            padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px',
+                            border: '1px solid', borderColor: appTab === 'completed' ? '#10b981' : '#e5e7eb',
+                            background: appTab === 'completed' ? '#ecfdf5' : '#fff',
+                            color: appTab === 'completed' ? '#047857' : '#6b7280',
+                            borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px',
+                            transition: 'all 0.2s',
+                        }}
+                    >
+                        <CheckCircle size={16} />
+                        Previously Processed
+                    </button>
                 </div>
             </div>
 
-            {/* Right Panel */}
-            <main style={{ flex: 1, overflowY: 'auto', background: '#f8fafc' }}>
-                {!selectedApp && (
-                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '13px' }}>
-                        Select an application to review
+            {/* Main Content Area - Grid */}
+            <main style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
+                {loading ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                        <Loader2 size={32} className="animate-spin" style={{ color: '#9ca3af' }} />
+                    </div>
+                ) : list.length === 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9ca3af' }}>
+                        <ClipboardCheck size={48} style={{ opacity: 0.5, marginBottom: '16px' }} />
+                        <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#4b5563', margin: '0 0 8px' }}>All caught up!</h2>
+                        <p style={{ fontSize: '14px', margin: 0 }}>There are no {appTab === 'ongoing' ? 'pending' : 'processed'} applications matching your criteria.</p>
+                    </div>
+                ) : (
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
+                        gap: '24px',
+                        alignItems: 'stretch'
+                    }}>
+                        {list.map(app => (
+                            <div 
+                                key={app.id}
+                                onClick={() => setSelectedApp(app)}
+                                style={{
+                                    background: '#fff',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '12px',
+                                    padding: '20px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: 'space-between',
+                                    gap: '16px',
+                                    height: '100%',
+                                    minHeight: '140px'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)';
+                                    e.currentTarget.style.borderColor = '#cbd5e1';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
+                                    e.currentTarget.style.borderColor = '#e5e7eb';
+                                }}
+                            >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                    <div style={{ marginRight: '16px' }}>
+                                        <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#1f2937', margin: '0 0 4px', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {app.form_types?.name || 'Application'}
+                                        </h3>
+                                        <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span>
+                                                Submitted: {new Date(app.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <StatusBadge status={app.current_status} />
+                                </div>
+                                
+                                {app.users && (
+                                    <div style={{ fontSize: '13px', color: '#4b5563', padding: '10px 14px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                                        <span style={{ color: '#94a3b8', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, display: 'block', marginBottom: '2px' }}>Applicant</span>
+                                        <span style={{ fontWeight: 500 }}>{app.users.first_name} {app.users.last_name}</span>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 )}
-                {selectedApp && (
-                    <ApplicationDetail
-                        app={selectedApp} canApprove={canApprove}
-                        isInPendingView={true}
-                        profile={profile} sigUploading={sigUploading}
-                        remarks={remarks} approvalData={approvalData} actionLoading={actionLoading}
-                        onRemarks={setRemarks} onApprovalData={setApprovalData}
-                        onDecision={handleDecision} onDownloadPdf={handleDownloadPdf}
-                        onSigUpload={handleSigUpload}
-                    />
-                )}
             </main>
+
+            {/* Detail Overlay (Modal-like full page view when selected) */}
+            {selectedApp && (
+                <div style={{ 
+                    position: 'absolute', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', background: '#fff',
+                    animation: 'slideIn 0.2s ease-out'
+                }}>
+                    <div style={{ padding: '16px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', background: '#f8fafc' }}>
+                        <button 
+                            onClick={() => setSelectedApp(null)}
+                            style={{ 
+                                display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', 
+                                color: '#4b5563', cursor: 'pointer', fontSize: '14px', fontWeight: 600, padding: '8px 12px',
+                                borderRadius: '6px', transition: 'background 0.2s'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                        >
+                            <X size={18} />
+                            Back to Pending Work
+                        </button>
+                        {appTab === 'ongoing' && (
+                            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', color: '#b45309', background: '#fef3c7', padding: '6px 12px', borderRadius: '20px', fontSize: '13px', fontWeight: 600 }}>
+                                <Clock size={14} /> Review Required
+                            </div>
+                        )}
+                    </div>
+                    <div style={{ flex: 1, overflowY: 'auto', background: '#f8fafc', padding: '24px' }}>
+                        <div style={{ maxWidth: '900px', margin: '0 auto', background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+                            <ApplicationDetail
+                                app={selectedApp} canApprove={canApprove}
+                                isInPendingView={true}
+                                profile={profile} sigUploading={sigUploading}
+                                remarks={remarks} approvalData={approvalData} actionLoading={actionLoading}
+                                onRemarks={setRemarks} onApprovalData={setApprovalData}
+                                onDecision={handleDecision} onDownloadPdf={handleDownloadPdf}
+                                onSigUpload={handleSigUpload}
+                            />
+                        </div>
+                    </div>
+                    <style dangerouslySetInnerHTML={{__html: `
+                        @keyframes slideIn {
+                            from { transform: translateY(20px); opacity: 0; }
+                            to { transform: translateY(0); opacity: 1; }
+                        }
+                    `}} />
+                </div>
+            )}
         </div>
     );
 }
