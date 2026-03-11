@@ -112,9 +112,9 @@ export class FormRepository implements IFormRepository {
         return this.prisma.form_types.findUnique({ where: { id } });
     }
 
-    async findAllFormTypes(): Promise<any[]> {
+    async findAllFormTypes(where: any = { is_active: true }): Promise<any[]> {
         return this.prisma.form_types.findMany({
-            where: { is_active: true },
+            where,
             include: {
                 workflow: {
                     include: { steps: { orderBy: { step_order: 'asc' } } }

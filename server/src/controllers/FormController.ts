@@ -17,9 +17,10 @@ export class FormController {
 
     // ── Form Types ─────────────────────────────────────────────────────────
 
-    getFormTypes = async (_req: AuthenticatedRequest, res: Response): Promise<void> => {
+    getFormTypes = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         try {
-            const types = await this.formService.getFormTypes();
+            const roles = req.user?.roles || [];
+            const types = await this.formService.getFormTypes(roles);
             res.json(types);
         } catch (e: any) {
             console.error('[FormController] getFormTypes:', e.message);
@@ -49,14 +50,14 @@ export class FormController {
 
     updateFormType = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         const id = Number(req.params.id);
-        const { name, description, schema_definition, workflow_steps } = req.body;
+        const { name, description, schema_definition, workflow_steps, is_active } = req.body;
 
         if (!name) { res.status(400).json({ error: 'Form type name is required' }); return; }
         if (isNaN(id)) { res.status(400).json({ error: 'Invalid form type id' }); return; }
 
         try {
             const result = await this.formService.updateFormType(id, {
-                name, description, schema_definition, workflow_steps
+                name, description, schema_definition, workflow_steps, is_active
             });
             res.json(result);
         } catch (e: any) {

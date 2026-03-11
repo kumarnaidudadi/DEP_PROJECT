@@ -22,7 +22,7 @@ const formService = new FormService(formRepo, workflowService);
 const controller = new FormController(formService, pdfService);
 
 // ─── Form Type Routes ──────────────────────────────────────────────────────
-router.get('/types', controller.getFormTypes);
+router.get('/types', verifyToken, controller.getFormTypes);
 router.post('/types', verifyToken, controller.createFormType);
 router.put('/types/:id', verifyToken, controller.updateFormType);
 router.delete('/types/:id', verifyToken, controller.deleteFormType);
