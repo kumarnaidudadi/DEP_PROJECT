@@ -3,7 +3,7 @@
 // Renders the form-type picker (middle panel) and form-fill panel (right panel).
 
 import React from 'react';
-import { ChevronRight, FileText, Plus, Send, Loader2, Upload, Trash2 } from 'lucide-react';
+import { ChevronRight, FileText, Plus, Send, Loader2, Upload, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { FormType, Profile, getSchemaFields } from '@/types';
 import ListItem from '../ListItem';
 import StatusBadge from '../StatusBadge';
@@ -42,6 +42,48 @@ function BtnSecondary({ children, onClick }: { children: React.ReactNode; onClic
     );
 }
 
+function PremiumToggle({ checked, onChange, disabled }: { checked: boolean; onChange: () => void; disabled?: boolean }) {
+    return (
+        <div 
+            onClick={disabled ? undefined : (e) => { e.stopPropagation(); onChange(); }}
+            style={{ 
+                width: '42px', 
+                height: '22px', 
+                borderRadius: '12px', 
+                background: checked ? '#10b981' : '#cbd5e1', 
+                position: 'relative', 
+                cursor: disabled ? 'not-allowed' : 'pointer', 
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                display: 'flex',
+                alignItems: 'center',
+                padding: '2px',
+                opacity: disabled ? 0.6 : 1,
+                boxShadow: checked ? '0 0 8px rgba(16,185,129,0.3)' : 'none'
+            }}
+        >
+            <div style={{ 
+                width: '18px', 
+                height: '18px', 
+                borderRadius: '50%', 
+                background: '#fff', 
+                position: 'absolute',
+                left: checked ? '22px' : '2px',
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+            }}>
+                {checked ? (
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+                ) : (
+                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#94a3b8' }} />
+                )}
+            </div>
+        </div>
+    );
+}
+
 function SuccessMsg() {
     return (
         <div style={{ textAlign: 'center', padding: '60px 20px' }}>
@@ -75,7 +117,9 @@ interface Props {
     onSubmit: () => void;
     onCancel: () => void;
     onEditFormType: (ft: FormType) => void;
-    onDeleteFormType?: (ft: FormType) => void;
+    onToggleActive?: (ft: FormType) => void;
+    adminTab?: 'active' | 'inactive';
+    onAdminTabChange?: (tab: 'active' | 'inactive') => void;
     onCreateFormType: () => void;
     onSigUpload: (file: File) => void;
 }
@@ -84,7 +128,7 @@ export default function NewApplicationView({
     formTypes, searchQuery, selectedFormType, activeFormTypeId, formData, submitting, submitSuccess,
     isAdmin, profile, sigUploading, availableDepartments, availableRoles, liveRoles,
     onSelectFormType, onFormDataChange, onSubmit, onCancel, onEditFormType,
-    onDeleteFormType, onCreateFormType, onSigUpload,
+    onToggleActive, adminTab = 'active', onAdminTabChange, onCreateFormType, onSigUpload,
 }: Props) {
     // activeFormTypeId is used for highlighting in list mode when selectedFormType is null
     const highlightId = selectedFormType?.id ?? activeFormTypeId;
@@ -98,41 +142,86 @@ export default function NewApplicationView({
         ft.description?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const activeForms = filteredForms.filter(f => f.is_active !== false);
+    const inactiveForms = filteredForms.filter(f => f.is_active === false);
+    
+    const formsToShow = isAdmin 
+        ? (adminTab === 'active' ? activeForms : inactiveForms)
+        : activeForms;
+
+    const renderFormList = (forms: FormType[], isInactiveSection = false) => forms.map(ft => (
+        <ListItem key={ft.id} sel={highlightId === ft.id} onClick={() => {
+            const initialData: Record<string, any> = {};
+            const fields = getSchemaFields(ft.schema_definition);
+            fields.forEach(f => {
+                if (f.type === 'department' && profile?.department) initialData[f.key] = profile.department;
+                else if (f.type === 'role' && liveRoles.length > 0) initialData[f.key] = liveRoles[0];
+                else if (f.type === 'date_from_to') {
+                    const today = new Date();
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(today.getDate() + 1);
+                    initialData[`${f.key}_from`] = today.toISOString().split('T')[0];
+                    initialData[`${f.key}_to`] = tomorrow.toISOString().split('T')[0];
+                }
+            });
+            onFormDataChange(initialData);
+            onSelectFormType(ft);
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', opacity: isInactiveSection ? 0.7 : 1 }}>
+                <IconBox sel={selectedFormType?.id === ft.id}><FileText size={14} /></IconBox>
+                <div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: ft.is_active === false ? '#64748b' : '#1f2937' }}>{ft.name}</div>
+                    <div style={{ fontSize: '11px', color: '#9ca3af' }}>{ft.is_active === false ? 'Disabled' : (ft.description || 'Click to fill')}</div>
+                </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {isAdmin && ft.is_active === false && (
+                    <span style={{ fontSize: '9px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', background: '#f8fafc', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>Hidden</span>
+                )}
+                <ChevronRight size={14} style={{ color: '#d1d5db' }} />
+            </div>
+        </ListItem>
+    ));
+
     // ── Middle panel list ──────────────────────────────────────────────────────
     const middlePanel = (
         <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flex: 1 }}>
-                {filteredForms.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af', fontSize: '12px' }}>No forms available</div>
-                ) : filteredForms.map(ft => (
-                    <ListItem key={ft.id} sel={highlightId === ft.id} onClick={() => {
-                        // Pre-fill smart fields
-                        const initialData: Record<string, any> = {};
-                        const fields = getSchemaFields(ft.schema_definition);
-                        fields.forEach(f => {
-                            if (f.type === 'department' && profile?.department) initialData[f.key] = profile.department;
-                            else if (f.type === 'role' && liveRoles.length > 0) initialData[f.key] = liveRoles[0];
-                            else if (f.type === 'date_from_to') {
-                                const today = new Date();
-                                const tomorrow = new Date(today);
-                                tomorrow.setDate(today.getDate() + 1);
-                                initialData[`${f.key}_from`] = today.toISOString().split('T')[0];
-                                initialData[`${f.key}_to`] = tomorrow.toISOString().split('T')[0];
-                            }
-                        });
-                        onFormDataChange(initialData);
-                        onSelectFormType(ft);
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <IconBox sel={selectedFormType?.id === ft.id}><FileText size={14} /></IconBox>
-                            <div>
-                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#1f2937' }}>{ft.name}</div>
-                                <div style={{ fontSize: '11px', color: '#9ca3af' }}>{ft.description || 'Click to fill'}</div>
-                            </div>
-                        </div>
-                        <ChevronRight size={14} style={{ color: '#d1d5db' }} />
-                    </ListItem>
-                ))}
+            {isAdmin && (
+                <div style={{ padding: '0 18px 12px', display: 'flex', gap: '6px' }}>
+                    <button 
+                        onClick={() => onAdminTabChange?.('active')} 
+                        style={{ 
+                            flex: 1, padding: '7px 0', border: 'none', 
+                            background: adminTab === 'active' ? '#10b981' : '#f3f4f6', 
+                            color: adminTab === 'active' ? '#fff' : '#64748b', 
+                            fontSize: '11px', fontWeight: 700, borderRadius: '6px', 
+                            cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', 
+                            textTransform: 'uppercase', letterSpacing: '0.05em' 
+                        }}
+                    >
+                        Active
+                    </button>
+                    <button 
+                        onClick={() => onAdminTabChange?.('inactive')} 
+                        style={{ 
+                            flex: 1, padding: '7px 0', border: 'none', 
+                            background: adminTab === 'inactive' ? '#64748b' : '#f3f4f6', 
+                            color: adminTab === 'inactive' ? '#fff' : '#64748b', 
+                            fontSize: '11px', fontWeight: 700, borderRadius: '6px', 
+                            cursor: 'pointer', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', 
+                            textTransform: 'uppercase', letterSpacing: '0.05em' 
+                        }}
+                    >
+                        Inactive
+                    </button>
+                </div>
+            )}
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+                {formsToShow.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af', fontSize: '12px' }}>
+                        {isAdmin ? `No ${adminTab} forms found` : 'No forms available'}
+                    </div>
+                ) : renderFormList(formsToShow, adminTab === 'inactive')}
             </div>
             {isAdmin && (
                 <button onClick={onCreateFormType} style={{ position: 'absolute', bottom: '20px', right: '20px', width: '48px', height: '48px', borderRadius: '24px', background: '#3b82f6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(59,130,246,0.5)', border: 'none', cursor: 'pointer', zIndex: 10 }}>
@@ -157,17 +246,34 @@ export default function NewApplicationView({
                             <FileText size={14} /> Edit Form
                         </button>
                     )}
-                    {isAdmin && onDeleteFormType && (
-                        <button 
-                            onClick={() => {
-                                if (window.confirm(`Are you sure you want to completely delete the "${selectedFormType.name}" form?`)) {
-                                    onDeleteFormType(selectedFormType);
-                                }
+                    {isAdmin && onToggleActive && (
+                        <div 
+                            style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '10px', 
+                                background: selectedFormType.is_active === false ? '#f8fafc' : '#f0fdf4', 
+                                padding: '6px 16px', 
+                                borderRadius: '12px', 
+                                border: `1px solid ${selectedFormType.is_active === false ? '#e2e8f0' : '#bbf7d0'}`,
+                                transition: 'all 0.3s ease'
                             }}
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
                         >
-                            <Trash2 size={14} /> Delete Form
-                        </button>
+                            <span style={{ 
+                                fontSize: '11px', 
+                                fontWeight: 800, 
+                                color: selectedFormType.is_active === false ? '#64748b' : '#059669',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.02em',
+                                minWidth: '55px'
+                            }}>
+                                {selectedFormType.is_active === false ? 'Inactive' : 'Active'}
+                            </span>
+                            <PremiumToggle 
+                                checked={selectedFormType.is_active !== false} 
+                                onChange={() => onToggleActive(selectedFormType)} 
+                            />
+                        </div>
                     )}
                 </div>
             </div>

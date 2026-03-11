@@ -23,6 +23,7 @@ export interface FormType {
     description: string;
     schema_definition: any;
     workflow?: Workflow | null;
+    is_active?: boolean;
 }
 
 // ─── Application ───────────────────────────────────────────────────────────────

@@ -60,6 +60,7 @@ export default function Dashboard() {
     const [remarks, setRemarks] = useState('');
     const [approvalData, setApprovalData] = useState<Record<string, any>>({});
     const [actionLoading, setActionLoading] = useState(false);
+    const [activeAdminTab, setActiveAdminTab] = useState<'active' | 'inactive'>('active');
 
     // ── Form builder state ────────────────────────────────────────────────────
     const [newFormName, setNewFormName] = useState('');
@@ -226,16 +227,32 @@ export default function Dashboard() {
         setSelectedFormType(null);
     };
 
-    const handleDeleteFormType = async (ft: FormType) => {
+    const handleToggleFormType = async (ft: FormType) => {
+        const isDeactivating = ft.is_active !== false;
+
+        if (isDeactivating) {
+            if (!window.confirm(`Are you sure you want to deactivate the "${ft.name}" form?`)) {
+                return;
+            }
+        }
+
         try {
-            await formTypeSvc.deleteFormType(ft.id);
-            alert(`Form type "${ft.name}" deleted successfully.`);
-            setFormTypes(prev => prev.filter(f => f.id !== ft.id));
-            if (selectedFormType?.id === ft.id) {
+            const newActive = !isDeactivating;
+            await formTypeSvc.updateFormType(ft.id, {
+                name: ft.name,
+                description: ft.description,
+                schema_definition: ft.schema_definition,
+                workflow_steps: [],
+                is_active: newActive
+            });
+            setFormTypes(prev => prev.map(f => f.id === ft.id ? { ...f, is_active: newActive } : f));
+            
+            if (isDeactivating && selectedFormType?.id === ft.id) {
                 setSelectedFormType(null);
+                setFormData({});
             }
         } catch (e: any) {
-            alert(e.response?.data?.error || 'Failed to delete the form type.');
+            alert(e.response?.data?.error || 'Failed to update form status');
         }
     };
 
@@ -251,15 +268,7 @@ export default function Dashboard() {
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: 'Inter, -apple-system, sans-serif', background: '#f8fafc' }}>
-            <Sidebar
-                activeView={activeView}
-                canApprove={canApprove}
-                pendingCount={pendingApps.length}
-                onNavigate={handleSidebarClick}
-                onLogout={logout}
-            />
-
+        <div style={{ display: 'flex', height: '100%', width: '100%', overflow: 'hidden', fontFamily: 'Inter, -apple-system, sans-serif', background: '#f8fafc' }}>
             {/* ─── Middle Panel ──────────────────────────────────────────────── */}
             {(activeView === 'new' || activeView === 'all' || activeView === 'pending') && !selectedFormType && (
                 <div style={{ width: '280px', minWidth: '280px', background: '#fff', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -296,7 +305,10 @@ export default function Dashboard() {
                                 availableRoles={availableRoles} liveRoles={liveRoles}
                                 onSelectFormType={setSelectedFormType} onFormDataChange={setFormData}
                                 onSubmit={() => { }} onCancel={() => { }}
-                                onEditFormType={handleEditFormType} onCreateFormType={() => handleSidebarClick('create_form')}
+                                onEditFormType={handleEditFormType} onToggleActive={handleToggleFormType}
+                                adminTab={activeAdminTab}
+                                onAdminTabChange={setActiveAdminTab}
+                                onCreateFormType={() => handleSidebarClick('create_form')}
                                 onSigUpload={handleSigUpload}
                             />
                         )}
@@ -337,7 +349,9 @@ export default function Dashboard() {
                         onSelectFormType={setSelectedFormType} onFormDataChange={setFormData}
                         onSubmit={handleFormSubmit} onCancel={() => { setSelectedFormType(null); setFormData({}); }}
                         onEditFormType={handleEditFormType}
-                        onDeleteFormType={handleDeleteFormType}
+                        onToggleActive={handleToggleFormType}
+                        adminTab={activeAdminTab}
+                        onAdminTabChange={setActiveAdminTab}
                         onCreateFormType={() => handleSidebarClick('create_form')}
                         onSigUpload={handleSigUpload}
                     />
