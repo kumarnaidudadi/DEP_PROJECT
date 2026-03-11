@@ -9,10 +9,12 @@ import { useForms } from '@/hooks/useForms';
 import { useProfile } from '@/hooks/useProfile';
 import { FormType, getSchemaFields } from '@/types';
 import NewApplicationView from '@/components/dashboard/views/NewApplicationView';
+import * as formTypeSvc from '@/services/formTypeService';
+import { Toast, ToastType } from '@/components/ui/Toast';
 
 export default function NewApplicationPage() {
     const { user } = useAuth();
-    const { formTypes, loading, fetchFormTypes, submitForm } = useForms();
+    const { formTypes, setFormTypes, loading, fetchFormTypes, submitForm } = useForms();
     const { profile, availableRoles, availableDepartments, sigUploading, fetchProfile, fetchRoles, fetchDepartments, handleSigUpload } = useProfile();
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -20,6 +22,8 @@ export default function NewApplicationPage() {
     const [formData, setFormData] = useState<Record<string, any>>({});
     const [submitting, setSubmitting] = useState(false);
     const [submitSuccess, setSubmitSuccess] = useState(false);
+    const [toast, setToast] = useState<{ message: string, type: ToastType } | null>(null);
+    const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
 
     useEffect(() => {
         fetchFormTypes();
@@ -60,6 +64,40 @@ export default function NewApplicationPage() {
         window.location.href = `/dashboard/create?editId=${ft.id}`;
     };
 
+    const handleToggleFormType = async (ft: FormType) => {
+        const isDeactivating = ft.is_active !== false;
+        
+        if (isDeactivating) {
+            if (!window.confirm(`Are you sure you want to deactivate the "${ft.name}" form? It will be hidden from users.`)) {
+                return;
+            }
+        }
+
+        try {
+            const newActive = !isDeactivating;
+            await formTypeSvc.updateFormType(ft.id, {
+                name: ft.name,
+                description: ft.description,
+                schema_definition: ft.schema_definition,
+                workflow_steps: [], 
+                is_active: newActive
+            });
+            
+            setToast({ message: `Form type "${ft.name}" ${newActive ? 'activated' : 'deactivated'} successfully.`, type: 'success' });
+            
+            // Update local state
+            setFormTypes(prev => prev.map(f => f.id === ft.id ? { ...f, is_active: newActive } : f));
+            
+            // If we deactivated it, clear the selection so it doesn't stay on screen in the wrong tab
+            if (isDeactivating && selectedFormType?.id === ft.id) {
+                setSelectedFormType(null);
+                setFormData({});
+            }
+        } catch (e: any) {
+            setToast({ message: e.response?.data?.error || 'Failed to update the form status.', type: 'error' });
+        }
+    };
+
     return (
         <div style={{ display: 'flex', flex: 1, height: '100%', overflow: 'hidden' }}>
             {/* Middle Panel — form list */}
@@ -81,9 +119,12 @@ export default function NewApplicationPage() {
                             isAdmin={isAdmin} profile={profile} sigUploading={sigUploading}
                             availableDepartments={availableDepartments} availableRoles={availableRoles}
                             liveRoles={liveRoles}
+                            adminTab={activeTab}
+                            onAdminTabChange={setActiveTab}
                             onSelectFormType={setSelectedFormType} onFormDataChange={setFormData}
                             onSubmit={() => {}} onCancel={() => {}}
                             onEditFormType={handleEditFormType}
+                            onToggleActive={handleToggleFormType}
                             onCreateFormType={() => { window.location.href = '/dashboard/create'; }}
                             onSigUpload={handleSigUpload}
                         />
@@ -106,15 +147,26 @@ export default function NewApplicationPage() {
                         isAdmin={isAdmin} profile={profile} sigUploading={sigUploading}
                         availableDepartments={availableDepartments} availableRoles={availableRoles}
                         liveRoles={liveRoles}
+                        adminTab={activeTab}
+                        onAdminTabChange={setActiveTab}
                         onSelectFormType={setSelectedFormType} onFormDataChange={setFormData}
                         onSubmit={handleSubmit}
                         onCancel={() => { setSelectedFormType(null); setFormData({}); }}
                         onEditFormType={handleEditFormType}
+                        onToggleActive={handleToggleFormType}
                         onCreateFormType={() => { window.location.href = '/dashboard/create'; }}
                         onSigUpload={handleSigUpload}
                     />
                 )}
             </main>
+
+            {toast && (
+                <Toast 
+                    message={toast.message} 
+                    type={toast.type} 
+                    onClose={() => setToast(null)} 
+                />
+            )}
         </div>
     );
 }

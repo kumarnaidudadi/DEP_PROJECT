@@ -22,6 +22,7 @@ export interface CreateFormTypeDto {
     schema_definition?: Record<string, unknown>;
     workflow_name?: string;
     workflow_steps?: WorkflowStepDto[];
+    is_active?: boolean;
 }
 
 export interface WorkflowStepDto {

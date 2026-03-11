@@ -49,6 +49,8 @@ router.get('/', verifyToken, async (req: AuthenticatedRequest, res: Response) =>
 
         if (!user) return res.status(404).json({ error: 'User not found' });
 
+        console.log('[DEBUG] GET /profile fetched user:', JSON.stringify(user, null, 2));
+
         res.json({
             id: user.id,
             first_name: user.first_name,
@@ -60,6 +62,8 @@ router.get('/', verifyToken, async (req: AuthenticatedRequest, res: Response) =>
             display_name: [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' '),
             roles: user.user_roles.map((ur: any) => ur.roles.name),
             department: user.departments?.name || null,
+            emp_code: (user as any).emp_code || null,
+            joining_date: (user as any).joining_date ? (user as any).joining_date.toISOString().split('T')[0] : null,
         });
     } catch (error) {
         console.error('Get profile error:', error);

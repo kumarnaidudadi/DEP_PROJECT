@@ -21,7 +21,7 @@ export interface IFormRepository {
 
     // ── Form Types ─────────────────────────────────────────────────────────
     findFormTypeById(id: number): Promise<any | null>;
-    findAllFormTypes(): Promise<any[]>;
+    findAllFormTypes(where?: any): Promise<any[]>;
     createFormType(data: object): Promise<any>;
     updateFormType(id: number, data: object): Promise<any>;
     deleteFormType(id: number): Promise<void>;

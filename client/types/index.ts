@@ -23,6 +23,7 @@ export interface FormType {
     description: string;
     schema_definition: any;
     workflow?: Workflow | null;
+    is_active?: boolean;
 }
 
 // ─── Application ───────────────────────────────────────────────────────────────
@@ -50,6 +51,8 @@ export interface Profile {
     roles: string[];
     department: string | null;
     signature_url: string | null;
+    emp_code: string | null;
+    joining_date: string | null;   // ISO date string "YYYY-MM-DD"
 }
 
 // ─── Field builder ─────────────────────────────────────────────────────────────
@@ -90,6 +93,7 @@ export const FIELD_TYPES = [
     'text', 'number', 'date', 'date_from_to',
     'bool', 'select', 'textarea', 'signature',
     'department', 'role', 'tuple', 'list',
+    'name', 'designation', 'employee_code',
 ];
 
 export const FIELD_TYPE_LABELS: Record<string, string> = {
@@ -97,7 +101,67 @@ export const FIELD_TYPE_LABELS: Record<string, string> = {
     bool: 'Yes / No', select: 'Select (Options)', textarea: 'Long Text',
     signature: 'Signature', department: 'Department', role: 'Role',
     tuple: 'Group (Tuple)', list: 'Repeating List',
+    name: 'Name', designation: 'Designation', employee_code: 'Employee Code',
 };
+
+// ─── Auto-fill ─────────────────────────────────────────────────────────────────
+// Single source of truth for field-type → profile-value mappings.
+// Returns { data, autoFilledKeys } so the UI can visually mark pre-filled fields.
+export function buildAutoFillData(
+    fields: FieldDef[],
+    profile: Profile | null,
+    liveRoles: string[],   // ALL roles assigned to the user
+): { data: Record<string, any>; autoFilledKeys: Set<string> } {
+    const data: Record<string, any> = {};
+    const autoFilledKeys = new Set<string>();
+
+    const fullName = profile
+        ? [profile.first_name, profile.middle_name, profile.last_name].filter(Boolean).join(' ')
+        : '';
+
+    for (const f of fields) {
+        switch (f.type) {
+            case 'name':
+                if (fullName) { data[f.key] = fullName; autoFilledKeys.add(f.key); }
+                break;
+
+            case 'designation':
+                // Use the user's primary role as their designation
+                if (liveRoles.length > 0) { data[f.key] = liveRoles[0]; autoFilledKeys.add(f.key); }
+                break;
+
+            case 'employee_code':
+                if (profile?.emp_code) { data[f.key] = profile.emp_code; autoFilledKeys.add(f.key); }
+                break;
+
+            case 'department':
+                if (profile?.department) { data[f.key] = profile.department; autoFilledKeys.add(f.key); }
+                break;
+
+            case 'role':
+                if (liveRoles.length > 0) { data[f.key] = liveRoles[0]; autoFilledKeys.add(f.key); }
+                break;
+
+            case 'date_from_to': {
+                const today = new Date();
+                const tomorrow = new Date(today);
+                tomorrow.setDate(today.getDate() + 1);
+                data[`${f.key}_from`] = today.toISOString().split('T')[0];
+                data[`${f.key}_to`]   = tomorrow.toISOString().split('T')[0];
+                autoFilledKeys.add(`${f.key}_from`);
+                autoFilledKeys.add(`${f.key}_to`);
+                break;
+            }
+
+            // 'text', 'number', 'date', 'textarea', 'select', 'bool',
+            // 'signature', 'tuple', 'list' — no auto-fill, user fills manually
+            default:
+                break;
+        }
+    }
+
+    return { data, autoFilledKeys };
+}
 
 // ─── Schema helpers ────────────────────────────────────────────────────────────
 export function getSchemaFields(schema: any): FieldDef[] {

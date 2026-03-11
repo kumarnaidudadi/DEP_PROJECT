@@ -4,7 +4,7 @@
 import { CreateFormDto, UpdateFormStatusDto, CreateFormTypeDto } from '../dtos/FormDto';
 
 export interface IFormService {
-    getFormTypes(): Promise<any[]>;
+    getFormTypes(roles?: string[]): Promise<any[]>;
     createFormType(dto: CreateFormTypeDto): Promise<any>;
     updateFormType(id: number, dto: CreateFormTypeDto): Promise<any>;
     deleteFormType(id: number, roles: string[]): Promise<void>;

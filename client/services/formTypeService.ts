@@ -9,6 +9,7 @@ export interface FormTypePayload {
     description: string;
     schema_definition: any;
     workflow_steps: { step_name: string; approval_roles: string[]; is_terminal: boolean }[];
+    is_active?: boolean;
 }
 
 export async function createFormType(payload: FormTypePayload): Promise<FormType> {

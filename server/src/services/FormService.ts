@@ -17,8 +17,9 @@ export class FormService implements IFormService {
 
     // ── Form Types ─────────────────────────────────────────────────────────
 
-    async getFormTypes(): Promise<any[]> {
-        return this.formRepo.findAllFormTypes();
+    async getFormTypes(roles: string[] = []): Promise<any[]> {
+        const isAdmin = roles.includes('ADMIN');
+        return this.formRepo.findAllFormTypes(isAdmin ? {} : { is_active: true });
     }
 
     async createFormType(dto: CreateFormTypeDto): Promise<any> {
@@ -54,6 +55,7 @@ export class FormService implements IFormService {
                     description: dto.description || '',
                     schema_definition: dto.schema_definition || {},
                     workflow_id: workflowId,
+                    is_active: dto.is_active !== undefined ? dto.is_active : true,
                 },
                 include: {
                     workflow: {
@@ -109,6 +111,7 @@ export class FormService implements IFormService {
                     description: dto.description || '',
                     schema_definition: dto.schema_definition || {},
                     workflow_id: workflowId,
+                    is_active: dto.is_active !== undefined ? dto.is_active : undefined,
                 },
                 include: {
                     workflow: { include: { steps: { orderBy: { step_order: 'asc' } } } }
