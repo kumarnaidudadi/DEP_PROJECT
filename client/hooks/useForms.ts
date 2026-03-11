@@ -60,6 +60,11 @@ export function useForms() {
         window.URL.revokeObjectURL(url);
     }, []);
 
+    const deleteApplication = useCallback(async (formId: number) => {
+        await formSvc.deleteForm(formId);
+        setApplications(prev => prev.filter(app => app.id !== formId));
+    }, []);
+
     return {
         formTypes, setFormTypes,
         applications, setApplications,
@@ -69,5 +74,6 @@ export function useForms() {
         submitForm,
         makeDecision,
         triggerDownloadPdf,
+        deleteApplication,
     };
 }

@@ -20,3 +20,7 @@ export async function updateFormType(id: number, payload: FormTypePayload): Prom
     const res = await api.put(`/forms/types/${id}`, payload);
     return res.data;
 }
+
+export async function deleteFormType(id: number): Promise<void> {
+    await api.delete(`/forms/types/${id}`);
+}

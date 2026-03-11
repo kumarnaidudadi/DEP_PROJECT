@@ -34,3 +34,7 @@ export async function downloadPdf(formId: number): Promise<string> {
     const response = await api.get(`/forms/${formId}/download`, { responseType: 'blob' });
     return window.URL.createObjectURL(new Blob([response.data]));
 }
+
+export async function deleteForm(formId: number): Promise<void> {
+    await api.delete(`/forms/${formId}`);
+}

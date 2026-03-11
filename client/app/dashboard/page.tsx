@@ -1,5 +1,4 @@
 'use client';
-// ─── Dashboard Home (/dashboard) ───────────────────────────────────────────────
 
 import React, { useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,18 +12,16 @@ export default function DashboardHome() {
     const { applications, fetchApplications } = useForms();
 
     useEffect(() => {
-        if (user?.id) {
-            fetchApplications();
-        }
-    }, [fetchApplications, user?.id]);
+        fetchApplications();
+    }, [fetchApplications]);
 
+    // Admin sees all applications in stats; regular users see only theirs
     const storedRoles = userRoles.map(r => (typeof r === 'string' ? r.toUpperCase() : ''));
     const isAdmin = storedRoles.includes('ADMIN');
     const userId = user?.id ? Number(user.id) : null;
 
-    // Admin sees all applications in stats; regular users see only theirs
-    const baseApps = isAdmin 
-        ? applications 
+    const baseApps = isAdmin
+        ? applications
         : (userId !== null ? applications.filter(a => Number(a.submitted_by) === userId) : []);
 
     const ongoingApps = baseApps.filter(a => !isTerminal(a.current_status));

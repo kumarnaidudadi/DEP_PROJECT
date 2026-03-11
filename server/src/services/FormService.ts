@@ -117,6 +117,13 @@ export class FormService implements IFormService {
         });
     }
 
+    async deleteFormType(id: number, roles: string[]): Promise<void> {
+        if (!roles.includes('ADMIN')) {
+            throw new Error('UNAUTHORIZED');
+        }
+        await this.formRepo.deleteFormType(id);
+    }
+
     // ── Forms ──────────────────────────────────────────────────────────────
 
     /** Role-based filtering: ADMIN sees all, others see own + pending approvals they are assigned to. */
@@ -208,7 +215,13 @@ export class FormService implements IFormService {
             }
         }
 
-        // No workflow or step not found → auto-approve
         return this.formRepo.updateStatus(dto.formId, 'APPROVED', { form_data: mergedFormData });
+    }
+
+    async deleteForm(id: number, roles: string[]): Promise<void> {
+        if (!roles.includes('ADMIN')) {
+            throw new Error('UNAUTHORIZED');
+        }
+        await this.formRepo.delete(id);
     }
 }
