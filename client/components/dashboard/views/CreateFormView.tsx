@@ -3,7 +3,7 @@
 // Admin form builder: create/edit form types with steps, fields, and roles.
 
 import React from 'react';
-import { Plus, Trash2, CheckCircle, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Loader2, ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
 import { BuilderStep, FIELD_TYPES, FIELD_TYPE_LABELS } from '@/types';
 
 const inputStyle: React.CSSProperties = {
@@ -42,11 +42,42 @@ export default function CreateFormView({
     isEdit, newFormName, newFormDesc, builderSteps, availableRoles,
     creating, createSuccess, onNameChange, onDescChange, onStepsChange, onSave, onCancel,
 }: Props) {
+    // For field reordering within a stage
+    const [draggedIdx, setDraggedIdx] = React.useState<{ step: number; field: number } | null>(null);
+    const [dragOverIdx, setDragOverIdx] = React.useState<number | null>(null);
+    const [draggableIdx, setDraggableIdx] = React.useState<{ step: number; field: number } | null>(null);
 
     const updateStep = (idx: number, partial: Partial<BuilderStep>) => {
         const next = [...builderSteps];
         next[idx] = { ...next[idx], ...partial };
         onStepsChange(next);
+    };
+
+    const handleFieldDragStart = (stepIdx: number, fieldIdx: number) => {
+        setDraggedIdx({ step: stepIdx, field: fieldIdx });
+    };
+
+    const handleFieldDragOver = (e: React.DragEvent, fieldIdx: number) => {
+        e.preventDefault();
+        setDragOverIdx(fieldIdx);
+    };
+
+    const handleFieldDrop = (stepIdx: number, targetFieldIdx: number) => {
+        if (!draggedIdx || draggedIdx.step !== stepIdx) {
+            setDraggedIdx(null);
+            setDragOverIdx(null);
+            return;
+        }
+
+        const next = [...builderSteps];
+        const stepFields = [...next[stepIdx].fields];
+        const [movedField] = stepFields.splice(draggedIdx.field, 1);
+        stepFields.splice(targetFieldIdx, 0, movedField);
+        
+        next[stepIdx] = { ...next[stepIdx], fields: stepFields };
+        onStepsChange(next);
+        setDraggedIdx(null);
+        setDragOverIdx(null);
     };
 
     return (
@@ -135,146 +166,193 @@ export default function CreateFormView({
                         {/* Fields list */}
                         <div style={{ background: '#f9fafb', padding: '16px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
                             <div style={{ fontSize: '12px', fontWeight: 600, color: '#4b5563', marginBottom: '12px' }}>Fields for this step</div>
-                            {step.fields.map((field, fieldIndex) => (
-                                <div key={fieldIndex} style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: fieldIndex < step.fields.length - 1 ? '1px dashed #d1d5db' : 'none' }}>
-                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-                                        <div style={{ flex: 2 }}>
-                                            <label style={labelStyle}>Field Name</label>
-                                            <input value={field.name} onChange={e => {
-                                                const next = [...builderSteps];
-                                                next[stepIndex].fields[fieldIndex].name = e.target.value;
-                                                onStepsChange(next);
-                                            }} placeholder="e.g. designation" style={inputStyleSm} />
-                                        </div>
-                                        <div style={{ flex: 1.5 }}>
-                                            <label style={labelStyle}>Type</label>
-                                            <select value={field.type} onChange={e => {
-                                                const next = [...builderSteps];
-                                                next[stepIndex].fields[fieldIndex].type = e.target.value;
-                                                onStepsChange(next);
-                                            }} style={{ ...inputStyleSm, background: '#fff' }}>
-                                                {FIELD_TYPES.map(t => <option key={t} value={t}>{FIELD_TYPE_LABELS[t] || t}</option>)}
-                                            </select>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', paddingBottom: '8px', gap: '4px' }}>
-                                            <input type="checkbox" checked={field.required} onChange={e => {
-                                                const next = [...builderSteps];
-                                                next[stepIndex].fields[fieldIndex].required = e.target.checked;
-                                                onStepsChange(next);
-                                            }} />
-                                            <label style={{ fontSize: '12px', color: '#4b5563', marginRight: '8px' }}>Required</label>
-                                            <button onClick={() => {
-                                                if (window.confirm('Remove this field?')) {
-                                                    const next = [...builderSteps];
-                                                    next[stepIndex].fields.splice(fieldIndex, 1);
-                                                    onStepsChange(next);
-                                                }
-                                            }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                                                <Trash2 size={16} />
-                                            </button>
+                            {step.fields.map((field, fieldIndex) => {
+                                const isDragging = draggedIdx?.step === stepIndex && draggedIdx?.field === fieldIndex;
+                                const isOver = dragOverIdx === fieldIndex && draggedIdx?.step === stepIndex && !isDragging;
+                                const dragOverTop = isOver && draggedIdx.field > fieldIndex;
+                                const dragOverBottom = isOver && draggedIdx.field < fieldIndex;
+
+                                return (
+                                    <div 
+                                        key={fieldIndex} 
+                                        draggable={draggableIdx?.step === stepIndex && draggableIdx?.field === fieldIndex}
+                                        onDragStart={() => handleFieldDragStart(stepIndex, fieldIndex)}
+                                        onDragOver={(e) => handleFieldDragOver(e, fieldIndex)}
+                                        onDrop={() => handleFieldDrop(stepIndex, fieldIndex)}
+                                        onDragEnd={() => { setDraggedIdx(null); setDragOverIdx(null); setDraggableIdx(null); }}
+                                        style={{ 
+                                            marginBottom: '12px', 
+                                            padding: '12px',
+                                            paddingBottom: '16px',
+                                            background: isOver ? '#f8fafc' : 'transparent',
+                                            borderRadius: '8px',
+                                            opacity: isDragging ? 0.2 : 1,
+                                            transition: 'all 0.2s ease',
+                                            borderBottom: fieldIndex < step.fields.length - 1 ? '1px dashed #d1d5db' : '1px solid transparent',
+                                            position: 'relative'
+                                        }}
+                                    >
+                                        {dragOverTop && (
+                                            <div style={{ position: 'absolute', top: '-2px', left: 0, right: 0, height: '4px', background: '#3b82f6', borderRadius: '2px', zIndex: 10, boxShadow: '0 0 8px rgba(59,130,246,0.5)' }} />
+                                        )}
+                                        {dragOverBottom && (
+                                            <div style={{ position: 'absolute', bottom: '-2px', left: 0, right: 0, height: '4px', background: '#3b82f6', borderRadius: '2px', zIndex: 10, boxShadow: '0 0 8px rgba(59,130,246,0.5)' }} />
+                                        )}
+                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                                            <div 
+                                                onMouseEnter={() => setDraggableIdx({ step: stepIndex, field: fieldIndex })}
+                                                onMouseLeave={() => setDraggableIdx(null)}
+                                                style={{ marginTop: '30px', color: '#9ca3af', cursor: 'grab', padding: '4px' }}
+                                            >
+                                                <GripVertical size={18} />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginBottom: '8px' }}>
+                                                    <div style={{ flex: 2 }}>
+                                                        <label style={labelStyle}>Field Name</label>
+                                                        <input value={field.name} onChange={e => {
+                                                            const next = [...builderSteps];
+                                                            next[stepIndex].fields[fieldIndex].name = e.target.value;
+                                                            onStepsChange(next);
+                                                        }} placeholder="e.g. designation" style={inputStyleSm} />
+                                                    </div>
+                                                    <div style={{ flex: 1.5 }}>
+                                                        <label style={labelStyle}>Type</label>
+                                                        <select value={field.type} onChange={e => {
+                                                            const next = [...builderSteps];
+                                                            next[stepIndex].fields[fieldIndex].type = e.target.value;
+                                                            onStepsChange(next);
+                                                        }} style={{ ...inputStyleSm, background: '#fff' }}>
+                                                            {FIELD_TYPES.map(t => <option key={t} value={t}>{FIELD_TYPE_LABELS[t] || t}</option>)}
+                                                        </select>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', paddingBottom: '8px', gap: '4px' }}>
+                                                        <input type="checkbox" checked={field.required} onChange={e => {
+                                                            const next = [...builderSteps];
+                                                            next[stepIndex].fields[fieldIndex].required = e.target.checked;
+                                                            onStepsChange(next);
+                                                        }} />
+                                                        <label style={{ fontSize: '12px', color: '#4b5563', marginRight: '8px' }}>Required</label>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (window.confirm('Remove this field?')) {
+                                                                    const next = [...builderSteps];
+                                                                    next[stepIndex].fields.splice(fieldIndex, 1);
+                                                                    onStepsChange(next);
+                                                                }
+                                                            }} 
+                                                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Select options */}
+                                                {field.type === 'select' && (
+                                                    <div style={{ marginTop: '8px' }}>
+                                                        <label style={labelStyle}>Options</label>
+                                                        {(field.options || []).map((opt, optIdx) => (
+                                                            <div key={optIdx} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                                                <input value={opt} onChange={e => {
+                                                                    const next = [...builderSteps];
+                                                                    const opts = [...(next[stepIndex].fields[fieldIndex].options || [])];
+                                                                    opts[optIdx] = e.target.value;
+                                                                    next[stepIndex].fields[fieldIndex].options = opts;
+                                                                    onStepsChange(next);
+                                                                }} placeholder={`Option ${optIdx + 1}`} style={{ ...inputStyleSm, flex: 1 }} />
+                                                                <button type="button" onClick={() => {
+                                                                    const next = [...builderSteps];
+                                                                    const opts = [...(next[stepIndex].fields[fieldIndex].options || [])];
+                                                                    opts.splice(optIdx, 1);
+                                                                    next[stepIndex].fields[fieldIndex].options = opts;
+                                                                    onStepsChange(next);
+                                                                }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px', flexShrink: 0 }}>×</button>
+                                                            </div>
+                                                        ))}
+                                                        <button type="button" onClick={() => {
+                                                            const next = [...builderSteps];
+                                                            const opts = [...(next[stepIndex].fields[fieldIndex].options || []), ''];
+                                                            next[stepIndex].fields[fieldIndex].options = opts;
+                                                            onStepsChange(next);
+                                                        }} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '2px', background: '#f0f9ff', border: '1px solid #bae6fd', color: '#0369a1', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                                                            <Plus size={11} /> Add Option
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {/* Number min/max */}
+                                                {field.type === 'number' && (
+                                                    <div style={{ marginTop: '8px', display: 'flex', gap: '10px' }}>
+                                                        <div style={{ flex: 1 }}>
+                                                            <label style={labelStyle}>Min value</label>
+                                                            <input type="number" value={field.min ?? ''} onChange={e => {
+                                                                const next = [...builderSteps];
+                                                                next[stepIndex].fields[fieldIndex].min = e.target.value === '' ? undefined : Number(e.target.value);
+                                                                onStepsChange(next);
+                                                            }} style={inputStyleSm} placeholder="e.g. 0" />
+                                                        </div>
+                                                        <div style={{ flex: 1 }}>
+                                                            <label style={labelStyle}>Max value</label>
+                                                            <input type="number" value={field.max ?? ''} onChange={e => {
+                                                                const next = [...builderSteps];
+                                                                next[stepIndex].fields[fieldIndex].max = e.target.value === '' ? undefined : Number(e.target.value);
+                                                                onStepsChange(next);
+                                                            }} style={inputStyleSm} placeholder="optional" />
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Tuple/List sub-fields */}
+                                                {(field.type === 'tuple' || field.type === 'list') && (
+                                                    <div style={{ marginTop: '8px', background: '#f0f4ff', borderRadius: '6px', padding: '10px 12px' }}>
+                                                        <label style={{ ...labelStyle, marginBottom: '8px', display: 'block' }}>Columns</label>
+                                                        {(field.subFields || []).map((sf, sfIdx) => (
+                                                            <div key={sfIdx} style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '6px' }}>
+                                                                <input value={sf.name} onChange={e => {
+                                                                    const next = [...builderSteps];
+                                                                    const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
+                                                                    sfs[sfIdx] = { ...sfs[sfIdx], name: e.target.value };
+                                                                    next[stepIndex].fields[fieldIndex].subFields = sfs;
+                                                                    onStepsChange(next);
+                                                                }} placeholder="Column name" style={{ ...inputStyleSm, flex: 2 }} />
+                                                                <select value={sf.type} onChange={e => {
+                                                                    const next = [...builderSteps];
+                                                                    const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
+                                                                    sfs[sfIdx] = { ...sfs[sfIdx], type: e.target.value };
+                                                                    next[stepIndex].fields[fieldIndex].subFields = sfs;
+                                                                    onStepsChange(next);
+                                                                }} style={{ ...inputStyleSm, flex: 1, background: '#fff' }}>
+                                                                    {['text', 'number', 'date', 'bool', 'select'].map(t => (
+                                                                        <option key={t} value={t}>{FIELD_TYPE_LABELS[t] || t}</option>
+                                                                    ))}
+                                                                </select>
+                                                                <button type="button" onClick={() => {
+                                                                    const next = [...builderSteps];
+                                                                    const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
+                                                                    sfs.splice(sfIdx, 1);
+                                                                    next[stepIndex].fields[fieldIndex].subFields = sfs;
+                                                                    onStepsChange(next);
+                                                                }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px', flexShrink: 0 }}>×</button>
+                                                            </div>
+                                                        ))}
+                                                        <button type="button" onClick={() => {
+                                                            const next = [...builderSteps];
+                                                            const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || []), { name: '', type: 'text' }];
+                                                            next[stepIndex].fields[fieldIndex].subFields = sfs;
+                                                            onStepsChange(next);
+                                                        }} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '2px', background: '#e0e7ff', border: '1px solid #a5b4fc', color: '#3730a3', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                                                            <Plus size={11} /> Add Column
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-
-                                    {/* Select options */}
-                                    {field.type === 'select' && (
-                                        <div style={{ marginTop: '8px' }}>
-                                            <label style={labelStyle}>Options</label>
-                                            {(field.options || []).map((opt, optIdx) => (
-                                                <div key={optIdx} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                                                    <input value={opt} onChange={e => {
-                                                        const next = [...builderSteps];
-                                                        const opts = [...(next[stepIndex].fields[fieldIndex].options || [])];
-                                                        opts[optIdx] = e.target.value;
-                                                        next[stepIndex].fields[fieldIndex].options = opts;
-                                                        onStepsChange(next);
-                                                    }} placeholder={`Option ${optIdx + 1}`} style={{ ...inputStyleSm, flex: 1 }} />
-                                                    <button type="button" onClick={() => {
-                                                        const next = [...builderSteps];
-                                                        const opts = [...(next[stepIndex].fields[fieldIndex].options || [])];
-                                                        opts.splice(optIdx, 1);
-                                                        next[stepIndex].fields[fieldIndex].options = opts;
-                                                        onStepsChange(next);
-                                                    }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px', flexShrink: 0 }}>×</button>
-                                                </div>
-                                            ))}
-                                            <button type="button" onClick={() => {
-                                                const next = [...builderSteps];
-                                                const opts = [...(next[stepIndex].fields[fieldIndex].options || []), ''];
-                                                next[stepIndex].fields[fieldIndex].options = opts;
-                                                onStepsChange(next);
-                                            }} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '2px', background: '#f0f9ff', border: '1px solid #bae6fd', color: '#0369a1', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
-                                                <Plus size={11} /> Add Option
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {/* Number min/max */}
-                                    {field.type === 'number' && (
-                                        <div style={{ marginTop: '8px', display: 'flex', gap: '10px' }}>
-                                            <div style={{ flex: 1 }}>
-                                                <label style={labelStyle}>Min value</label>
-                                                <input type="number" value={field.min ?? ''} onChange={e => {
-                                                    const next = [...builderSteps];
-                                                    next[stepIndex].fields[fieldIndex].min = e.target.value === '' ? undefined : Number(e.target.value);
-                                                    onStepsChange(next);
-                                                }} style={inputStyleSm} placeholder="e.g. 0" />
-                                            </div>
-                                            <div style={{ flex: 1 }}>
-                                                <label style={labelStyle}>Max value</label>
-                                                <input type="number" value={field.max ?? ''} onChange={e => {
-                                                    const next = [...builderSteps];
-                                                    next[stepIndex].fields[fieldIndex].max = e.target.value === '' ? undefined : Number(e.target.value);
-                                                    onStepsChange(next);
-                                                }} style={inputStyleSm} placeholder="optional" />
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Tuple/List sub-fields */}
-                                    {(field.type === 'tuple' || field.type === 'list') && (
-                                        <div style={{ marginTop: '8px', background: '#f0f4ff', borderRadius: '6px', padding: '10px 12px' }}>
-                                            <label style={{ ...labelStyle, marginBottom: '8px', display: 'block' }}>Columns</label>
-                                            {(field.subFields || []).map((sf, sfIdx) => (
-                                                <div key={sfIdx} style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '6px' }}>
-                                                    <input value={sf.name} onChange={e => {
-                                                        const next = [...builderSteps];
-                                                        const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
-                                                        sfs[sfIdx] = { ...sfs[sfIdx], name: e.target.value };
-                                                        next[stepIndex].fields[fieldIndex].subFields = sfs;
-                                                        onStepsChange(next);
-                                                    }} placeholder="Column name" style={{ ...inputStyleSm, flex: 2 }} />
-                                                    <select value={sf.type} onChange={e => {
-                                                        const next = [...builderSteps];
-                                                        const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
-                                                        sfs[sfIdx] = { ...sfs[sfIdx], type: e.target.value };
-                                                        next[stepIndex].fields[fieldIndex].subFields = sfs;
-                                                        onStepsChange(next);
-                                                    }} style={{ ...inputStyleSm, flex: 1, background: '#fff' }}>
-                                                        {['text', 'number', 'date', 'bool', 'select'].map(t => (
-                                                            <option key={t} value={t}>{FIELD_TYPE_LABELS[t] || t}</option>
-                                                        ))}
-                                                    </select>
-                                                    <button type="button" onClick={() => {
-                                                        const next = [...builderSteps];
-                                                        const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
-                                                        sfs.splice(sfIdx, 1);
-                                                        next[stepIndex].fields[fieldIndex].subFields = sfs;
-                                                        onStepsChange(next);
-                                                    }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px', flexShrink: 0 }}>×</button>
-                                                </div>
-                                            ))}
-                                            <button type="button" onClick={() => {
-                                                const next = [...builderSteps];
-                                                const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || []), { name: '', type: 'text' }];
-                                                next[stepIndex].fields[fieldIndex].subFields = sfs;
-                                                onStepsChange(next);
-                                            }} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '2px', background: '#e0e7ff', border: '1px solid #a5b4fc', color: '#3730a3', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
-                                                <Plus size={11} /> Add Column
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                );
+                            })}
 
                             <button onClick={() => {
                                 const next = [...builderSteps];

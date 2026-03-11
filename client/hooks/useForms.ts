@@ -37,7 +37,11 @@ export function useForms() {
     }, []);
 
     const submitForm = useCallback(async (formTypeId: number, formData: Record<string, any>): Promise<Application> => {
-        return formSvc.createForm(formTypeId, formData);
+        const result = await formSvc.createForm(formTypeId, formData);
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('applications-updated'));
+        }
+        return result;
     }, []);
 
     const makeDecision = useCallback(async (
@@ -46,7 +50,11 @@ export function useForms() {
         remarks: string,
         approvalData: Record<string, any>
     ): Promise<Application> => {
-        return formSvc.updateFormStatus(formId, decision, remarks, approvalData);
+        const result = await formSvc.updateFormStatus(formId, decision, remarks, approvalData);
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('applications-updated'));
+        }
+        return result;
     }, []);
 
     const triggerDownloadPdf = useCallback(async (formId: number, fileName: string) => {

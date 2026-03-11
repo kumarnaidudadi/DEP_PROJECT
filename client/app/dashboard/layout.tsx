@@ -14,6 +14,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     useEffect(() => {
         fetchApplications();
+
+        const handleUpdate = () => {
+            fetchApplications();
+        };
+
+        window.addEventListener('applications-updated', handleUpdate);
+        return () => window.removeEventListener('applications-updated', handleUpdate);
     }, [fetchApplications]);
 
     // Determine if user can approve (for pending badge)

@@ -52,21 +52,10 @@ export default function FieldRenderer({
 }: FieldRendererProps) {
     const { key, type, options } = field;
 
-    // Wraps any rendered element with an "Auto-filled" badge when relevant
-    const withBadge = (el: React.ReactElement) => {
-        if (!isAutoFilled) return el;
-        return (
-            <div style={{ position: 'relative' }}>
-                {el}
-                <span style={{
-                    position: 'absolute', top: '-10px', right: '0',
-                    fontSize: '10px', fontWeight: 600, color: '#2563eb',
-                    background: '#eff6ff', border: '1px solid #bfdbfe',
-                    borderRadius: '4px', padding: '1px 6px',
-                    letterSpacing: '0.3px',
-                }}>Auto-filled</span>
-            </div>
-        );
+    const currentInputStyle = {
+        ...inputStyle,
+        background: isAutoFilled ? '#9cb5f339' : (inputStyle.background || '#ffffff'),
+        transition: 'background-color 0.3s ease, border-color 0.2s',
     };
 
     if (type === 'textarea') {
@@ -95,8 +84,8 @@ export default function FieldRenderer({
     }
 
     if (type === 'department') {
-        return withBadge(
-            <select value={value || ''} onChange={e => onChange(key, e.target.value)} style={{ ...inputStyle, background: '#fff' }}>
+        return (
+            <select value={value || ''} onChange={e => onChange(key, e.target.value)} style={currentInputStyle}>
                 <option value="">Select Department...</option>
                 {availableDepartments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
             </select>
@@ -104,8 +93,8 @@ export default function FieldRenderer({
     }
 
     if (type === 'role') {
-        return withBadge(
-            <select value={value || ''} onChange={e => onChange(key, e.target.value)} style={{ ...inputStyle, background: '#fff' }}>
+        return (
+            <select value={value || ''} onChange={e => onChange(key, e.target.value)} style={currentInputStyle}>
                 <option value="">Select Role...</option>
                 {availableRoles.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
@@ -178,13 +167,13 @@ export default function FieldRenderer({
             designation: 'Enter designation',
             employee_code: 'Enter employee code',
         };
-        return withBadge(
+        return (
             <input
                 type="text"
                 value={value || ''}
                 onChange={e => onChange(key, e.target.value)}
                 placeholder={placeholders[type]}
-                style={inputStyle}
+                style={currentInputStyle}
             />
         );
     }

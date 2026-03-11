@@ -2,7 +2,7 @@
 // ─── NewApplicationView ────────────────────────────────────────────────────────
 // Renders the form-type picker (middle panel) and form-fill panel (right panel).
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronRight, FileText, Plus, Send, Loader2, Upload, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { FormType, Profile, getSchemaFields, buildAutoFillData } from '@/types';
 import ListItem from '../ListItem';
@@ -136,8 +136,28 @@ export default function NewApplicationView({
     // Tracks which field keys were auto-filled from profile so FieldRenderer can badge them
     const [autoFilledKeys, setAutoFilledKeys] = useState<Set<string>>(new Set());
 
+    // Dynamically auto-fill fields once the form is selected and the profile is available
+    useEffect(() => {
+        if (selectedFormType && profile) {
+            const fields = getSchemaFields(selectedFormType.schema_definition);
+            const { data, autoFilledKeys: filled } = buildAutoFillData(fields, profile, liveRoles);
+            
+            setAutoFilledKeys(filled);
+            
+            // Auto-fill data if it's a fresh form
+            if (Object.keys(formData).length === 0) {
+                onFormDataChange(data);
+            }
+        }
+    }, [selectedFormType, profile, liveRoles]);
+
     const handleFieldChange = (key: string, value: any) => {
         onFormDataChange({ ...formData, [key]: value });
+        if (autoFilledKeys.has(key)) {
+            const nextKeys = new Set(autoFilledKeys);
+            nextKeys.delete(key);
+            setAutoFilledKeys(nextKeys);
+        }
     };
 
     const filteredForms = formTypes.filter(ft =>
@@ -154,21 +174,8 @@ export default function NewApplicationView({
 
     const renderFormList = (forms: FormType[], isInactiveSection = false) => forms.map(ft => (
         <ListItem key={ft.id} sel={highlightId === ft.id} onClick={() => {
-            const initialData: Record<string, any> = {};
-            const fields = getSchemaFields(ft.schema_definition);
-            fields.forEach(f => {
-                if (f.type === 'department' && profile?.department) initialData[f.key] = profile.department;
-                else if (f.type === 'role' && liveRoles.length > 0) initialData[f.key] = liveRoles[0];
-                else if (f.type === 'date_from_to') {
-                    const today = new Date();
-                    const tomorrow = new Date(today);
-                    tomorrow.setDate(today.getDate() + 1);
-                    initialData[`${f.key}_from`] = today.toISOString().split('T')[0];
-                    initialData[`${f.key}_to`] = tomorrow.toISOString().split('T')[0];
-                }
-            });
-            onFormDataChange(initialData);
-            onSelectFormType(ft);
+            onFormDataChange({}); // Reset any previous form data
+            onSelectFormType(ft); // useEffect handles the auto-filling once selected
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', opacity: isInactiveSection ? 0.7 : 1 }}>
                 <IconBox sel={selectedFormType?.id === ft.id}><FileText size={14} /></IconBox>
