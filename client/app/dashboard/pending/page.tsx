@@ -32,12 +32,12 @@ export default function PendingWorkPage() {
     const canApprove = storedRoles.length > 0 && !storedRoles.every(r => NON_APPROVER_ROLES.includes(r));
 
     const pendingApps = applications.filter(a => {
-        if (a.submitted_by === user?.id || isTerminal(a.current_status)) return false;
-        return a.form_approvals?.some((appr: any) => appr.decision === 'PENDING' && appr.approved_by === user?.id);
+        if (Number(a.submitted_by) === Number(user?.id) || isTerminal(a.current_status)) return false;
+        return a.form_approvals?.some((appr: any) => appr.decision === 'PENDING' && Number(appr.approved_by) === Number(user?.id));
     });
     const processedApps = applications.filter(a => {
-        if (a.submitted_by === user?.id || !isTerminal(a.current_status)) return false;
-        return a.form_approvals?.some((appr: any) => appr.decision !== 'PENDING' && appr.approved_by === user?.id);
+        if (Number(a.submitted_by) === Number(user?.id) || !isTerminal(a.current_status)) return false;
+        return a.form_approvals?.some((appr: any) => appr.decision !== 'PENDING' && Number(appr.approved_by) === Number(user?.id));
     });
 
     const handleDecision = async (decision: 'APPROVED' | 'REJECTED') => {
