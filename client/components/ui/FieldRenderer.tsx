@@ -32,6 +32,8 @@ interface FieldRendererProps {
     availableRoles?: string[];
     /** Backend base URL for rendering saved signatures */
     apiBaseUrl?: string;
+    /** Whether this field was auto-filled from the user's profile */
+    isAutoFilled?: boolean;
 }
 
 export default function FieldRenderer({
@@ -46,8 +48,26 @@ export default function FieldRenderer({
     availableDepartments = [],
     availableRoles = [],
     apiBaseUrl = 'http://localhost:4000',
+    isAutoFilled = false,
 }: FieldRendererProps) {
     const { key, type, options } = field;
+
+    // Wraps any rendered element with an "Auto-filled" badge when relevant
+    const withBadge = (el: React.ReactElement) => {
+        if (!isAutoFilled) return el;
+        return (
+            <div style={{ position: 'relative' }}>
+                {el}
+                <span style={{
+                    position: 'absolute', top: '-10px', right: '0',
+                    fontSize: '10px', fontWeight: 600, color: '#2563eb',
+                    background: '#eff6ff', border: '1px solid #bfdbfe',
+                    borderRadius: '4px', padding: '1px 6px',
+                    letterSpacing: '0.3px',
+                }}>Auto-filled</span>
+            </div>
+        );
+    };
 
     if (type === 'textarea') {
         return (
@@ -75,7 +95,7 @@ export default function FieldRenderer({
     }
 
     if (type === 'department') {
-        return (
+        return withBadge(
             <select value={value || ''} onChange={e => onChange(key, e.target.value)} style={{ ...inputStyle, background: '#fff' }}>
                 <option value="">Select Department...</option>
                 {availableDepartments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
@@ -84,7 +104,7 @@ export default function FieldRenderer({
     }
 
     if (type === 'role') {
-        return (
+        return withBadge(
             <select value={value || ''} onChange={e => onChange(key, e.target.value)} style={{ ...inputStyle, background: '#fff' }}>
                 <option value="">Select Role...</option>
                 {availableRoles.map(o => <option key={o} value={o}>{o}</option>)}
@@ -149,6 +169,23 @@ export default function FieldRenderer({
         const subFields = (field.subFields || []).map(sf => ({ key: sf.key, label: sf.label, type: sf.type }));
         return (
             <ListField fieldKey={key} subFields={subFields} value={Array.isArray(value) ? value : []} onChange={v => onChange(key, v)} />
+        );
+    }
+
+    if (type === 'name' || type === 'designation' || type === 'employee_code') {
+        const placeholders: Record<string, string> = {
+            name: 'Enter full name',
+            designation: 'Enter designation',
+            employee_code: 'Enter employee code',
+        };
+        return withBadge(
+            <input
+                type="text"
+                value={value || ''}
+                onChange={e => onChange(key, e.target.value)}
+                placeholder={placeholders[type]}
+                style={inputStyle}
+            />
         );
     }
 

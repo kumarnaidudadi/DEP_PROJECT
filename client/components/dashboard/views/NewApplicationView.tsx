@@ -2,9 +2,9 @@
 // ─── NewApplicationView ────────────────────────────────────────────────────────
 // Renders the form-type picker (middle panel) and form-fill panel (right panel).
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ChevronRight, FileText, Plus, Send, Loader2, Upload, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
-import { FormType, Profile, getSchemaFields } from '@/types';
+import { FormType, Profile, getSchemaFields, buildAutoFillData } from '@/types';
 import ListItem from '../ListItem';
 import StatusBadge from '../StatusBadge';
 import WorkflowProgress from '../WorkflowProgress';
@@ -132,6 +132,9 @@ export default function NewApplicationView({
 }: Props) {
     // activeFormTypeId is used for highlighting in list mode when selectedFormType is null
     const highlightId = selectedFormType?.id ?? activeFormTypeId;
+
+    // Tracks which field keys were auto-filled from profile so FieldRenderer can badge them
+    const [autoFilledKeys, setAutoFilledKeys] = useState<Set<string>>(new Set());
 
     const handleFieldChange = (key: string, value: any) => {
         onFormDataChange({ ...formData, [key]: value });
@@ -295,7 +298,7 @@ export default function NewApplicationView({
             <div style={{ background: '#fff', borderRadius: '10px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     {fields.map(f => (
-                        <div key={f.key} style={{ gridColumn: f.type === 'textarea' || f.type === 'list' ? 'span 2' : 'auto' }}>
+                        <div key={f.key} style={{ gridColumn: ['textarea', 'list', 'date_from_to', 'signature', 'name'].includes(f.type) ? 'span 2' : 'auto' }}>
                             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>
                                 {f.label} {f.required && <span style={{ color: '#ef4444' }}>*</span>}
                             </label>
@@ -310,6 +313,7 @@ export default function NewApplicationView({
                                 sigUploading={sigUploading}
                                 availableDepartments={availableDepartments}
                                 availableRoles={availableRoles}
+                                isAutoFilled={autoFilledKeys.has(f.key)}
                             />
                         </div>
                     ))}
