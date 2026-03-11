@@ -60,6 +60,7 @@ interface Props {
     formTypes: FormType[];
     searchQuery: string;
     selectedFormType: FormType | null;
+    activeFormTypeId?: number | null;
     formData: Record<string, any>;
     submitting: boolean;
     submitSuccess: boolean;
@@ -79,11 +80,13 @@ interface Props {
 }
 
 export default function NewApplicationView({
-    formTypes, searchQuery, selectedFormType, formData, submitting, submitSuccess,
+    formTypes, searchQuery, selectedFormType, activeFormTypeId, formData, submitting, submitSuccess,
     isAdmin, profile, sigUploading, availableDepartments, availableRoles, liveRoles,
     onSelectFormType, onFormDataChange, onSubmit, onCancel, onEditFormType,
     onCreateFormType, onSigUpload,
 }: Props) {
+    // activeFormTypeId is used for highlighting in list mode when selectedFormType is null
+    const highlightId = selectedFormType?.id ?? activeFormTypeId;
 
     const handleFieldChange = (key: string, value: any) => {
         onFormDataChange({ ...formData, [key]: value });
@@ -101,7 +104,7 @@ export default function NewApplicationView({
                 {filteredForms.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af', fontSize: '12px' }}>No forms available</div>
                 ) : filteredForms.map(ft => (
-                    <ListItem key={ft.id} sel={selectedFormType?.id === ft.id} onClick={() => {
+                    <ListItem key={ft.id} sel={highlightId === ft.id} onClick={() => {
                         // Pre-fill smart fields
                         const initialData: Record<string, any> = {};
                         const fields = getSchemaFields(ft.schema_definition);

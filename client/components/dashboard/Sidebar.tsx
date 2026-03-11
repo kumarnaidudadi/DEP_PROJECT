@@ -1,45 +1,51 @@
 'use client';
 // ─── Sidebar ───────────────────────────────────────────────────────────────────
-// Icon-only sidebar with tooltips. Extracted from dashboard/page.tsx.
+// Icon-only sidebar with tooltips. Uses Next.js router for navigation.
 
 import React from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import {
     FilePlus, FileText, ClipboardList, LayoutDashboard,
     User, LogOut, Building2
 } from 'lucide-react';
-import { SidebarView } from '@/types';
+
+interface SidebarProps {
+    canApprove: boolean;
+    pendingCount: number;
+    onLogout: () => void;
+}
 
 interface SidebarItem {
-    id: SidebarView;
+    href: string;
     icon: React.ReactNode;
     label: string;
     badge?: number;
 }
 
-interface SidebarProps {
-    activeView: SidebarView;
-    canApprove: boolean;
-    pendingCount: number;
-    onNavigate: (view: SidebarView) => void;
-    onLogout: () => void;
-}
-
 const SB_W = 64;
 
-export default function Sidebar({ activeView, canApprove, pendingCount, onNavigate, onLogout }: SidebarProps) {
+export default function Sidebar({ canApprove, pendingCount, onLogout }: SidebarProps) {
+    const router = useRouter();
+    const pathname = usePathname();
+
     const items: SidebarItem[] = [
-        { id: 'dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-        { id: 'new', icon: <FilePlus size={20} />, label: 'New Application' },
-        { id: 'all', icon: <FileText size={20} />, label: 'All Applications' },
-        ...(canApprove ? [{ id: 'pending' as SidebarView, icon: <ClipboardList size={20} />, label: 'Pending Work', badge: pendingCount || undefined }] : []),
+        { href: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
+        { href: '/dashboard/new', icon: <FilePlus size={20} />, label: 'New Application' },
+        { href: '/dashboard/all', icon: <FileText size={20} />, label: 'All Applications' },
+        ...(canApprove ? [{ href: '/dashboard/pending', icon: <ClipboardList size={20} />, label: 'Pending Work', badge: pendingCount || undefined }] : []),
     ];
 
-    const navBtn = (id: SidebarView, icon: React.ReactNode, label: string, badge?: number) => {
-        const active = activeView === id;
+    const isActive = (href: string) => {
+        if (href === '/dashboard') return pathname === '/dashboard';
+        return pathname.startsWith(href);
+    };
+
+    const navBtn = (href: string, icon: React.ReactNode, label: string, badge?: number) => {
+        const active = isActive(href);
         return (
-            <div key={id} style={{ position: 'relative' }} className="group">
+            <div key={href} style={{ position: 'relative' }} className="group">
                 <button
-                    onClick={() => onNavigate(id)}
+                    onClick={() => router.push(href)}
                     style={{
                         width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         padding: '12px 0', border: 'none',
@@ -82,12 +88,12 @@ export default function Sidebar({ activeView, canApprove, pendingCount, onNaviga
 
             {/* Nav */}
             <nav style={{ flex: 1, padding: '12px 0', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {items.map(item => navBtn(item.id, item.icon, item.label, item.badge))}
+                {items.map(item => navBtn(item.href, item.icon, item.label, item.badge))}
             </nav>
 
             {/* Bottom: profile + logout */}
             <div style={{ padding: '12px 0', borderTop: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {navBtn('profile', <User size={20} />, 'Profile')}
+                {navBtn('/dashboard/profile', <User size={20} />, 'Profile')}
                 <div style={{ position: 'relative' }} className="group">
                     <button onClick={onLogout} style={{
                         width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
