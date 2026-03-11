@@ -29,8 +29,6 @@ import ApplicationDetail from '@/components/dashboard/views/ApplicationDetail';
 import CreateFormView from '@/components/dashboard/views/CreateFormView';
 import ProfileView from '@/components/dashboard/views/ProfileView';
 
-// ──────────────────────────────────────────────────────────────────────────────
-
 const isTerminal = (s: string) => ['APPROVED', 'REJECTED'].includes(s);
 
 export default function Dashboard() {
@@ -96,7 +94,7 @@ export default function Dashboard() {
     const canApprove = allRoles.length > 0 && !allRoles.every(r => NON_APPROVER_ROLES.includes(r));
 
     // ── Derived data ──────────────────────────────────────────────────────────
-    const myApps = applications.filter(a => a.submitted_by === user?.id);
+    const myApps = applications.filter(a => Number(a.submitted_by) === Number(user?.id));
     const ongoingApps = myApps.filter(a => !isTerminal(a.current_status));
     const completedApps = myApps.filter(a => isTerminal(a.current_status));
 

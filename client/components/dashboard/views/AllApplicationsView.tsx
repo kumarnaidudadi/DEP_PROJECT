@@ -13,7 +13,7 @@ interface Props {
     appTab: 'ongoing' | 'completed';
     searchQuery: string;
     isAdmin: boolean;
-    userId: number;
+    userId: number | undefined;
     onSelect: (app: Application) => void;
 }
 
@@ -22,7 +22,7 @@ const isTerminal = (s: string) => ['APPROVED', 'REJECTED'].includes(s);
 export default function AllApplicationsView({
     applications, selectedApp, appTab, searchQuery, isAdmin, userId, onSelect,
 }: Props) {
-    const baseApps = isAdmin ? applications : applications.filter(a => a.submitted_by === userId);
+    const baseApps = isAdmin ? applications : applications.filter(a => Number(a.submitted_by) === Number(userId));
     let list = appTab === 'ongoing'
         ? baseApps.filter(a => !isTerminal(a.current_status))
         : baseApps.filter(a => isTerminal(a.current_status));
