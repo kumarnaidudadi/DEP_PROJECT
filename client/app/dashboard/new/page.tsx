@@ -73,8 +73,15 @@ export default function NewApplicationPage() {
             }
         }
 
+        const newActive = !isDeactivating;
+
+        // Optimistic UI Update: Instantly flip the toggle and move the form in lists
+        setFormTypes(prev => prev.map(f => f.id === ft.id ? { ...f, is_active: newActive } : f));
+        if (selectedFormType?.id === ft.id) {
+            setSelectedFormType(prev => prev ? { ...prev, is_active: newActive } : prev);
+        }
+
         try {
-            const newActive = !isDeactivating;
             await formTypeSvc.updateFormType(ft.id, {
                 name: ft.name,
                 description: ft.description,
@@ -84,16 +91,12 @@ export default function NewApplicationPage() {
             });
             
             setToast({ message: `Form type "${ft.name}" ${newActive ? 'activated' : 'deactivated'} successfully.`, type: 'success' });
-            
-            // Update local state
-            setFormTypes(prev => prev.map(f => f.id === ft.id ? { ...f, is_active: newActive } : f));
-            
-            // If we deactivated it, clear the selection so it doesn't stay on screen in the wrong tab
-            if (isDeactivating && selectedFormType?.id === ft.id) {
-                setSelectedFormType(null);
-                setFormData({});
-            }
         } catch (e: any) {
+            // Rollback optimistic update on failure
+            setFormTypes(prev => prev.map(f => f.id === ft.id ? { ...f, is_active: !newActive } : f));
+            if (selectedFormType?.id === ft.id) {
+                setSelectedFormType(prev => prev ? { ...prev, is_active: !newActive } : prev);
+            }
             setToast({ message: e.response?.data?.error || 'Failed to update the form status.', type: 'error' });
         }
     };
