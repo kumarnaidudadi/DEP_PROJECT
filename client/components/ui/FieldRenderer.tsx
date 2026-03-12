@@ -7,6 +7,7 @@ import React from 'react';
 import { Upload } from 'lucide-react';
 import SignaturePad from './SignaturePad';
 import ListField from './ListField';
+import TupleField from './TupleField';
 import { FieldDef } from '@/types';
 
 const inputStyle: React.CSSProperties = {
@@ -78,7 +79,6 @@ export default function FieldRenderer({
             <div style={{ display: 'flex', alignItems: 'center', height: '100%', padding: '0 8px' }}>
                 <input type="checkbox" checked={value === true || value === 'true'} onChange={e => onChange(key, e.target.checked)}
                     style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#2563eb' }} />
-                <span style={{ marginLeft: '10px', fontSize: '13px', color: '#4b5563' }}>{field.label}</span>
             </div>
         );
     }
@@ -158,6 +158,13 @@ export default function FieldRenderer({
         const subFields = (field.subFields || []).map(sf => ({ key: sf.key, label: sf.label, type: sf.type }));
         return (
             <ListField fieldKey={key} subFields={subFields} value={Array.isArray(value) ? value : []} onChange={v => onChange(key, v)} />
+        );
+    }
+
+    if (type === 'tuple') {
+        const subFields = (field.subFields || []).map(sf => ({ key: sf.key, label: sf.label, type: sf.type }));
+        return (
+            <TupleField fieldKey={key} subFields={subFields} value={value || {}} onChange={v => onChange(key, v)} />
         );
     }
 

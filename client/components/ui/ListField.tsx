@@ -47,12 +47,46 @@ export default function ListField({ subFields, value, onChange }: ListFieldProps
                         <tr key={rowIdx} style={{ borderBottom: '1px solid #f3f4f6' }}>
                             {subFields.map(sf => (
                                 <td key={sf.key} style={{ padding: '5px 6px' }}>
-                                    <input
-                                        type={sf.type === 'number' ? 'number' : sf.type === 'date' ? 'date' : 'text'}
-                                        value={row[sf.key] ?? ''}
-                                        onChange={e => updateCell(rowIdx, sf.key, e.target.value)}
-                                        style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
-                                    />
+                                    {sf.type === 'date_from_to' ? (
+                                        <div style={{ display: 'flex', gap: '4px' }}>
+                                            <input
+                                                type="date"
+                                                value={row[`${sf.key}_from`] ?? ''}
+                                                onChange={e => updateCell(rowIdx, `${sf.key}_from`, e.target.value)}
+                                                style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                                            />
+                                            <span style={{ display: 'flex', alignItems: 'center', color: '#6b7280', fontSize: '11px' }}>to</span>
+                                            <input
+                                                type="date"
+                                                value={row[`${sf.key}_to`] ?? ''}
+                                                onChange={e => updateCell(rowIdx, `${sf.key}_to`, e.target.value)}
+                                                style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                                            />
+                                        </div>
+                                    ) : sf.type === 'select' ? (
+                                        <select
+                                            value={row[sf.key] ?? ''}
+                                            onChange={e => updateCell(rowIdx, sf.key, e.target.value)}
+                                            style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}
+                                        >
+                                            <option value="">Select...</option>
+                                            {(sf as any).options?.map((o: string) => <option key={o} value={o}>{o}</option>)}
+                                        </select>
+                                    ) : sf.type === 'bool' ? (
+                                        <input
+                                            type="checkbox"
+                                            checked={row[sf.key] === true || row[sf.key] === 'true'}
+                                            onChange={e => updateCell(rowIdx, sf.key, e.target.checked)}
+                                            style={{ width: '16px', height: '16px', margin: '0 auto', display: 'block' }}
+                                        />
+                                    ) : (
+                                        <input
+                                            type={sf.type === 'number' ? 'number' : sf.type === 'date' ? 'date' : 'text'}
+                                            value={row[sf.key] ?? ''}
+                                            onChange={e => updateCell(rowIdx, sf.key, e.target.value)}
+                                            style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                                        />
+                                    )}
                                 </td>
                             ))}
                             <td style={{ padding: '5px 4px', textAlign: 'center' }}>
