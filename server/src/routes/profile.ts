@@ -5,6 +5,7 @@ import fs from 'fs';
 import prisma from '../prisma';
 import { verifyToken, AuthenticatedRequest } from '../middleware/authMiddleware';
 import { Response } from 'express';
+import { EncryptionService } from '../services/EncryptionService';
 
 const router = express.Router();
 
@@ -14,16 +15,8 @@ if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-        cb(null, `sig-${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`);
-    }
-});
-
 const upload = multer({
-    storage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         if (file.mimetype.startsWith('image/')) cb(null, true);
@@ -139,7 +132,16 @@ router.post('/signature', verifyToken, upload.single('signature'), async (req: A
         const file = req.file;
         if (!file) return res.status(400).json({ error: 'No signature file provided' });
 
-        const signatureUrl = `/uploads/signatures/${file.filename}`;
+        // Generate filename and save path
+        const ext = path.extname(file.originalname);
+        const filename = `sig-${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`;
+        const filePath = path.join(uploadDir, filename);
+
+        // Encrypt and write to disk
+        const encryptedBuffer = EncryptionService.encrypt(file.buffer);
+        fs.writeFileSync(filePath, encryptedBuffer);
+
+        const signatureUrl = `/uploads/signatures/${filename}`;
 
         // Use raw query to update signature_url since TS types might not be fresh
         await prisma.$executeRaw`UPDATE users SET signature_url = ${signatureUrl}, updated_at = NOW() WHERE id = ${userId}`;

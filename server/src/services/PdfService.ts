@@ -9,6 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { IPdfService } from './IPdfService';
+import { EncryptionService } from './EncryptionService';
 
 export class PdfService implements IPdfService {
     constructor(private readonly prisma: PrismaClient) { }
@@ -90,7 +91,15 @@ export class PdfService implements IPdfService {
                 const sigPath = path.join(__dirname, '../../', cleanUrl);
 
                 if (fs.existsSync(sigPath)) {
-                    const sigImageBytes = fs.readFileSync(sigPath);
+                    const encryptedBytes = fs.readFileSync(sigPath);
+                    let sigImageBytes;
+                    try {
+                        sigImageBytes = EncryptionService.decrypt(encryptedBytes);
+                    } catch (decErr) {
+                        console.error('Failed to decrypt signature:', decErr);
+                        return; // Handle gracefully without breaking PDF gen
+                    }
+
                     let sigImage;
 
                     if (sigPath.toLowerCase().endsWith('.png')) {

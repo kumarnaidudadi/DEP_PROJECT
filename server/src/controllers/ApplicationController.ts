@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import prisma from '../prisma';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
+import fs from 'fs';
+import path from 'path';
+import { EncryptionService } from '../services/EncryptionService';
 
 // ─── CREATE APPLICATION ──────────────────────────────────────────────
 export async function createApplication(req: AuthenticatedRequest, res: Response) {
@@ -134,7 +137,15 @@ export async function updateStatus(req: AuthenticatedRequest, res: Response) {
         // 2. Log approval action
         const approvalData: any = {};
         if (signatureFile) {
-            approvalData.signature_url = `/uploads/signatures/${signatureFile.filename}`;
+            const ext = path.extname(signatureFile.originalname);
+            const filename = `signature-${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`;
+            const uploadDir = path.join(__dirname, '../../../uploads/signatures');
+            const filePath = path.join(uploadDir, filename);
+
+            const encryptedBuffer = EncryptionService.encrypt(signatureFile.buffer);
+            fs.writeFileSync(filePath, encryptedBuffer);
+
+            approvalData.signature_url = `/uploads/signatures/${filename}`;
         }
 
         await prisma.form_approvals.create({
