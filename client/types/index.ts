@@ -93,7 +93,7 @@ export const FIELD_TYPES = [
     'text', 'number', 'date', 'date_from_to',
     'bool', 'select', 'textarea', 'signature',
     'department', 'role', 'tuple', 'list',
-    'name', 'designation', 'employee_code',
+    'name', 'designation', 'employee_code', 'heading'
 ];
 
 export const FIELD_TYPE_LABELS: Record<string, string> = {
@@ -102,6 +102,7 @@ export const FIELD_TYPE_LABELS: Record<string, string> = {
     signature: 'Signature', department: 'Department', role: 'Role',
     tuple: 'Group (Tuple)', list: 'Repeating List',
     name: 'Name', designation: 'Designation', employee_code: 'Employee Code',
+    heading: 'Section Heading',
 };
 
 // ─── Auto-fill ─────────────────────────────────────────────────────────────────
@@ -169,10 +170,10 @@ export function getSchemaFields(schema: any): FieldDef[] {
 
     if (schema && typeof schema === 'object' && Array.isArray(schema['1'])) {
         const fields: FieldDef[] = [];
-        schema['1'].forEach((item: any) => {
+        schema['1'].forEach((item: any, idx: number) => {
             if (item.name) {
                 fields.push({
-                    key: item.name.replace(/\s+/g, '_'),
+                    key: `${item.name.replace(/\s+/g, '_')}_${idx}`,
                     label: item.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
                     type: item.type || 'text',
                     required: item.required === true || item.required === 'true',
@@ -180,8 +181,8 @@ export function getSchemaFields(schema: any): FieldDef[] {
                     min: item.min,
                     max: item.max,
                     subFields: Array.isArray(item.subFields)
-                        ? item.subFields.map((sf: any) => ({
-                            key: sf.name.replace(/\s+/g, '_'),
+                        ? item.subFields.map((sf: any, sIdx: number) => ({
+                            key: `${sf.name.replace(/\s+/g, '_')}_${sIdx}`,
                             label: sf.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
                             type: sf.type || 'text',
                         }))
@@ -224,10 +225,10 @@ export function getApprovalFields(schema: any, steps: any[], currentStatus: stri
 
     if (Array.isArray(stepConfig)) {
         const fields: FieldDef[] = [];
-        stepConfig.forEach((item: any) => {
+        stepConfig.forEach((item: any, idx: number) => {
             if (item.name) {
                 fields.push({
-                    key: item.name.replace(/\s+/g, '_'),
+                    key: `${item.name.replace(/\s+/g, '_')}_${idx}`,
                     label: item.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
                     type: item.type || 'text',
                     required: item.required === true || item.required === 'true',

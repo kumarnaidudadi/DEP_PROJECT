@@ -104,6 +104,9 @@ export default function ApplicationDetail({
                         const fieldsInStep = stepConfig.slice(1).map((f: any) => {
                             const normalizedName = f.name?.replace(/\s+/g, '_');
                             if (!normalizedName) return [];
+                            if (f.type === 'heading') {
+                                return [{ key: normalizedName, value: null, type: 'heading', originalName: f.name }];
+                            }
                             if (f.type === 'date_from_to') {
                                 return [
                                     { key: `${normalizedName}_from`, value: sourceData[`${normalizedName}_from`] },
@@ -111,18 +114,27 @@ export default function ApplicationDetail({
                                 ];
                             }
                             return [{ key: normalizedName, value: sourceData[normalizedName] }];
-                        }).flat().filter((obj: any) => obj.key && obj.value !== undefined && obj.value !== '');
+                        }).flat().filter((obj: any) => (obj.key && obj.value !== undefined && obj.value !== '') || obj.type === 'heading');
 
                         if (fieldsInStep.length > 0) {
                             fieldsInStep.forEach((f: any) => renderedFields.add(f.key));
                             panels.push(
                                 <Panel key={`step-${stepKey}`} title={panelTitle} style={{ marginBottom: 0 }}>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                                        {fieldsInStep.map((f: any) => {
-                                            const { key: k, value: v } = f;
+                                        {fieldsInStep.map((f: any, idx: number) => {
+                                            const { key: k, value: v, type, originalName } = f;
+                                            const uniqueKey = `${k}_${idx}`;
+                                            if (type === 'heading') {
+                                                return (
+                                                    <div key={uniqueKey} style={{ gridColumn: 'span 2', marginTop: '12px', borderBottom: '1px solid #e5e7eb', paddingBottom: '4px' }}>
+                                                        <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#374151', margin: 0 }}>{originalName}</h4>
+                                                    </div>
+                                                );
+                                            }
+
                                             const isWide = Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('/uploads/signatures'));
                                             return (
-                                                <div key={k} style={{ gridColumn: isWide ? 'span 2' : 'auto' }}>
+                                                <div key={uniqueKey} style={{ gridColumn: isWide ? 'span 2' : 'auto' }}>
                                                     <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k.replace(/_/g, ' ')}</div>
                                                     {typeof v === 'string' && v.startsWith('/uploads/signatures') ? (
                                                         <img src={`http://localhost:4000${v}`} alt="Signature" style={{ maxHeight: '60px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#fff', padding: '4px' }} />
@@ -186,21 +198,31 @@ export default function ApplicationDetail({
                         if (approvalFields.length > 0) {
                             return (
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-                                    {approvalFields.map(f => (
-                                        <div key={f.key} style={{ gridColumn: ['textarea', 'tuple', 'list', 'signature'].includes(f.type) ? 'span 2' : 'auto' }}>
-                                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>
-                                                {f.label} {f.required && <span style={{ color: '#ef4444' }}>*</span>}
-                                            </label>
-                                            <FieldRenderer
-                                                field={f}
-                                                value={approvalData[f.key]}
-                                                onChange={(key, val) => onApprovalData({ ...approvalData, [key]: val })}
-                                                profileSignatureUrl={profile?.signature_url}
-                                                onSignatureUpload={onSigUpload}
-                                                sigUploading={sigUploading}
-                                            />
-                                        </div>
-                                    ))}
+                                    {approvalFields.map(f => {
+                                        if (f.type === 'heading') {
+                                            return (
+                                                <div key={f.key} style={{ gridColumn: 'span 2', marginTop: '12px', borderBottom: '1px solid #e5e7eb', paddingBottom: '4px' }}>
+                                                    <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#374151', margin: 0 }}>{f.label}</h4>
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <div key={f.key} style={{ gridColumn: ['textarea', 'tuple', 'list', 'signature'].includes(f.type) ? 'span 2' : 'auto' }}>
+                                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>
+                                                    {f.label} {f.required && <span style={{ color: '#ef4444' }}>*</span>}
+                                                </label>
+                                                <FieldRenderer
+                                                    field={f}
+                                                    value={approvalData[f.key]}
+                                                    onChange={(key, val) => onApprovalData({ ...approvalData, [key]: val })}
+                                                    profileSignatureUrl={profile?.signature_url}
+                                                    onSignatureUpload={onSigUpload}
+                                                    sigUploading={sigUploading}
+                                                />
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             );
                         }

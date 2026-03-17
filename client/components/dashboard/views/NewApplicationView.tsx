@@ -304,26 +304,37 @@ export default function NewApplicationView({
             {/* Form fields */}
             <div style={{ background: '#fff', borderRadius: '10px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    {fields.map(f => (
-                        <div key={f.key} style={{ gridColumn: ['textarea', 'list', 'tuple', 'date_from_to', 'signature', 'name'].includes(f.type) ? 'span 2' : 'auto' }}>
-                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>
-                                {f.label} {f.required && <span style={{ color: '#ef4444' }}>*</span>}
-                            </label>
-                            <FieldRenderer
-                                field={f}
-                                value={f.type === 'date_from_to' ? undefined : formData[f.key]}
-                                fromValue={formData[`${f.key}_from`]}
-                                toValue={formData[`${f.key}_to`]}
-                                onChange={handleFieldChange}
-                                profileSignatureUrl={profile?.signature_url}
-                                onSignatureUpload={onSigUpload}
-                                sigUploading={sigUploading}
-                                availableDepartments={availableDepartments}
-                                availableRoles={availableRoles}
-                                isAutoFilled={autoFilledKeys.has(f.key)}
-                            />
-                        </div>
-                    ))}
+                    {fields.map((f, idx) => {
+                        const uniqueKey = `${f.key}_${idx}`;
+                        if (f.type === 'heading') {
+                            return (
+                                <div key={uniqueKey} style={{ gridColumn: 'span 2', marginTop: '16px', marginBottom: '8px', borderBottom: '2px solid #e5e7eb', paddingBottom: '8px' }}>
+                                    <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1f2937', margin: 0 }}>{f.label}</h3>
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <div key={uniqueKey} style={{ gridColumn: ['textarea', 'list', 'tuple', 'date_from_to', 'signature', 'name'].includes(f.type) ? 'span 2' : 'auto' }}>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>
+                                    {f.label} {f.required && <span style={{ color: '#ef4444' }}>*</span>}
+                                </label>
+                                <FieldRenderer
+                                    field={f}
+                                    value={f.type === 'date_from_to' ? undefined : formData[f.key]}
+                                    fromValue={formData[`${f.key}_from`]}
+                                    toValue={formData[`${f.key}_to`]}
+                                    onChange={handleFieldChange}
+                                    profileSignatureUrl={profile?.signature_url}
+                                    onSignatureUpload={onSigUpload}
+                                    sigUploading={sigUploading}
+                                    availableDepartments={availableDepartments}
+                                    availableRoles={availableRoles}
+                                    isAutoFilled={autoFilledKeys.has(f.key)}
+                                />
+                            </div>
+                        );
+                    })}
                 </div>
                 <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                     <BtnSecondary onClick={onCancel}>Cancel</BtnSecondary>

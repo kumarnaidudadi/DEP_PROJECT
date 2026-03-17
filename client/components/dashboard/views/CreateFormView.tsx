@@ -44,7 +44,7 @@ export default function CreateFormView({
 }: Props) {
     // For field reordering within a stage
     const [draggedIdx, setDraggedIdx] = React.useState<{ step: number; field: number } | null>(null);
-    const [dragOverIdx, setDragOverIdx] = React.useState<number | null>(null);
+    const [dragOverIdx, setDragOverIdx] = React.useState<{ step: number; field: number } | null>(null);
     const [draggableIdx, setDraggableIdx] = React.useState<{ step: number; field: number } | null>(null);
 
     const updateStep = (idx: number, partial: Partial<BuilderStep>) => {
@@ -57,24 +57,32 @@ export default function CreateFormView({
         setDraggedIdx({ step: stepIdx, field: fieldIdx });
     };
 
-    const handleFieldDragOver = (e: React.DragEvent, fieldIdx: number) => {
+    const handleFieldDragOver = (e: React.DragEvent, stepIdx: number, fieldIdx: number) => {
         e.preventDefault();
-        setDragOverIdx(fieldIdx);
+        setDragOverIdx({ step: stepIdx, field: fieldIdx });
     };
 
-    const handleFieldDrop = (stepIdx: number, targetFieldIdx: number) => {
-        if (!draggedIdx || draggedIdx.step !== stepIdx) {
+    const handleFieldDrop = (targetStepIdx: number, targetFieldIdx: number) => {
+        if (!draggedIdx) {
             setDraggedIdx(null);
             setDragOverIdx(null);
             return;
         }
 
         const next = [...builderSteps];
-        const stepFields = [...next[stepIdx].fields];
-        const [movedField] = stepFields.splice(draggedIdx.field, 1);
-        stepFields.splice(targetFieldIdx, 0, movedField);
-        
-        next[stepIdx] = { ...next[stepIdx], fields: stepFields };
+        const sourceStepFields = [...next[draggedIdx.step].fields];
+        const [movedField] = sourceStepFields.splice(draggedIdx.field, 1);
+
+        if (draggedIdx.step === targetStepIdx) {
+            sourceStepFields.splice(targetFieldIdx, 0, movedField);
+            next[draggedIdx.step] = { ...next[draggedIdx.step], fields: sourceStepFields };
+        } else {
+            const targetStepFields = [...next[targetStepIdx].fields];
+            targetStepFields.splice(targetFieldIdx, 0, movedField);
+            next[draggedIdx.step] = { ...next[draggedIdx.step], fields: sourceStepFields };
+            next[targetStepIdx] = { ...next[targetStepIdx], fields: targetStepFields };
+        }
+
         onStepsChange(next);
         setDraggedIdx(null);
         setDragOverIdx(null);
@@ -173,31 +181,50 @@ export default function CreateFormView({
                         </div>
 
                         {/* Fields list */}
-                        <div style={{ background: '#f9fafb', padding: '16px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                        <div style={{ background: '#f9fafb', padding: '16px', borderRadius: '8px', border: '1px solid #e5e7eb', minHeight: '100px' }}>
                             <div style={{ fontSize: '12px', fontWeight: 600, color: '#4b5563', marginBottom: '12px' }}>Fields for this step</div>
+                            {step.fields.length === 0 && (
+                                <div 
+                                    onDragOver={(e) => { e.preventDefault(); setDragOverIdx({ step: stepIndex, field: 0 }); }}
+                                    onDrop={(e) => { e.stopPropagation(); handleFieldDrop(stepIndex, 0); }}
+                                    style={{ 
+                                        padding: '24px', 
+                                        textAlign: 'center', 
+                                        border: dragOverIdx?.step === stepIndex ? '2px dashed #3b82f6' : '2px dashed #d1d5db',
+                                        borderRadius: '8px',
+                                        color: '#9ca3af',
+                                        marginBottom: '12px',
+                                        background: dragOverIdx?.step === stepIndex ? '#eff6ff' : 'transparent',
+                                        transition: 'all 0.2s ease',
+                                    }}
+                                >
+                                    Drop a field here
+                                </div>
+                            )}
                             {step.fields.map((field, fieldIndex) => {
                                 const isDragging = draggedIdx?.step === stepIndex && draggedIdx?.field === fieldIndex;
-                                const isOver = dragOverIdx === fieldIndex && draggedIdx?.step === stepIndex && !isDragging;
-                                const dragOverTop = isOver && draggedIdx.field > fieldIndex;
-                                const dragOverBottom = isOver && draggedIdx.field < fieldIndex;
+                                const isOver = dragOverIdx?.step === stepIndex && dragOverIdx?.field === fieldIndex && !isDragging;
+                                const dragOverTop = isOver && (!draggedIdx || draggedIdx.step !== stepIndex || draggedIdx.field > fieldIndex);
+                                const dragOverBottom = isOver && draggedIdx?.step === stepIndex && draggedIdx?.field < fieldIndex;
 
                                 return (
                                     <div 
                                         key={fieldIndex} 
                                         draggable={draggableIdx?.step === stepIndex && draggableIdx?.field === fieldIndex}
                                         onDragStart={() => handleFieldDragStart(stepIndex, fieldIndex)}
-                                        onDragOver={(e) => handleFieldDragOver(e, fieldIndex)}
-                                        onDrop={() => handleFieldDrop(stepIndex, fieldIndex)}
+                                        onDragOver={(e) => handleFieldDragOver(e, stepIndex, fieldIndex)}
+                                        onDrop={(e) => { e.stopPropagation(); handleFieldDrop(stepIndex, fieldIndex); }}
                                         onDragEnd={() => { setDraggedIdx(null); setDragOverIdx(null); setDraggableIdx(null); }}
                                         style={{ 
                                             marginBottom: '12px', 
                                             padding: '12px',
                                             paddingBottom: '16px',
-                                            background: isOver ? '#f8fafc' : 'transparent',
+                                            background: isOver ? '#f8fafc' : (field.type === 'heading' ? '#f3f4f6' : 'transparent'),
                                             borderRadius: '8px',
                                             opacity: isDragging ? 0.2 : 1,
                                             transition: 'all 0.2s ease',
                                             borderBottom: fieldIndex < step.fields.length - 1 ? '1px dashed #d1d5db' : '1px solid transparent',
+                                            borderLeft: field.type === 'heading' ? '4px solid #4b5563' : '4px solid transparent',
                                             position: 'relative'
                                         }}
                                     >
@@ -218,30 +245,37 @@ export default function CreateFormView({
                                             <div style={{ flex: 1 }}>
                                                 <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginBottom: '8px' }}>
                                                     <div style={{ flex: 2 }}>
-                                                        <label style={labelStyle}>Field Name</label>
+                                                        <label style={labelStyle}>{field.type === 'heading' ? 'Heading Text' : 'Field Name'}</label>
                                                         <input value={field.name} onChange={e => {
                                                             const next = [...builderSteps];
                                                             next[stepIndex].fields[fieldIndex].name = e.target.value;
                                                             onStepsChange(next);
-                                                        }} placeholder="e.g. designation" style={inputStyleSm} />
+                                                        }} placeholder={field.type === 'heading' ? 'e.g. Personal Details' : 'e.g. designation'} style={inputStyleSm} />
                                                     </div>
                                                     <div style={{ flex: 1.5 }}>
                                                         <label style={labelStyle}>Type</label>
                                                         <select value={field.type} onChange={e => {
                                                             const next = [...builderSteps];
                                                             next[stepIndex].fields[fieldIndex].type = e.target.value;
+                                                            if (e.target.value === 'heading') {
+                                                                next[stepIndex].fields[fieldIndex].required = false;
+                                                            }
                                                             onStepsChange(next);
                                                         }} style={{ ...inputStyleSm, background: '#fff' }}>
                                                             {FIELD_TYPES.map(t => <option key={t} value={t}>{FIELD_TYPE_LABELS[t] || t}</option>)}
                                                         </select>
                                                     </div>
                                                     <div style={{ display: 'flex', alignItems: 'center', paddingBottom: '8px', gap: '4px' }}>
-                                                        <input type="checkbox" checked={field.required} onChange={e => {
-                                                            const next = [...builderSteps];
-                                                            next[stepIndex].fields[fieldIndex].required = e.target.checked;
-                                                            onStepsChange(next);
-                                                        }} />
-                                                        <label style={{ fontSize: '12px', color: '#4b5563', marginRight: '8px' }}>Required</label>
+                                                        {field.type !== 'heading' && (
+                                                            <>
+                                                                <input type="checkbox" checked={field.required} onChange={e => {
+                                                                    const next = [...builderSteps];
+                                                                    next[stepIndex].fields[fieldIndex].required = e.target.checked;
+                                                                    onStepsChange(next);
+                                                                }} />
+                                                                <label style={{ fontSize: '12px', color: '#4b5563', marginRight: '8px' }}>Required</label>
+                                                            </>
+                                                        )}
                                                         <button 
                                                             type="button"
                                                             onClick={(e) => {
@@ -252,7 +286,7 @@ export default function CreateFormView({
                                                                     onStepsChange(next);
                                                                 }
                                                             }} 
-                                                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                                                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', marginLeft: field.type === 'heading' ? '8px' : '0' }}
                                                         >
                                                             <Trash2 size={16} />
                                                         </button>
