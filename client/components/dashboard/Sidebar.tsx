@@ -5,7 +5,7 @@
 import React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
-    FilePlus, FileText, ClipboardList, LayoutDashboard,
+    FilePlus, FileText, ClipboardList,
     User, LogOut, Building2
 } from 'lucide-react';
 
@@ -29,9 +29,8 @@ export default function Sidebar({ canApprove, pendingCount, onLogout }: SidebarP
     const pathname = usePathname();
 
     const items: SidebarItem[] = [
-        { href: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
-        { href: '/dashboard/new', icon: <FilePlus size={20} />, label: 'New Application' },
         { href: '/dashboard/all', icon: <FileText size={20} />, label: 'All Applications' },
+        { href: '/dashboard/new', icon: <FilePlus size={20} />, label: 'New Application' },
         ...(canApprove ? [{ href: '/dashboard/pending', icon: <ClipboardList size={20} />, label: 'Pending Work', badge: pendingCount || undefined }] : []),
     ];
 

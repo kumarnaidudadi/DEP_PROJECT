@@ -46,7 +46,7 @@ export default function LoginPage() {
             localStorage.setItem('user', JSON.stringify(user));
 
             // Redirect to unified dashboard (it handles roles internally)
-            router.push('/dashboard');
+            router.push('/dashboard/all');
         } catch (err: any) {
             console.error('Verify OTP failed:', err);
             setError(err.response?.data?.error || 'Invalid OTP. Please try again.');
@@ -67,7 +67,7 @@ export default function LoginPage() {
             localStorage.setItem('user', JSON.stringify(user));
 
             // Redirect to unified dashboard (it handles roles internally)
-            router.push('/dashboard');
+            router.push('/dashboard/all');
         } catch (err: any) {
             console.error('Google login failed:', err);
             const errorMessage = err.response?.data?.error || 'Google login failed';

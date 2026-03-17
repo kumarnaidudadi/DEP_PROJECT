@@ -3,15 +3,15 @@
 // All Applications: Clean list view — form name, date, status. Custom dropdowns.
 
 import React, { useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
-    Loader2, Search, X, FileText, CheckCircle, Clock,
+    Loader2, Search, FileText, CheckCircle, Clock,
     ChevronRight, CalendarDays, ChevronDown, Check,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useForms } from '@/hooks/useForms';
 import { useProfile } from '@/hooks/useProfile';
 import { Application, AppTab } from '@/types';
-import ApplicationDetail from '@/components/dashboard/views/ApplicationDetail';
 import StatusBadge from '@/components/dashboard/StatusBadge';
 
 const isTerminal = (s: string) => ['APPROVED', 'REJECTED'].includes(s);
@@ -139,43 +139,33 @@ function Dropdown({ label, value, options, onChange, minWidth = 160, alignRight 
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function AllApplicationsPage() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const { user, userRoles } = useAuth();
-    const { applications, loading, fetchApplications, makeDecision, triggerDownloadPdf } = useForms();
-    const { profile, sigUploading, fetchProfile, handleSigUpload } = useProfile();
+    const { applications, loading, fetchApplications } = useForms();
+    const { profile, fetchProfile } = useProfile();
 
     const [searchQuery, setSearchQuery]       = useState('');
     const [filterFormType, setFilterFormType] = useState<string>('all');
     const [filterStatus, setFilterStatus]     = useState<string>('all');
     const [sortOrder, setSortOrder]           = useState<'desc' | 'asc'>('desc');
-    const [appTab, setAppTab]                 = useState<AppTab>('ongoing');
-    const [selectedApp, setSelectedApp]       = useState<Application | null>(null);
-    const [remarks, setRemarks]               = useState('');
-    const [approvalData, setApprovalData]     = useState<Record<string, any>>({});
-    const [actionLoading, setActionLoading]   = useState(false);
+    const [appTab, setAppTab]                 = useState<AppTab>((searchParams.get('tab') as AppTab) || 'ongoing');
     const [hoveredId, setHoveredId]           = useState<number | null>(null);
 
     useEffect(() => { fetchApplications(); fetchProfile(); }, [fetchApplications, fetchProfile]);
 
-    const storedRoles      = userRoles.map(r => (typeof r === 'string' ? r.toUpperCase() : ''));
-    const NON_APPROVER     = ['STAFF', 'INSTRUCTOR'];
-    const canApprove       = storedRoles.length > 0 && !storedRoles.every(r => NON_APPROVER.includes(r));
-    const isAdmin          = storedRoles.includes('ADMIN');
-
-    const handleDecision = async (decision: 'APPROVED' | 'REJECTED') => {
-        if (!selectedApp) return;
-        setActionLoading(true);
-        try {
-            await makeDecision(selectedApp.id, decision, remarks, approvalData);
-            setRemarks(''); setApprovalData({}); setSelectedApp(null);
-            fetchApplications();
-        } catch { alert('Failed to update'); }
-        finally { setActionLoading(false); }
+    const handleSelectApplication = (app: Application) => {
+        router.push(`/dashboard/all/${app.id}?tab=${appTab}`);
     };
 
-    const handleDownloadPdf = (id: number, name: string) =>
-        triggerDownloadPdf(id, `${name.replace(/\s+/g, '_')}_${id}.pdf`);
+    const handleTabChange = (tab: AppTab) => {
+        setAppTab(tab);
+        router.push(`/dashboard/all?tab=${tab}`);
+    };
 
     // ── Filtering & sorting ──────────────────────────────────────────────────
+    const isAdmin = userRoles.map(r => (typeof r === 'string' ? r.toUpperCase() : '')).includes('ADMIN');
+    
     const baseApps = isAdmin
         ? applications
         : applications.filter(a => Number(a.submitted_by) === Number(user?.id));
@@ -292,7 +282,7 @@ export default function AllApplicationsPage() {
                         return (
                             <button
                                 key={tab}
-                                onClick={() => setAppTab(tab)}
+                                onClick={() => handleTabChange(tab)}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '7px',
                                     padding: '10px 22px',
@@ -340,7 +330,7 @@ export default function AllApplicationsPage() {
                             return (
                                 <div
                                     key={app.id}
-                                    onClick={() => setSelectedApp(app)}
+                                    onClick={() => handleSelectApplication(app)}
                                     onMouseEnter={() => setHoveredId(app.id)}
                                     onMouseLeave={() => setHoveredId(null)}
                                     style={{
@@ -383,54 +373,6 @@ export default function AllApplicationsPage() {
                     </div>
                 )}
             </main>
-
-            {/* ── Detail overlay ─────────────────────────────────────────────── */}
-            {selectedApp && (
-                <div style={{
-                    position: 'absolute', inset: 0, zIndex: 50,
-                    display: 'flex', flexDirection: 'column', background: '#fff',
-                    animation: 'slideIn 0.2s ease-out',
-                }}>
-                    <div style={{ padding: '14px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', background: '#f8fafc' }}>
-                        <button
-                            onClick={() => setSelectedApp(null)}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: '8px',
-                                background: 'none', border: 'none', color: '#4b5563',
-                                cursor: 'pointer', fontSize: '14px', fontWeight: 600,
-                                padding: '8px 12px', borderRadius: '6px', transition: 'background 0.15s',
-                            }}
-                            onMouseEnter={e => (e.currentTarget.style.background = '#e2e8f0')}
-                            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-                        >
-                            <X size={17} /> Back to All Applications
-                        </button>
-                    </div>
-                    <div style={{ flex: 1, overflowY: 'auto', background: '#f1f5f9', padding: '24px' }}>
-                        <div style={{ maxWidth: '900px', margin: '0 auto', background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
-                            <ApplicationDetail
-                                app={selectedApp} canApprove={canApprove}
-                                isInPendingView={false}
-                                profile={profile} sigUploading={sigUploading}
-                                remarks={remarks} approvalData={approvalData} actionLoading={actionLoading}
-                                onRemarks={setRemarks} onApprovalData={setApprovalData}
-                                onDecision={handleDecision} onDownloadPdf={handleDownloadPdf}
-                                onSigUpload={handleSigUpload}
-                            />
-                        </div>
-                    </div>
-                    <style dangerouslySetInnerHTML={{ __html: `
-                        @keyframes slideIn {
-                            from { transform: translateY(16px); opacity: 0; }
-                            to   { transform: translateY(0);    opacity: 1; }
-                        }
-                        @keyframes dropIn {
-                            from { transform: translateY(-6px); opacity: 0; }
-                            to   { transform: translateY(0);    opacity: 1; }
-                        }
-                    ` }} />
-                </div>
-            )}
         </div>
     );
 }

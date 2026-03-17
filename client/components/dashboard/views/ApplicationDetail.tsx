@@ -51,11 +51,10 @@ export default function ApplicationDetail({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
                 <div>
                     <h1 style={{ fontSize: '20px', fontWeight: 700, color: '#1f2937', margin: '0 0 4px' }}>
-                        {app.form_types?.name || 'Application'} #{app.id}
+                        {app.form_types?.name || 'Application'}
                     </h1>
                     <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
-                        {app.users ? `${app.users.first_name} ${app.users.last_name}` : ''}
-                        {' · '}{new Date(app.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        {new Date(app.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
