@@ -46,7 +46,7 @@ export default function ApplicationDetail({
     const steps = app.form_types?.workflow?.steps || [];
 
     return (
-        <div style={{ padding: '32px 40px', maxWidth: '700px', margin: '0 auto' }}>
+        <div style={{ padding: '32px 40px', maxWidth: '1000px', margin: '0 auto' }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
                 <div>
@@ -158,7 +158,7 @@ export default function ApplicationDetail({
                                                 const { key: k, value: v } = f;
                                                 const uniqueKey = `${k}_${fIdx}`;
                                                 
-                                                const isWide = Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('/uploads/signatures'));
+                                                const isWide = Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('/uploads/signatures')) || k.length > 50;
                                                 return (
                                                     <div key={uniqueKey} style={{ gridColumn: isWide ? 'span 2' : 'auto' }}>
                                                         <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k.replace(/_/g, ' ').replace(/_\d+$/, '')}</div>
@@ -212,7 +212,7 @@ export default function ApplicationDetail({
                             <Panel key="unmapped" title="Other Details" style={{ marginBottom: 0 }}>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                                     {unmapped.map(([k, v]) => (
-                                        <div key={k} style={{ gridColumn: (Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('/uploads/signatures'))) ? 'span 2' : 'auto' }}>
+                                        <div key={k} style={{ gridColumn: (Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('/uploads/signatures')) || k.length > 50) ? 'span 2' : 'auto' }}>
                                             <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k.replace(/_/g, ' ').replace(/_\d+$/, '')}</div>
                                             {typeof v === 'string' && v.includes('/uploads/signatures') ? (
                                                 <div style={{ 
@@ -266,7 +266,7 @@ export default function ApplicationDetail({
                                         }
 
                                         return (
-                                            <div key={f.key} style={{ gridColumn: ['textarea', 'tuple', 'list', 'signature'].includes(f.type) ? 'span 2' : 'auto' }}>
+                                            <div key={f.key} style={{ gridColumn: ['textarea', 'tuple', 'list', 'signature'].includes(f.type) || f.label.length > 50 ? 'span 2' : 'auto' }}>
                                                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>
                                                     {f.label} {f.required && <span style={{ color: '#ef4444' }}>*</span>}
                                                 </label>

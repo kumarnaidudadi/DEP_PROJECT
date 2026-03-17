@@ -247,7 +247,7 @@ export default function NewApplicationView({
     const fields = getSchemaFields(selectedFormType.schema_definition);
 
     const rightPanel = submitSuccess ? <SuccessMsg /> : (
-        <div style={{ padding: '32px 40px', maxWidth: '700px', margin: '0 auto' }}>
+        <div style={{ padding: '32px 40px', maxWidth: '1000px', margin: '0 auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                 <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1f2937', margin: 0 }}>{selectedFormType.name}</h1>
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -315,7 +315,7 @@ export default function NewApplicationView({
                         }
 
                         return (
-                            <div key={uniqueKey} style={{ gridColumn: ['textarea', 'list', 'tuple', 'date_from_to', 'signature', 'name'].includes(f.type) ? 'span 2' : 'auto' }}>
+                            <div key={uniqueKey} style={{ gridColumn: ['textarea', 'list', 'tuple', 'date_from_to', 'signature', 'name'].includes(f.type) || f.label.length > 50 ? 'span 2' : 'auto' }}>
                                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>
                                     {f.label} {f.required && <span style={{ color: '#ef4444' }}>*</span>}
                                 </label>
