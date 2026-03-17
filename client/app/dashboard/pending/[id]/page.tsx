@@ -32,7 +32,13 @@ export default function PendingWorkDetailPage() {
     const selectedApp = applications.find(a => a.id === appId);
     const storedRoles = userRoles.map(r => (typeof r === 'string' ? r.toUpperCase() : ''));
     const NON_APPROVER = ['STAFF', 'INSTRUCTOR'];
-    const canApprove = storedRoles.length > 0 && !storedRoles.every(r => NON_APPROVER.includes(r));
+    const isApprovalRole = storedRoles.length > 0 && !storedRoles.every(r => NON_APPROVER.includes(r));
+    
+    // Check if the current pending approval is for this user's role
+    const hasPendingApprovalForThisUser = selectedApp && selectedApp.form_approvals?.some((appr: any) => 
+        appr.decision === 'PENDING' && Number(appr.approved_by) === Number(user?.id)
+    );
+    const canApprove = isApprovalRole && hasPendingApprovalForThisUser;
 
     const handleDecision = async (decision: 'APPROVED' | 'REJECTED') => {
         if (!selectedApp) return;

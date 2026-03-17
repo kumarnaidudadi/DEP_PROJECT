@@ -169,8 +169,9 @@ function PendingWorkContent() {
         return a.form_approvals?.some((appr: any) => appr.decision === 'PENDING' && Number(appr.approved_by) === Number(user?.id));
     });
     const processedApps = applications.filter(a => {
-        if (Number(a.submitted_by) === Number(user?.id) || !isTerminal(a.current_status)) return false;
-        return a.form_approvals?.some((appr: any) => appr.decision !== 'PENDING' && Number(appr.approved_by) === Number(user?.id));
+        if (Number(a.submitted_by) === Number(user?.id)) return false;
+        // Show forms where user has made a decision (approved/rejected) OR forms that are ongoing (non-terminal) and user is involved
+        return a.form_approvals?.some((appr: any) => Number(appr.approved_by) === Number(user?.id) && appr.decision !== 'PENDING');
     });
 
     let list = appTab === 'ongoing' ? pendingApps : processedApps;
@@ -351,9 +352,17 @@ function PendingWorkContent() {
                                         }}>
                                             {app.form_types?.name || 'Application'}
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#94a3b8', fontSize: '12px' }}>
-                                            <CalendarDays size={12} />
-                                            <span>Submitted {fmtDate(app.submitted_at)}</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#94a3b8' }}>
+                                                <CalendarDays size={12} />
+                                                <span>Submitted {fmtDate(app.submitted_at)}</span>
+                                            </div>
+                                            <span style={{ color: '#cbd5e1' }}>•</span>
+                                            <span style={{ color: '#6b7280' }}>
+                                                Submitted by: <span style={{ fontWeight: 600, color: '#374151' }}>
+                                                    {app.users?.first_name} {app.users?.last_name}
+                                                </span>
+                                            </span>
                                         </div>
                                     </div>
 
