@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DEP Portal — Department Establishment Portal",
+  title: "LTMS - IIT ROPAR",
   description: "A comprehensive portal for managing departmental forms, approvals, and office orders.",
 };
 
