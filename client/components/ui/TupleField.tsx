@@ -4,7 +4,15 @@
 
 import React from 'react';
 
-interface SubField { key: string; label: string; type: string; }
+interface SubField {
+    key: string;
+    label: string;
+    type: string;
+    required?: boolean;
+    options?: string[];
+    min?: number;
+    max?: number;
+}
 
 interface TupleFieldProps {
     fieldKey: string;

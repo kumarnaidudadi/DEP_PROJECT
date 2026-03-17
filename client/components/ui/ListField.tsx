@@ -5,7 +5,15 @@
 import React from 'react';
 import { Trash2, Plus } from 'lucide-react';
 
-interface SubField { key: string; label: string; type: string; }
+interface SubField {
+    key: string;
+    label: string;
+    type: string;
+    required?: boolean;
+    options?: string[];
+    min?: number;
+    max?: number;
+}
 
 interface ListFieldProps {
     fieldKey: string;

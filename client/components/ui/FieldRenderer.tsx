@@ -155,16 +155,14 @@ export default function FieldRenderer({
     }
 
     if (type === 'list') {
-        const subFields = (field.subFields || []).map(sf => ({ key: sf.key, label: sf.label, type: sf.type }));
         return (
-            <ListField fieldKey={key} subFields={subFields} value={Array.isArray(value) ? value : []} onChange={v => onChange(key, v)} />
+            <ListField fieldKey={key} subFields={field.subFields || []} value={Array.isArray(value) ? value : []} onChange={v => onChange(key, v)} />
         );
     }
 
     if (type === 'tuple') {
-        const subFields = (field.subFields || []).map(sf => ({ key: sf.key, label: sf.label, type: sf.type }));
         return (
-            <TupleField fieldKey={key} subFields={subFields} value={value || {}} onChange={v => onChange(key, v)} />
+            <TupleField fieldKey={key} subFields={field.subFields || []} value={value || {}} onChange={v => onChange(key, v)} />
         );
     }
 

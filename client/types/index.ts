@@ -64,7 +64,15 @@ export interface FieldDef {
     options?: string[];
     min?: number;
     max?: number;
-    subFields?: { key: string; label: string; type: string }[];
+    subFields?: {
+        key: string;
+        label: string;
+        type: string;
+        required?: boolean;
+        options?: string[];
+        min?: number;
+        max?: number;
+    }[];
 }
 
 export interface BuilderField {
@@ -185,6 +193,10 @@ export function getSchemaFields(schema: any): FieldDef[] {
                             key: `${sf.name.replace(/\s+/g, '_')}_${sIdx}`,
                             label: sf.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
                             type: sf.type || 'text',
+                            required: sf.required === true || sf.required === 'true',
+                            options: sf.options,
+                            min: sf.min,
+                            max: sf.max,
                         }))
                         : undefined,
                 });
@@ -232,6 +244,20 @@ export function getApprovalFields(schema: any, steps: any[], currentStatus: stri
                     label: item.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
                     type: item.type || 'text',
                     required: item.required === true || item.required === 'true',
+                    options: item.options,
+                    min: item.min,
+                    max: item.max,
+                    subFields: Array.isArray(item.subFields)
+                        ? item.subFields.map((sf: any, sIdx: number) => ({
+                            key: `${sf.name.replace(/\s+/g, '_')}_${sIdx}`,
+                            label: sf.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+                            type: sf.type || 'text',
+                            required: sf.required === true || sf.required === 'true',
+                            options: sf.options,
+                            min: sf.min,
+                            max: sf.max,
+                        }))
+                        : undefined,
                 });
             }
         });

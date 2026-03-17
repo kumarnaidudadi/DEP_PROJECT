@@ -162,8 +162,21 @@ export default function ApplicationDetail({
                                                 return (
                                                     <div key={uniqueKey} style={{ gridColumn: isWide ? 'span 2' : 'auto' }}>
                                                         <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k.replace(/_/g, ' ').replace(/_\d+$/, '')}</div>
-                                                        {typeof v === 'string' && v.startsWith('/uploads/signatures') ? (
-                                                            <img src={`http://localhost:4000${v}`} alt="Signature" style={{ maxHeight: '60px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#fff', padding: '4px' }} />
+                                                        {typeof v === 'string' && v.includes('/uploads/signatures') ? (
+                                                            <div style={{ 
+                                                                display: 'inline-flex', 
+                                                                alignItems: 'center', 
+                                                                gap: '6px', 
+                                                                padding: '4px 10px', 
+                                                                background: '#ecfdf5', 
+                                                                color: '#059669', 
+                                                                borderRadius: '6px', 
+                                                                fontSize: '11px', 
+                                                                fontWeight: 600,
+                                                                border: '1px solid #d1fae5'
+                                                            }}>
+                                                                <CheckCircle size={12} /> Digitally Signed
+                                                            </div>
                                                         ) : Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' ? (
                                                             <div style={{ marginTop: '6px', overflowX: 'auto', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
                                                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
@@ -201,7 +214,25 @@ export default function ApplicationDetail({
                                     {unmapped.map(([k, v]) => (
                                         <div key={k} style={{ gridColumn: (Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('/uploads/signatures'))) ? 'span 2' : 'auto' }}>
                                             <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k.replace(/_/g, ' ').replace(/_\d+$/, '')}</div>
-                                            <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>{String(v) || '—'}</div>
+                                            {typeof v === 'string' && v.includes('/uploads/signatures') ? (
+                                                <div style={{ 
+                                                    display: 'inline-flex', 
+                                                    alignItems: 'center', 
+                                                    gap: '6px', 
+                                                    padding: '4px 10px', 
+                                                    background: '#ecfdf5', 
+                                                    color: '#059669', 
+                                                    borderRadius: '6px', 
+                                                    fontSize: '11px', 
+                                                    fontWeight: 600,
+                                                    border: '1px solid #d1fae5',
+                                                    marginTop: '2px'
+                                                }}>
+                                                    <CheckCircle size={12} /> Digitally Signed
+                                                </div>
+                                            ) : (
+                                                <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>{String(v) || '—'}</div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
