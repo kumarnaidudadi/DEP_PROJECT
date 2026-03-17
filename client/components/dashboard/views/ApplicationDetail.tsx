@@ -101,68 +101,95 @@ export default function ApplicationDetail({
                             if (approval?.approval_data) sourceData = approval.approval_data;
                         }
 
-                        const fieldsInStep = stepConfig.slice(1).map((f: any) => {
+                        const mappedItems = stepConfig.slice(1).map((f: any, idx: number) => {
                             const normalizedName = f.name?.replace(/\s+/g, '_');
-                            if (!normalizedName) return [];
-                            if (f.type === 'heading') {
-                                return [{ key: normalizedName, value: null, type: 'heading', originalName: f.name }];
-                            }
-                            if (f.type === 'date_from_to') {
-                                return [
-                                    { key: `${normalizedName}_from`, value: sourceData[`${normalizedName}_from`] },
-                                    { key: `${normalizedName}_to`, value: sourceData[`${normalizedName}_to`] },
-                                ];
-                            }
-                            return [{ key: normalizedName, value: sourceData[normalizedName] }];
-                        }).flat().filter((obj: any) => (obj.key && obj.value !== undefined && obj.value !== '') || obj.type === 'heading');
+                            const keyWithIdx = `${normalizedName}_${idx + 1}`;
+                            const isOldKey = sourceData[normalizedName] !== undefined && sourceData[keyWithIdx] === undefined;
+                            const finalKey = isOldKey ? normalizedName : keyWithIdx;
 
-                        if (fieldsInStep.length > 0) {
-                            fieldsInStep.forEach((f: any) => renderedFields.add(f.key));
-                            panels.push(
-                                <Panel key={`step-${stepKey}`} title={panelTitle} style={{ marginBottom: 0 }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                                        {fieldsInStep.map((f: any, idx: number) => {
-                                            const { key: k, value: v, type, originalName } = f;
-                                            const uniqueKey = `${k}_${idx}`;
-                                            if (type === 'heading') {
+                            if (!normalizedName) return null;
+                            if (f.type === 'heading') {
+                                return { type: 'heading', name: f.name, key: finalKey };
+                            }
+
+                            let fieldValues: any[] = [];
+                            if (f.type === 'date_from_to') {
+                                const fromKey = isOldKey ? `${normalizedName}_from` : `${keyWithIdx}_from`;
+                                const toKey = isOldKey ? `${normalizedName}_to` : `${keyWithIdx}_to`;
+                                
+                                if (sourceData[fromKey] !== undefined && sourceData[fromKey] !== '') fieldValues.push({ key: fromKey, value: sourceData[fromKey] });
+                                if (sourceData[toKey] !== undefined && sourceData[toKey] !== '') fieldValues.push({ key: toKey, value: sourceData[toKey] });
+                                
+                                renderedFields.add(finalKey);
+                                renderedFields.add(normalizedName);
+                                renderedFields.add(fromKey);
+                                renderedFields.add(toKey);
+                            } else {
+                                if (sourceData[finalKey] !== undefined && sourceData[finalKey] !== '') fieldValues.push({ key: finalKey, value: sourceData[finalKey] });
+                                renderedFields.add(finalKey);
+                                renderedFields.add(normalizedName);
+                            }
+
+                            if (fieldValues.length > 0) return { type: 'field', fields: fieldValues };
+                            return null;
+                        }).filter(Boolean);
+
+                        const groups: { title: string, fields: any[], isHeading: boolean }[] = [];
+                        let currentGroup = { title: panelTitle, fields: [] as any[], isHeading: false };
+                        groups.push(currentGroup);
+
+                        mappedItems.forEach((item: any) => {
+                            if (item.type === 'heading') {
+                                renderedFields.add(item.key);
+                                currentGroup = { title: item.name, fields: [], isHeading: true };
+                                groups.push(currentGroup);
+                            } else if (item.type === 'field') {
+                                currentGroup.fields.push(...item.fields);
+                            }
+                        });
+
+                        groups.forEach((g, gIdx) => {
+                            if (g.fields.length > 0) {
+                                g.fields.forEach((f: any) => renderedFields.add(f.key));
+                                panels.push(
+                                    <Panel key={`step-${stepKey}-g-${gIdx}`} title={g.isHeading ? `${panelTitle} • ${g.title}` : g.title} style={{ marginBottom: '16px' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                                            {g.fields.map((f: any, fIdx: number) => {
+                                                const { key: k, value: v } = f;
+                                                const uniqueKey = `${k}_${fIdx}`;
+                                                
+                                                const isWide = Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('/uploads/signatures'));
                                                 return (
-                                                    <div key={uniqueKey} style={{ gridColumn: 'span 2', marginTop: '12px', borderBottom: '1px solid #e5e7eb', paddingBottom: '4px' }}>
-                                                        <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#374151', margin: 0 }}>{originalName}</h4>
+                                                    <div key={uniqueKey} style={{ gridColumn: isWide ? 'span 2' : 'auto' }}>
+                                                        <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k.replace(/_/g, ' ').replace(/_\d+$/, '')}</div>
+                                                        {typeof v === 'string' && v.startsWith('/uploads/signatures') ? (
+                                                            <img src={`http://localhost:4000${v}`} alt="Signature" style={{ maxHeight: '60px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#fff', padding: '4px' }} />
+                                                        ) : Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' ? (
+                                                            <div style={{ marginTop: '6px', overflowX: 'auto', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
+                                                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                                                                    <thead style={{ background: '#f9fafb' }}>
+                                                                        <tr>{Object.keys(v[0]).map(col => <th key={col} style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontWeight: 600, textTransform: 'capitalize' }}>{col.replace(/_/g, ' ')}</th>)}</tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {v.map((row: any, rIdx: number) => (
+                                                                            <tr key={rIdx} style={{ borderBottom: rIdx === v.length - 1 ? 'none' : '1px solid #f3f4f6' }}>
+                                                                                {Object.values(row).map((cell: any, cIdx: number) => <td key={cIdx} style={{ padding: '6px 8px', color: '#1f2937' }}>{String(cell || '—')}</td>)}
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        ) : (
+                                                            <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>{String(v) || '—'}</div>
+                                                        )}
                                                     </div>
                                                 );
-                                            }
-
-                                            const isWide = Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('/uploads/signatures'));
-                                            return (
-                                                <div key={uniqueKey} style={{ gridColumn: isWide ? 'span 2' : 'auto' }}>
-                                                    <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k.replace(/_/g, ' ')}</div>
-                                                    {typeof v === 'string' && v.startsWith('/uploads/signatures') ? (
-                                                        <img src={`http://localhost:4000${v}`} alt="Signature" style={{ maxHeight: '60px', border: '1px solid #e5e7eb', borderRadius: '6px', background: '#fff', padding: '4px' }} />
-                                                    ) : Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' ? (
-                                                        <div style={{ marginTop: '6px', overflowX: 'auto', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
-                                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                                                                <thead style={{ background: '#f9fafb' }}>
-                                                                    <tr>{Object.keys(v[0]).map(col => <th key={col} style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontWeight: 600, textTransform: 'capitalize' }}>{col.replace(/_/g, ' ')}</th>)}</tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    {v.map((row: any, idx: number) => (
-                                                                        <tr key={idx} style={{ borderBottom: idx === v.length - 1 ? 'none' : '1px solid #f3f4f6' }}>
-                                                                            {Object.values(row).map((cell: any, cIdx: number) => <td key={cIdx} style={{ padding: '6px 8px' }}>{String(cell || '—')}</td>)}
-                                                                        </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    ) : (
-                                                        <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>{String(v) || '—'}</div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </Panel>
-                            );
-                        }
+                                            })}
+                                        </div>
+                                    </Panel>
+                                );
+                            }
+                        });
                     });
 
                     // Unmapped fields
@@ -173,7 +200,7 @@ export default function ApplicationDetail({
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                                     {unmapped.map(([k, v]) => (
                                         <div key={k} style={{ gridColumn: (Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('/uploads/signatures'))) ? 'span 2' : 'auto' }}>
-                                            <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k.replace(/_/g, ' ')}</div>
+                                            <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k.replace(/_/g, ' ').replace(/_\d+$/, '')}</div>
                                             <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>{String(v) || '—'}</div>
                                         </div>
                                     ))}

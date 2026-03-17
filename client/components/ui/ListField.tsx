@@ -53,21 +53,21 @@ export default function ListField({ subFields, value, onChange }: ListFieldProps
                                                 type="date"
                                                 value={row[`${sf.key}_from`] ?? ''}
                                                 onChange={e => updateCell(rowIdx, `${sf.key}_from`, e.target.value)}
-                                                style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                                                style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', color: '#1f2937', background: '#fff' }}
                                             />
                                             <span style={{ display: 'flex', alignItems: 'center', color: '#6b7280', fontSize: '11px' }}>to</span>
                                             <input
                                                 type="date"
                                                 value={row[`${sf.key}_to`] ?? ''}
                                                 onChange={e => updateCell(rowIdx, `${sf.key}_to`, e.target.value)}
-                                                style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                                                style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', color: '#1f2937', background: '#fff' }}
                                             />
                                         </div>
                                     ) : sf.type === 'select' ? (
                                         <select
                                             value={row[sf.key] ?? ''}
                                             onChange={e => updateCell(rowIdx, sf.key, e.target.value)}
-                                            style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}
+                                            style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', background: '#fff', color: '#1f2937' }}
                                         >
                                             <option value="">Select...</option>
                                             {(sf as any).options?.map((o: string) => <option key={o} value={o}>{o}</option>)}
@@ -84,7 +84,7 @@ export default function ListField({ subFields, value, onChange }: ListFieldProps
                                             type={sf.type === 'number' ? 'number' : sf.type === 'date' ? 'date' : 'text'}
                                             value={row[sf.key] ?? ''}
                                             onChange={e => updateCell(rowIdx, sf.key, e.target.value)}
-                                            style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box' }}
+                                            style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', color: '#1f2937', background: '#fff' }}
                                         />
                                     )}
                                 </td>
