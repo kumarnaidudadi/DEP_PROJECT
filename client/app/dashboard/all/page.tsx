@@ -2,7 +2,7 @@
 // ─── /dashboard/all ────────────────────────────────────────────────────────────
 // All Applications: Clean list view — form name, date, status. Custom dropdowns.
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Loader2, Search, FileText, CheckCircle, Clock,
@@ -138,7 +138,7 @@ function Dropdown({ label, value, options, onChange, minWidth = 160, alignRight 
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-export default function AllApplicationsPage() {
+function AllApplicationsContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user, userRoles } = useAuth();
@@ -374,5 +374,13 @@ export default function AllApplicationsPage() {
                 )}
             </main>
         </div>
+    );
+}
+
+export default function AllApplicationsPage() {
+    return (
+        <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><Loader2 size={28} className="animate-spin" style={{ color: '#94a3b8' }} /></div>}>
+            <AllApplicationsContent />
+        </Suspense>
     );
 }
