@@ -1,9 +1,12 @@
 'use client';
 // ─── /dashboard/all ────────────────────────────────────────────────────────────
-// All Applications: Full width grid view with top toggles and modal for details
+// All Applications: Clean list view — form name, date, status. Custom dropdowns.
 
-import React, { useEffect, useState } from 'react';
-import { Loader2, Search, X, FileText, CheckCircle, Clock, Filter } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    Loader2, Search, X, FileText, CheckCircle, Clock,
+    ChevronRight, CalendarDays, ChevronDown, Check,
+} from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useForms } from '@/hooks/useForms';
 import { useProfile } from '@/hooks/useProfile';
@@ -13,27 +16,150 @@ import StatusBadge from '@/components/dashboard/StatusBadge';
 
 const isTerminal = (s: string) => ['APPROVED', 'REJECTED'].includes(s);
 
+// ── Coloured file icon ────────────────────────────────────────────────────────
+function FormIcon({ status }: { status: string }) {
+    const ok = status === 'APPROVED';
+    const no = status === 'REJECTED';
+    const bg = ok ? '#dcfce7' : no ? '#fee2e2' : '#fef3c7';
+    const c  = ok ? '#16a34a' : no ? '#dc2626' : '#d97706';
+    return (
+        <div style={{
+            width: 42, height: 42, borderRadius: '10px', flexShrink: 0,
+            background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+            <FileText size={19} style={{ color: c }} />
+        </div>
+    );
+}
+
+// ── Custom dropdown ───────────────────────────────────────────────────────────
+interface DropdownProps {
+    label: string;
+    value: string;
+    options: { value: string; label: string }[];
+    onChange: (v: string) => void;
+    minWidth?: number;
+    alignRight?: boolean;
+}
+function Dropdown({ label, value, options, onChange, minWidth = 160, alignRight = false }: DropdownProps) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+    const selected = options.find(o => o.value === value);
+    const displayLabel = selected && selected.value !== 'all' ? selected.label : label;
+    const isFiltered = value !== 'all';
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    return (
+        <div ref={ref} style={{ position: 'relative', userSelect: 'none' }}>
+            <button
+                onClick={() => setOpen(o => !o)}
+                style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '8px 14px',
+                    background: isFiltered ? '#eff6ff' : '#fff',
+                    border: `1px solid ${isFiltered ? '#bfdbfe' : '#e2e8f0'}`,
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: isFiltered ? 600 : 500,
+                    color: isFiltered ? '#1d4ed8' : '#4b5563',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    minWidth,
+                    justifyContent: 'space-between',
+                    transition: 'all 0.15s',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                }}
+            >
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>
+                    {displayLabel}
+                </span>
+                <ChevronDown
+                    size={14}
+                    style={{
+                        color: isFiltered ? '#1d4ed8' : '#9ca3af',
+                        flexShrink: 0,
+                        transition: 'transform 0.15s',
+                        transform: open ? 'rotate(180deg)' : 'none',
+                    }}
+                />
+            </button>
+
+            {open && (
+                <div style={{
+                    position: 'absolute', top: 'calc(100% + 6px)',
+                    ...(alignRight ? { right: 0 } : { left: 0 }),
+                    zIndex: 999,
+                    background: '#fff', border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    minWidth: Math.max(minWidth, 180), maxWidth: 280,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.1), 0 2px 6px rgba(0,0,0,0.06)',
+                    overflow: 'hidden',
+                    animation: 'dropIn 0.12s ease-out',
+                }}>
+                    {options.map(opt => {
+                        const active = opt.value === value;
+                        return (
+                            <div
+                                key={opt.value}
+                                title={opt.label}
+                                onClick={() => { onChange(opt.value); setOpen(false); }}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '8px',
+                                    padding: '10px 16px',
+                                    fontSize: '13px',
+                                    fontWeight: active ? 600 : 400,
+                                    color: active ? '#1d4ed8' : '#374151',
+                                    background: active ? '#eff6ff' : 'transparent',
+                                    cursor: 'pointer',
+                                    transition: 'background 0.1s',
+                                    overflow: 'hidden',
+                                }}
+                                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = '#f8fafc'; }}
+                                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                            >
+                                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {opt.label}
+                                </span>
+                                {active && <Check size={13} style={{ color: '#2563eb', flexShrink: 0 }} />}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 export default function AllApplicationsPage() {
     const { user, userRoles } = useAuth();
     const { applications, loading, fetchApplications, makeDecision, triggerDownloadPdf } = useForms();
     const { profile, sigUploading, fetchProfile, handleSigUpload } = useProfile();
 
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery]       = useState('');
     const [filterFormType, setFilterFormType] = useState<string>('all');
-    const [filterStatus, setFilterStatus] = useState<string>('all');
-    const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
-    const [appTab, setAppTab] = useState<AppTab>('ongoing');
-    const [selectedApp, setSelectedApp] = useState<Application | null>(null);
-    const [remarks, setRemarks] = useState('');
-    const [approvalData, setApprovalData] = useState<Record<string, any>>({});
-    const [actionLoading, setActionLoading] = useState(false);
+    const [filterStatus, setFilterStatus]     = useState<string>('all');
+    const [sortOrder, setSortOrder]           = useState<'desc' | 'asc'>('desc');
+    const [appTab, setAppTab]                 = useState<AppTab>('ongoing');
+    const [selectedApp, setSelectedApp]       = useState<Application | null>(null);
+    const [remarks, setRemarks]               = useState('');
+    const [approvalData, setApprovalData]     = useState<Record<string, any>>({});
+    const [actionLoading, setActionLoading]   = useState(false);
+    const [hoveredId, setHoveredId]           = useState<number | null>(null);
 
     useEffect(() => { fetchApplications(); fetchProfile(); }, [fetchApplications, fetchProfile]);
 
-    const storedRoles = userRoles.map(r => (typeof r === 'string' ? r.toUpperCase() : ''));
-    const NON_APPROVER_ROLES = ['STAFF', 'INSTRUCTOR'];
-    const canApprove = storedRoles.length > 0 && !storedRoles.every(r => NON_APPROVER_ROLES.includes(r));
-    const isAdmin = storedRoles.includes('ADMIN');
+    const storedRoles      = userRoles.map(r => (typeof r === 'string' ? r.toUpperCase() : ''));
+    const NON_APPROVER     = ['STAFF', 'INSTRUCTOR'];
+    const canApprove       = storedRoles.length > 0 && !storedRoles.every(r => NON_APPROVER.includes(r));
+    const isAdmin          = storedRoles.includes('ADMIN');
 
     const handleDecision = async (decision: 'APPROVED' | 'REJECTED') => {
         if (!selectedApp) return;
@@ -46,12 +172,14 @@ export default function AllApplicationsPage() {
         finally { setActionLoading(false); }
     };
 
-    const handleDownloadPdf = (id: number, name: string) => {
+    const handleDownloadPdf = (id: number, name: string) =>
         triggerDownloadPdf(id, `${name.replace(/\s+/g, '_')}_${id}.pdf`);
-    };
 
-    // Filter apps
-    const baseApps = isAdmin ? applications : applications.filter(a => Number(a.submitted_by) === Number(user?.id));
+    // ── Filtering & sorting ──────────────────────────────────────────────────
+    const baseApps = isAdmin
+        ? applications
+        : applications.filter(a => Number(a.submitted_by) === Number(user?.id));
+
     let list = appTab === 'ongoing'
         ? baseApps.filter(a => !isTerminal(a.current_status))
         : baseApps.filter(a => isTerminal(a.current_status));
@@ -64,210 +192,222 @@ export default function AllApplicationsPage() {
             a.users?.last_name.toLowerCase().includes(q)
         );
     }
+    if (filterFormType !== 'all') list = list.filter(a => a.form_types?.name === filterFormType);
+    if (filterStatus   !== 'all') list = list.filter(a => a.current_status === filterStatus);
 
-    if (filterFormType !== 'all') {
-        list = list.filter(a => a.form_types?.name === filterFormType);
-    }
-    if (filterStatus !== 'all') {
-        list = list.filter(a => a.current_status === filterStatus);
-    }
-
-    const uniqueFormTypes = Array.from(new Set(baseApps.map(a => a.form_types?.name).filter(Boolean)));
-    const uniqueStatuses = Array.from(new Set(baseApps.map(a => a.current_status).filter(Boolean)));
-
-    // Apply sorting
     list.sort((a, b) => {
-        const timeA = new Date(a.submitted_at).getTime();
-        const timeB = new Date(b.submitted_at).getTime();
-        return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+        const tA = new Date(a.submitted_at).getTime();
+        const tB = new Date(b.submitted_at).getTime();
+        return sortOrder === 'desc' ? tB - tA : tA - tB;
     });
 
+    const uniqueFormTypes = Array.from(new Set(baseApps.map(a => a.form_types?.name).filter(Boolean))) as string[];
+    const uniqueStatuses  = Array.from(new Set(baseApps.map(a => a.current_status).filter(Boolean))) as string[];
+
+    const formTypeOptions = [
+        { value: 'all', label: 'All Form Types' },
+        ...uniqueFormTypes.map(ft => ({ value: ft, label: ft })),
+    ];
+    const statusOptions = [
+        { value: 'all', label: 'All Statuses' },
+        ...uniqueStatuses.map(s => ({ value: s, label: s.replace(/_/g, ' ') })),
+    ];
+    const sortOptions = [
+        { value: 'desc', label: 'Newest First' },
+        { value: 'asc',  label: 'Oldest First' },
+    ];
+
+    const fmtDate = (iso: string) =>
+        new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#f8fafc' }}>
-            {/* Top Navigation & Controls */}
-            <div style={{ padding: '24px 32px', background: '#fff', borderBottom: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', margin: 0 }}>All Applications</h1>
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        {/* Filters */}
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <select 
-                                value={filterFormType}
-                                onChange={e => setFilterFormType(e.target.value)}
-                                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: '13px', color: '#4b5563', outline: 'none', cursor: 'pointer', maxWidth: '200px', textOverflow: 'ellipsis' }}
-                            >
-                                <option value="all">All Form Types</option>
-                                {uniqueFormTypes.map(ft => (
-                                    <option key={ft} value={ft}>{ft}</option>
-                                ))}
-                            </select>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#f1f5f9' }}>
 
-                            <select 
-                                value={filterStatus}
-                                onChange={e => setFilterStatus(e.target.value)}
-                                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: '13px', color: '#4b5563', outline: 'none', cursor: 'pointer', textTransform: 'capitalize', maxWidth: '150px', textOverflow: 'ellipsis' }}
-                            >
-                                <option value="all">All Statuses</option>
-                                {uniqueStatuses.map(s => (
-                                    <option key={s} value={s}>{s?.replace(/_/g, ' ').toLowerCase()}</option>
-                                ))}
-                            </select>
+            {/* ── Header ─────────────────────────────────────────────────────── */}
+            <div style={{ padding: '20px 32px 0', background: '#fff', borderBottom: '1px solid #e2e8f0' }}>
 
-                            <select 
-                                value={sortOrder}
-                                onChange={e => setSortOrder(e.target.value as 'asc' | 'desc')}
-                                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: '13px', color: '#4b5563', outline: 'none', cursor: 'pointer' }}
-                            >
-                                <option value="desc">Newest First</option>
-                                <option value="asc">Oldest First</option>
-                            </select>
-                        </div>
+                {/* Title row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <div>
+                        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                            All Applications
+                        </h1>
+                        <p style={{ fontSize: '13px', color: '#94a3b8', margin: '2px 0 0' }}>
+                            {list.length} {appTab} application{list.length !== 1 ? 's' : ''}
+                        </p>
+                    </div>
 
-                        {/* Search Bar */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '8px 16px', width: '250px' }}>
-                            <Search size={16} style={{ color: '#9ca3af', flexShrink: 0 }} />
-                            <input 
-                                value={searchQuery} 
-                                onChange={e => setSearchQuery(e.target.value)} 
-                                placeholder="Search applications..." 
-                                style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: '14px', color: '#374151', width: '100%' }} 
+                    {/* Controls */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {/* Search */}
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            background: '#f8fafc', border: '1px solid #e2e8f0',
+                            borderRadius: '8px', padding: '8px 14px', width: '210px',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                        }}>
+                            <Search size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
+                            <input
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                placeholder="Search..."
+                                style={{
+                                    border: 'none', outline: 'none', background: 'transparent',
+                                    fontSize: '13px', color: '#374151', width: '100%',
+                                }}
                             />
                         </div>
+
+                        {/* Custom dropdowns */}
+                        <Dropdown
+                            label="All Form Types"
+                            value={filterFormType}
+                            options={formTypeOptions}
+                            onChange={setFilterFormType}
+                            minWidth={150}
+                        />
+                        <Dropdown
+                            label="All Statuses"
+                            value={filterStatus}
+                            options={statusOptions}
+                            onChange={setFilterStatus}
+                            minWidth={130}
+                        />
+                        <Dropdown
+                            label="Sort"
+                            value={sortOrder}
+                            options={sortOptions}
+                            onChange={v => setSortOrder(v as 'asc' | 'desc')}
+                            minWidth={130}
+                            alignRight
+                        />
                     </div>
                 </div>
 
-                {/* Toggles */}
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <button 
-                        onClick={() => setAppTab('ongoing')} 
-                        style={{ 
-                            padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px',
-                            border: '1px solid', borderColor: appTab === 'ongoing' ? '#3b82f6' : '#e5e7eb',
-                            background: appTab === 'ongoing' ? '#eff6ff' : '#fff',
-                            color: appTab === 'ongoing' ? '#1d4ed8' : '#6b7280',
-                            borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px',
-                            transition: 'all 0.2s',
-                        }}
-                    >
-                        <Clock size={16} />
-                        Ongoing Tasks
-                    </button>
-                    <button 
-                        onClick={() => setAppTab('completed')} 
-                        style={{ 
-                            padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px',
-                            border: '1px solid', borderColor: appTab === 'completed' ? '#10b981' : '#e5e7eb',
-                            background: appTab === 'completed' ? '#ecfdf5' : '#fff',
-                            color: appTab === 'completed' ? '#047857' : '#6b7280',
-                            borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '14px',
-                            transition: 'all 0.2s',
-                        }}
-                    >
-                        <CheckCircle size={16} />
-                        Completed Tasks
-                    </button>
+                {/* Tab pills */}
+                <div style={{ display: 'flex' }}>
+                    {(['ongoing', 'completed'] as AppTab[]).map(tab => {
+                        const active   = appTab === tab;
+                        const isOngoing = tab === 'ongoing';
+                        return (
+                            <button
+                                key={tab}
+                                onClick={() => setAppTab(tab)}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '7px',
+                                    padding: '10px 22px',
+                                    background: 'none', border: 'none', cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: active ? 700 : 500,
+                                    color: active ? (isOngoing ? '#2563eb' : '#059669') : '#6b7280',
+                                    borderBottom: active
+                                        ? `2.5px solid ${isOngoing ? '#2563eb' : '#059669'}`
+                                        : '2.5px solid transparent',
+                                    transition: 'all 0.15s',
+                                    marginBottom: '-1px',
+                                }}
+                            >
+                                {isOngoing ? <Clock size={15} /> : <CheckCircle size={15} />}
+                                {isOngoing ? 'Ongoing Tasks' : 'Completed Tasks'}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
-            {/* Main Content Area - Grid */}
-            <main style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
+            {/* ── List ───────────────────────────────────────────────────────── */}
+            <main style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
                 {loading ? (
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                        <Loader2 size={32} className="animate-spin" style={{ color: '#9ca3af' }} />
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+                        <Loader2 size={28} className="animate-spin" style={{ color: '#94a3b8' }} />
                     </div>
                 ) : list.length === 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9ca3af' }}>
-                        <FileText size={48} style={{ opacity: 0.5, marginBottom: '16px' }} />
-                        <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#4b5563', margin: '0 0 8px' }}>No applications found</h2>
-                        <p style={{ fontSize: '14px', margin: 0 }}>There are no {appTab} applications matching your criteria.</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '260px', color: '#94a3b8' }}>
+                        <FileText size={44} style={{ opacity: 0.35, marginBottom: '14px' }} />
+                        <p style={{ fontSize: '15px', fontWeight: 600, color: '#64748b', margin: '0 0 4px' }}>No applications found</p>
+                        <p style={{ fontSize: '13px', margin: 0 }}>There are no {appTab} applications matching your criteria.</p>
                     </div>
                 ) : (
-                    <div style={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', 
-                        gap: '24px',
-                        alignItems: 'stretch'
+                    <div style={{
+                        background: '#fff', borderRadius: '14px',
+                        border: '1px solid #e2e8f0',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                        overflow: 'hidden',
                     }}>
-                        {list.map(app => (
-                            <div 
-                                key={app.id}
-                                onClick={() => setSelectedApp(app)}
-                                style={{
-                                    background: '#fff',
-                                    border: '1px solid #e5e7eb',
-                                    borderRadius: '12px',
-                                    padding: '20px',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease',
-                                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    justifyContent: 'space-between',
-                                    gap: '16px',
-                                    height: '100%',
-                                    minHeight: '140px'
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                    e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)';
-                                    e.currentTarget.style.borderColor = '#cbd5e1';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)';
-                                    e.currentTarget.style.borderColor = '#e5e7eb';
-                                }}
-                            >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <div style={{ marginRight: '16px' }}>
-                                        <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#1f2937', margin: '0 0 4px', lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {list.map((app, idx) => {
+                            const isHovered = hoveredId === app.id;
+                            const isLast    = idx === list.length - 1;
+                            return (
+                                <div
+                                    key={app.id}
+                                    onClick={() => setSelectedApp(app)}
+                                    onMouseEnter={() => setHoveredId(app.id)}
+                                    onMouseLeave={() => setHoveredId(null)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '16px',
+                                        padding: '16px 24px', cursor: 'pointer',
+                                        background: isHovered ? '#f8fafc' : '#fff',
+                                        borderBottom: isLast ? 'none' : '1px solid #f1f5f9',
+                                        transition: 'background 0.15s',
+                                    }}
+                                >
+                                    <FormIcon status={app.current_status} />
+
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{
+                                            fontSize: '15px', fontWeight: 600, color: '#0f172a',
+                                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                            marginBottom: '4px',
+                                        }}>
                                             {app.form_types?.name || 'Application'}
-                                        </h3>
-                                        <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <span>
-                                                Submitted: {new Date(app.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                            </span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#94a3b8', fontSize: '12px' }}>
+                                            <CalendarDays size={12} />
+                                            <span>Submitted {fmtDate(app.submitted_at)}</span>
                                         </div>
                                     </div>
+
                                     <StatusBadge status={app.current_status} />
+
+                                    <ChevronRight
+                                        size={16}
+                                        style={{
+                                            color: '#cbd5e1', flexShrink: 0,
+                                            transition: 'transform 0.15s',
+                                            transform: isHovered ? 'translateX(3px)' : 'none',
+                                        }}
+                                    />
                                 </div>
-                                
-                                {app.users && (
-                                    <div style={{ fontSize: '13px', color: '#4b5563', padding: '10px 14px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
-                                        <span style={{ color: '#94a3b8', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, display: 'block', marginBottom: '2px' }}>Applicant</span>
-                                        <span style={{ fontWeight: 500 }}>{app.users.first_name} {app.users.last_name}</span>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </main>
 
-            {/* Detail Overlay (Modal-like full page view when selected) */}
+            {/* ── Detail overlay ─────────────────────────────────────────────── */}
             {selectedApp && (
-                <div style={{ 
-                    position: 'absolute', inset: 0, zIndex: 50, display: 'flex', flexDirection: 'column', background: '#fff',
-                    animation: 'slideIn 0.2s ease-out'
+                <div style={{
+                    position: 'absolute', inset: 0, zIndex: 50,
+                    display: 'flex', flexDirection: 'column', background: '#fff',
+                    animation: 'slideIn 0.2s ease-out',
                 }}>
-                    <div style={{ padding: '16px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', background: '#f8fafc' }}>
-                        <button 
+                    <div style={{ padding: '14px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', background: '#f8fafc' }}>
+                        <button
                             onClick={() => setSelectedApp(null)}
-                            style={{ 
-                                display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', 
-                                color: '#4b5563', cursor: 'pointer', fontSize: '14px', fontWeight: 600, padding: '8px 12px',
-                                borderRadius: '6px', transition: 'background 0.2s'
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '8px',
+                                background: 'none', border: 'none', color: '#4b5563',
+                                cursor: 'pointer', fontSize: '14px', fontWeight: 600,
+                                padding: '8px 12px', borderRadius: '6px', transition: 'background 0.15s',
                             }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                            onMouseEnter={e => (e.currentTarget.style.background = '#e2e8f0')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                         >
-                            <X size={18} />
-                            Back to All Applications
+                            <X size={17} /> Back to All Applications
                         </button>
                     </div>
-                    <div style={{ flex: 1, overflowY: 'auto', background: '#f8fafc', padding: '24px' }}>
-                        <div style={{ maxWidth: '900px', margin: '0 auto', background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', background: '#f1f5f9', padding: '24px' }}>
+                        <div style={{ maxWidth: '900px', margin: '0 auto', background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
                             <ApplicationDetail
                                 app={selectedApp} canApprove={canApprove}
                                 isInPendingView={false}
@@ -279,12 +419,16 @@ export default function AllApplicationsPage() {
                             />
                         </div>
                     </div>
-                    <style dangerouslySetInnerHTML={{__html: `
+                    <style dangerouslySetInnerHTML={{ __html: `
                         @keyframes slideIn {
-                            from { transform: translateY(20px); opacity: 0; }
-                            to { transform: translateY(0); opacity: 1; }
+                            from { transform: translateY(16px); opacity: 0; }
+                            to   { transform: translateY(0);    opacity: 1; }
                         }
-                    `}} />
+                        @keyframes dropIn {
+                            from { transform: translateY(-6px); opacity: 0; }
+                            to   { transform: translateY(0);    opacity: 1; }
+                        }
+                    ` }} />
                 </div>
             )}
         </div>

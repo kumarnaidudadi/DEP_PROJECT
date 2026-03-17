@@ -220,11 +220,7 @@ export default function LoginPage() {
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="mt-8 pt-6 text-[10px] uppercase tracking-[0.2em] text-[#AFAFAF] font-bold flex flex-col items-center gap-1.5 border-t border-gray-100">
-                    <span>Authorized Personnel Only</span>
-                    <span className="opacity-60">© 2024 LTMS - V 1.4.0</span>
-                </div>
+
             </div>
         </div>
     );
