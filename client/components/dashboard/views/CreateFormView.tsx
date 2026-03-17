@@ -149,18 +149,27 @@ export default function CreateFormView({
                                 </div>
                             </div>
 
-                            {/* Remove step */}
-                            {builderSteps.length > 1 && (
+                            {/* Step Actions */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
                                 <button onClick={() => {
-                                    if (window.confirm('Remove this step?')) {
-                                        const next = [...builderSteps];
-                                        next.splice(stepIndex, 1);
-                                        onStepsChange(next);
-                                    }
-                                }} style={{ padding: '8px 12px', background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, marginTop: '16px' }}>
-                                    <Trash2 size={14} /> Remove Step
+                                    const next = [...builderSteps];
+                                    next.splice(stepIndex + 1, 0, { status: '', approval_roles: [], fields: [{ name: '', type: 'text', required: true }] });
+                                    onStepsChange(next);
+                                }} style={{ padding: '6px 10px', background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                    <Plus size={14} /> Add Step After
                                 </button>
-                            )}
+                                {builderSteps.length > 1 && (
+                                    <button onClick={() => {
+                                        if (window.confirm('Remove this step?')) {
+                                            const next = [...builderSteps];
+                                            next.splice(stepIndex, 1);
+                                            onStepsChange(next);
+                                        }
+                                    }} style={{ padding: '6px 10px', background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                                        <Trash2 size={14} /> Remove Step
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
                         {/* Fields list */}
