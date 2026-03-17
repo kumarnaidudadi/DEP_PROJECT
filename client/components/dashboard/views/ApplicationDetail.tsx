@@ -188,7 +188,7 @@ export default function ApplicationDetail({
                             return (
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                                     {approvalFields.map(f => (
-                                        <div key={f.key} style={{ gridColumn: f.type === 'textarea' || f.type === 'signature' ? 'span 2' : 'auto' }}>
+                                        <div key={f.key} style={{ gridColumn: ['textarea', 'tuple', 'list', 'signature'].includes(f.type) ? 'span 2' : 'auto' }}>
                                             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>
                                                 {f.label} {f.required && <span style={{ color: '#ef4444' }}>*</span>}
                                             </label>

@@ -325,7 +325,7 @@ export default function CreateFormView({
                                                                     next[stepIndex].fields[fieldIndex].subFields = sfs;
                                                                     onStepsChange(next);
                                                                 }} style={{ ...inputStyleSm, flex: 1, background: '#fff' }}>
-                                                                    {['text', 'number', 'date', 'bool', 'select'].map(t => (
+                                                                    {['text', 'number', 'date', 'date_from_to', 'bool', 'select'].map(t => (
                                                                         <option key={t} value={t}>{FIELD_TYPE_LABELS[t] || t}</option>
                                                                     ))}
                                                                 </select>

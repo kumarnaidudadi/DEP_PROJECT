@@ -305,7 +305,7 @@ export default function NewApplicationView({
             <div style={{ background: '#fff', borderRadius: '10px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     {fields.map(f => (
-                        <div key={f.key} style={{ gridColumn: ['textarea', 'list', 'date_from_to', 'signature', 'name'].includes(f.type) ? 'span 2' : 'auto' }}>
+                        <div key={f.key} style={{ gridColumn: ['textarea', 'list', 'tuple', 'date_from_to', 'signature', 'name'].includes(f.type) ? 'span 2' : 'auto' }}>
                             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>
                                 {f.label} {f.required && <span style={{ color: '#ef4444' }}>*</span>}
                             </label>
