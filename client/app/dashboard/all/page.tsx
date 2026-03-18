@@ -354,6 +354,12 @@ function AllApplicationsContent() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#94a3b8', fontSize: '12px' }}>
                                             <CalendarDays size={12} />
                                             <span>Submitted {fmtDate(app.submitted_at)}</span>
+                                            {app.office_orders?.order_number && (
+                                                <>
+                                                    <span style={{ margin: '0 4px', color: '#cbd5e1' }}>•</span>
+                                                    <span style={{ color: '#2563eb', fontWeight: 600 }}>OO: {app.office_orders.order_number}</span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 

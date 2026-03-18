@@ -31,7 +31,8 @@ export class FormRepository implements IFormRepository {
                 form_status_history: {
                     include: { users: true },
                     orderBy: { changed_at: 'desc' }
-                }
+                },
+                office_orders: true
             }
         });
     }
@@ -53,7 +54,8 @@ export class FormRepository implements IFormRepository {
                 form_approvals: {
                     orderBy: { decided_at: 'desc' },
                     include: { users: { select: { first_name: true, last_name: true } } }
-                }
+                },
+                office_orders: true
             },
             orderBy: { updated_at: 'desc' },
         });

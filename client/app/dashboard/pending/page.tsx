@@ -363,6 +363,12 @@ function PendingWorkContent() {
                                                     {app.users?.first_name} {app.users?.last_name}
                                                 </span>
                                             </span>
+                                            {app.office_orders?.order_number && (
+                                                <>
+                                                    <span style={{ color: '#cbd5e1' }}>•</span>
+                                                    <span style={{ color: '#2563eb', fontWeight: 600 }}>OO: {app.office_orders.order_number}</span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 

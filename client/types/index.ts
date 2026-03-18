@@ -38,6 +38,7 @@ export interface Application {
     form_types?: FormType;
     users?: { first_name: string; last_name: string; email: string };
     form_approvals?: any[];
+    office_orders?: { order_number: string; pdf_url?: string } | null;
 }
 
 // ─── Profile ───────────────────────────────────────────────────────────────────
