@@ -106,31 +106,36 @@ export default function ApplicationDetail({
                             if (approval?.approval_data) sourceData = approval.approval_data;
                         }
 
-                        const mappedItems = stepConfig.slice(1).map((f: any, idx: number) => {
+                        let fieldCounter = 0;
+                        const mappedItems = stepConfig.slice(1).map((f: any) => {
                             const normalizedName = f.name?.replace(/\s+/g, '_');
-                            const keyWithIdx = `${normalizedName}_${idx + 1}`;
+                            if (!normalizedName) return null;
+
+                            // headings don't increment field counter or get a number
+                            if (f.type === 'heading') {
+                                return { type: 'heading', name: f.name, key: normalizedName };
+                            }
+
+                            fieldCounter++;
+                            const currentFieldNum = fieldCounter;
+                            const keyWithIdx = `${normalizedName}_${currentFieldNum}`;
                             const isOldKey = sourceData[normalizedName] !== undefined && sourceData[keyWithIdx] === undefined;
                             const finalKey = isOldKey ? normalizedName : keyWithIdx;
-
-                            if (!normalizedName) return null;
-                            if (f.type === 'heading') {
-                                return { type: 'heading', name: f.name, key: finalKey };
-                            }
 
                             let fieldValues: any[] = [];
                             if (f.type === 'date_from_to') {
                                 const fromKey = isOldKey ? `${normalizedName}_from` : `${keyWithIdx}_from`;
                                 const toKey = isOldKey ? `${normalizedName}_to` : `${keyWithIdx}_to`;
                                 
-                                if (sourceData[fromKey] !== undefined && sourceData[fromKey] !== '') fieldValues.push({ key: fromKey, value: sourceData[fromKey] });
-                                if (sourceData[toKey] !== undefined && sourceData[toKey] !== '') fieldValues.push({ key: toKey, value: sourceData[toKey] });
+                                if (sourceData[fromKey] !== undefined && sourceData[fromKey] !== '') fieldValues.push({ key: fromKey, value: sourceData[fromKey], index: currentFieldNum });
+                                if (sourceData[toKey] !== undefined && sourceData[toKey] !== '') fieldValues.push({ key: toKey, value: sourceData[toKey], index: currentFieldNum });
                                 
                                 renderedFields.add(finalKey);
                                 renderedFields.add(normalizedName);
                                 renderedFields.add(fromKey);
                                 renderedFields.add(toKey);
                             } else {
-                                if (sourceData[finalKey] !== undefined && sourceData[finalKey] !== '') fieldValues.push({ key: finalKey, value: sourceData[finalKey] });
+                                if (sourceData[finalKey] !== undefined && sourceData[finalKey] !== '') fieldValues.push({ key: finalKey, value: sourceData[finalKey], index: currentFieldNum });
                                 renderedFields.add(finalKey);
                                 renderedFields.add(normalizedName);
                             }
@@ -162,11 +167,27 @@ export default function ApplicationDetail({
                                             {g.fields.map((f: any, fIdx: number) => {
                                                 const { key: k, value: v } = f;
                                                 const uniqueKey = `${k}_${fIdx}`;
-                                                
                                                 const isWide = Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('/uploads/signatures')) || k.length > 50;
+
+                                                  const parts = k.split('_');
+                                                  const lastPart = parts[parts.length - 1];
+                                                  const idxInKey = parseInt(lastPart);
+                                                  const displayIdx = f.index || (!isNaN(idxInKey) ? idxInKey : null);
+                                                  
+                                                  let baseLabel = k.replace(/_/g, ' ');
+                                                  if (!isNaN(idxInKey)) {
+                                                      baseLabel = parts.slice(0, -1).join(' ');
+                                                  }
+                                                  
+                                                  const label = displayIdx 
+                                                      ? `${displayIdx}. ${baseLabel.replace(/\b\w/g, (l: string) => l.toUpperCase())}`
+                                                      : baseLabel.replace(/\b\w/g, (l: string) => l.toUpperCase());
+
                                                 return (
                                                     <div key={uniqueKey} style={{ gridColumn: isWide ? 'span 2' : 'auto' }}>
-                                                        <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k.replace(/_/g, ' ').replace(/_\d+$/, '')}</div>
+                                                        <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                                            {label}
+                                                        </div>
                                                         {typeof v === 'string' && v.includes('/uploads/signatures') ? (
                                                             <div style={{ 
                                                                 display: 'inline-flex', 
@@ -186,7 +207,21 @@ export default function ApplicationDetail({
                                                             <div style={{ marginTop: '6px', overflowX: 'auto', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
                                                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                                                                     <thead style={{ background: '#f9fafb' }}>
-                                                                        <tr>{Object.keys(v[0]).map(col => <th key={col} style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontWeight: 600, textTransform: 'capitalize' }}>{col.replace(/_/g, ' ')}</th>)}</tr>
+                                                                        <tr>
+                                                                            {Object.keys(v[0]).map(col => {
+                                                                                const cParts = col.split('_');
+                                                                                const cIdx = parseInt(cParts[cParts.length - 1]);
+                                                                                let cLabel = col.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()); // Title-case by default
+                                                                                 if (!isNaN(cIdx)) {
+                                                                                     cLabel = `${cIdx}. ${cParts.slice(0, -1).join(' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`;
+                                                                                 }
+                                                                                return (
+                                                                                    <th key={col} style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontWeight: 600, textTransform: 'capitalize' }}>
+                                                                                        {cLabel}
+                                                                                    </th>
+                                                                                );
+                                                                            })}
+                                                                        </tr>
                                                                     </thead>
                                                                     <tbody>
                                                                         {v.map((row: any, rIdx: number) => (
@@ -198,7 +233,14 @@ export default function ApplicationDetail({
                                                                 </table>
                                                             </div>
                                                         ) : (
-                                                            <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>{String(v) || '—'}</div>
+                                                            <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>
+                                                                {typeof v === 'object' && v !== null ? (
+                                                                    Object.entries(v)
+                                                                        .filter(([_, val]) => val !== '' && val !== null)
+                                                                        .map(([sk, sv]) => `${sk.replace(/_/g, ' ')}: ${sv}`)
+                                                                        .join(' | ') || '—'
+                                                                ) : String(v || '—')}
+                                                            </div>
                                                         )}
                                                     </div>
                                                 );
@@ -216,30 +258,54 @@ export default function ApplicationDetail({
                         panels.push(
                             <Panel key="unmapped" title="Other Details" style={{ marginBottom: 0 }}>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                                    {unmapped.map(([k, v]) => (
-                                        <div key={k} style={{ gridColumn: (Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('/uploads/signatures')) || k.length > 50) ? 'span 2' : 'auto' }}>
-                                            <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{k.replace(/_/g, ' ').replace(/_\d+$/, '')}</div>
-                                            {typeof v === 'string' && v.includes('/uploads/signatures') ? (
-                                                <div style={{ 
-                                                    display: 'inline-flex', 
-                                                    alignItems: 'center', 
-                                                    gap: '6px', 
-                                                    padding: '4px 10px', 
-                                                    background: '#ecfdf5', 
-                                                    color: '#059669', 
-                                                    borderRadius: '6px', 
-                                                    fontSize: '11px', 
-                                                    fontWeight: 600,
-                                                    border: '1px solid #d1fae5',
-                                                    marginTop: '2px'
-                                                }}>
-                                                    <CheckCircle size={12} /> Digitally Signed
+                                    {unmapped.map(([k, v], uIdx) => {
+                                        const isWide = Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('/uploads/signatures')) || k.length > 50;
+                                        const finalIdx = uIdx + 1;
+                                        
+                                        const parts = k.split('_');
+                                        const lastPart = parts[parts.length - 1];
+                                        const idxVal = parseInt(lastPart);
+                                        let baseName = k.replace(/_/g, ' ');
+
+                                        if (!isNaN(idxVal)) {
+                                             baseName = parts.slice(0, -1).join(' ');
+                                         }
+                                         const label = `${finalIdx}. ${baseName.replace(/\b\w/g, (l: string) => l.toUpperCase())}`;
+
+                                        return (
+                                            <div key={k} style={{ gridColumn: isWide ? 'span 2' : 'auto' }}>
+                                                <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                                    {label}
                                                 </div>
-                                            ) : (
-                                                <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>{String(v) || '—'}</div>
-                                            )}
-                                        </div>
-                                    ))}
+                                                {typeof v === 'string' && v.includes('/uploads/signatures') ? (
+                                                    <div style={{ 
+                                                        display: 'inline-flex', 
+                                                        alignItems: 'center', 
+                                                        gap: '6px', 
+                                                        padding: '4px 10px', 
+                                                        background: '#ecfdf5', 
+                                                        color: '#059669', 
+                                                        borderRadius: '6px', 
+                                                        fontSize: '11px', 
+                                                        fontWeight: 600,
+                                                        border: '1px solid #d1fae5',
+                                                        marginTop: '2px'
+                                                    }}>
+                                                        <CheckCircle size={12} /> Digitally Signed
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>
+                                                        {typeof v === 'object' && v !== null ? (
+                                                            Object.entries(v)
+                                                                .filter(([_, val]) => val !== '' && val !== null)
+                                                                .map(([sk, sv]) => `${sk.replace(/_/g, ' ')}: ${sv}`)
+                                                                .join(' | ') || '—'
+                                                        ) : String(v || '—')}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </Panel>
                         );

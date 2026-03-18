@@ -243,55 +243,68 @@ export default function CreateFormView({
                                                 <GripVertical size={18} />
                                             </div>
                                             <div style={{ flex: 1 }}>
-                                                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginBottom: '8px' }}>
-                                                    <div style={{ flex: 2 }}>
-                                                        <label style={labelStyle}>{field.type === 'heading' ? 'Heading Text' : 'Field Name'}</label>
-                                                        <input value={field.name} onChange={e => {
-                                                            const next = [...builderSteps];
-                                                            next[stepIndex].fields[fieldIndex].name = e.target.value;
-                                                            onStepsChange(next);
-                                                        }} placeholder={field.type === 'heading' ? 'e.g. Personal Details' : 'e.g. designation'} style={inputStyleSm} />
-                                                    </div>
-                                                    <div style={{ flex: 1.5 }}>
-                                                        <label style={labelStyle}>Type</label>
-                                                        <select value={field.type} onChange={e => {
-                                                            const next = [...builderSteps];
-                                                            next[stepIndex].fields[fieldIndex].type = e.target.value;
-                                                            if (e.target.value === 'heading') {
-                                                                next[stepIndex].fields[fieldIndex].required = false;
-                                                            }
-                                                            onStepsChange(next);
-                                                        }} style={{ ...inputStyleSm, background: '#fff' }}>
-                                                            {FIELD_TYPES.map(t => <option key={t} value={t}>{FIELD_TYPE_LABELS[t] || t}</option>)}
-                                                        </select>
-                                                    </div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', paddingBottom: '8px', gap: '4px' }}>
-                                                        {field.type !== 'heading' && (
-                                                            <>
-                                                                <input type="checkbox" checked={field.required} onChange={e => {
+                                                {(() => {
+                                                    let displayNum = 0;
+                                                    for (let i = 0; i <= fieldIndex; i++) {
+                                                        if (step.fields[i].type !== 'heading') displayNum++;
+                                                    }
+                                                    const isHeading = field.type === 'heading';
+
+                                                    return (
+                                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', marginBottom: '8px' }}>
+                                                            <div style={{ flex: 2 }}>
+                                                                <label style={labelStyle}>
+                                                                    {!isHeading && <span style={{ marginRight: '4px' }}>{displayNum}.</span>}
+                                                                    {isHeading ? 'Heading Text' : 'Field Name'}
+                                                                </label>
+                                                                <input value={field.name} onChange={e => {
                                                                     const next = [...builderSteps];
-                                                                    next[stepIndex].fields[fieldIndex].required = e.target.checked;
+                                                                    next[stepIndex].fields[fieldIndex].name = e.target.value;
                                                                     onStepsChange(next);
-                                                                }} />
-                                                                <label style={{ fontSize: '12px', color: '#4b5563', marginRight: '8px' }}>Required</label>
-                                                            </>
-                                                        )}
-                                                        <button 
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                if (window.confirm('Remove this field?')) {
+                                                                }} placeholder={isHeading ? 'e.g. Personal Details' : 'e.g. Designation'} style={inputStyleSm} />
+                                                            </div>
+                                                            <div style={{ flex: 1.5 }}>
+                                                                <label style={labelStyle}>Type</label>
+                                                                <select value={field.type} onChange={e => {
                                                                     const next = [...builderSteps];
-                                                                    next[stepIndex].fields.splice(fieldIndex, 1);
+                                                                    next[stepIndex].fields[fieldIndex].type = e.target.value;
+                                                                    if (e.target.value === 'heading') {
+                                                                        next[stepIndex].fields[fieldIndex].required = false;
+                                                                    }
                                                                     onStepsChange(next);
-                                                                }
-                                                            }} 
-                                                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', marginLeft: field.type === 'heading' ? '8px' : '0' }}
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    </div>
-                                                </div>
+                                                                }} style={{ ...inputStyleSm, background: '#fff' }}>
+                                                                    {FIELD_TYPES.map(t => <option key={t} value={t}>{FIELD_TYPE_LABELS[t] || t}</option>)}
+                                                                </select>
+                                                            </div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', paddingBottom: '8px', gap: '4px' }}>
+                                                                {field.type !== 'heading' && (
+                                                                    <>
+                                                                        <input type="checkbox" checked={field.required} onChange={e => {
+                                                                            const next = [...builderSteps];
+                                                                            next[stepIndex].fields[fieldIndex].required = e.target.checked;
+                                                                            onStepsChange(next);
+                                                                        }} />
+                                                                        <label style={{ fontSize: '12px', color: '#4b5563', marginRight: '8px' }}>Required</label>
+                                                                    </>
+                                                                )}
+                                                                <button 
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (window.confirm('Remove this field?')) {
+                                                                            const next = [...builderSteps];
+                                                                            next[stepIndex].fields.splice(fieldIndex, 1);
+                                                                            onStepsChange(next);
+                                                                        }
+                                                                    }} 
+                                                                    style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', marginLeft: isHeading ? '8px' : '0' }}
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
 
                                                 {/* Select options */}
                                                 {field.type === 'select' && (
@@ -354,6 +367,7 @@ export default function CreateFormView({
                                                         <label style={{ ...labelStyle, marginBottom: '8px', display: 'block' }}>Columns</label>
                                                         {(field.subFields || []).map((sf, sfIdx) => (
                                                             <div key={sfIdx} style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '6px' }}>
+                                                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#6366f1', minWidth: '18px' }}>{sfIdx + 1}.</span>
                                                                 <input value={sf.name} onChange={e => {
                                                                     const next = [...builderSteps];
                                                                     const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];

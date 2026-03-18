@@ -179,28 +179,39 @@ export function getSchemaFields(schema: any): FieldDef[] {
 
     if (schema && typeof schema === 'object' && Array.isArray(schema['1'])) {
         const fields: FieldDef[] = [];
-        schema['1'].forEach((item: any, idx: number) => {
+        let fieldCounter = 0;
+        schema['1'].forEach((item: any) => {
             if (item.name) {
-                fields.push({
-                    key: `${item.name.replace(/\s+/g, '_')}_${idx}`,
-                    label: item.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
-                    type: item.type || 'text',
-                    required: item.required === true || item.required === 'true',
-                    options: item.options,
-                    min: item.min,
-                    max: item.max,
-                    subFields: Array.isArray(item.subFields)
-                        ? item.subFields.map((sf: any, sIdx: number) => ({
-                            key: `${sf.name.replace(/\s+/g, '_')}_${sIdx}`,
-                            label: sf.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
-                            type: sf.type || 'text',
-                            required: sf.required === true || sf.required === 'true',
-                            options: sf.options,
-                            min: sf.min,
-                            max: sf.max,
-                        }))
-                        : undefined,
-                });
+                if (item.type === 'heading') {
+                    fields.push({
+                        key: `${item.name.replace(/\s+/g, '_')}_heading`,
+                        label: item.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+                        type: 'heading',
+                        required: false,
+                    });
+                } else {
+                    fieldCounter++;
+                    fields.push({
+                        key: `${item.name.replace(/\s+/g, '_')}_${fieldCounter}`,
+                        label: `${fieldCounter}. ${item.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}`,
+                        type: item.type || 'text',
+                        required: item.required === true || item.required === 'true',
+                        options: item.options,
+                        min: item.min,
+                        max: item.max,
+                        subFields: Array.isArray(item.subFields)
+                            ? item.subFields.map((sf: any, sIdx: number) => ({
+                                key: `${sf.name.replace(/\s+/g, '_')}_${sIdx + 1}`,
+                                label: `${sIdx + 1}. ${sf.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}`,
+                                type: sf.type || 'text',
+                                required: sf.required === true || sf.required === 'true',
+                                options: sf.options,
+                                min: sf.min,
+                                max: sf.max,
+                            }))
+                            : undefined,
+                    });
+                }
             }
         });
         return fields;
@@ -208,24 +219,27 @@ export function getSchemaFields(schema: any): FieldDef[] {
 
     if (!schema || typeof schema !== 'object' || Object.keys(schema).length === 0) {
         return [
-            { key: 'name', label: 'Full Name', type: 'text', required: true },
-            { key: 'department', label: 'Department', type: 'department', required: true },
-            { key: 'leave_type', label: 'Leave Type', type: 'select', required: true, options: ['Casual Leave', 'Earned Leave', 'Sick Leave'] },
-            { key: 'start_date', label: 'Start Date', type: 'date', required: true },
-            { key: 'end_date', label: 'End Date', type: 'date', required: true },
-            { key: 'reason', label: 'Reason', type: 'textarea', required: true },
+            { key: 'name', label: '1. Full Name', type: 'text', required: true },
+            { key: 'department', label: '2. Department', type: 'department', required: true },
+            { key: 'leave_type', label: '3. Leave Type', type: 'select', required: true, options: ['Casual Leave', 'Earned Leave', 'Sick Leave'] },
+            { key: 'start_date', label: '4. Start Date', type: 'date', required: true },
+            { key: 'end_date', label: '5. End Date', type: 'date', required: true },
+            { key: 'reason', label: '6. Reason', type: 'textarea', required: true },
         ];
     }
 
-    return Object.entries(schema).map(([k, v]: [string, any]) => ({
-        key: k,
-        label: v?.label || k.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
-        type: v?.type || 'text',
-        required: v?.required ?? false,
-        options: v?.options,
-        min: v?.min,
-        max: v?.max,
-    }));
+    return Object.entries(schema).map(([k, v]: [string, any], idx: number) => {
+        const baseLabel = v?.label || k.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+        return {
+            key: k,
+            label: `${idx + 1}. ${baseLabel}`,
+            type: v?.type || 'text',
+            required: v?.required ?? false,
+            options: v?.options,
+            min: v?.min,
+            max: v?.max,
+        };
+    });
 }
 
 export function getApprovalFields(schema: any, steps: any[], currentStatus: string): FieldDef[] {
@@ -238,28 +252,39 @@ export function getApprovalFields(schema: any, steps: any[], currentStatus: stri
 
     if (Array.isArray(stepConfig)) {
         const fields: FieldDef[] = [];
-        stepConfig.forEach((item: any, idx: number) => {
+        let fieldCounter = 0;
+        stepConfig.forEach((item: any) => {
             if (item.name) {
-                fields.push({
-                    key: `${item.name.replace(/\s+/g, '_')}_${idx}`,
-                    label: item.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
-                    type: item.type || 'text',
-                    required: item.required === true || item.required === 'true',
-                    options: item.options,
-                    min: item.min,
-                    max: item.max,
-                    subFields: Array.isArray(item.subFields)
-                        ? item.subFields.map((sf: any, sIdx: number) => ({
-                            key: `${sf.name.replace(/\s+/g, '_')}_${sIdx}`,
-                            label: sf.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
-                            type: sf.type || 'text',
-                            required: sf.required === true || sf.required === 'true',
-                            options: sf.options,
-                            min: sf.min,
-                            max: sf.max,
-                        }))
-                        : undefined,
-                });
+                if (item.type === 'heading') {
+                    fields.push({
+                        key: `${item.name.replace(/\s+/g, '_')}_heading`,
+                        label: item.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()),
+                        type: 'heading',
+                        required: false,
+                    });
+                } else {
+                    fieldCounter++;
+                    fields.push({
+                        key: `${item.name.replace(/\s+/g, '_')}_${fieldCounter}`,
+                        label: `${fieldCounter}. ${item.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}`,
+                        type: item.type || 'text',
+                        required: item.required === true || item.required === 'true',
+                        options: item.options,
+                        min: item.min,
+                        max: item.max,
+                        subFields: Array.isArray(item.subFields)
+                            ? item.subFields.map((sf: any, sIdx: number) => ({
+                                key: `${sf.name.replace(/\s+/g, '_')}_${sIdx + 1}`,
+                                label: `${sIdx + 1}. ${sf.name.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}`,
+                                type: sf.type || 'text',
+                                required: sf.required === true || sf.required === 'true',
+                                options: sf.options,
+                                min: sf.min,
+                                max: sf.max,
+                            }))
+                            : undefined,
+                    });
+                }
             }
         });
         return fields;
