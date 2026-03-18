@@ -298,7 +298,7 @@ function AllApplicationsContent() {
                                 }}
                             >
                                 {isOngoing ? <Clock size={15} /> : <CheckCircle size={15} />}
-                                {isOngoing ? 'Ongoing Tasks' : 'Completed Tasks'}
+                                {isOngoing ? 'Ongoing Applications' : 'Completed Applications'}
                             </button>
                         );
                     })}

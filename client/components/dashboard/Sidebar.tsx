@@ -30,8 +30,8 @@ export default function Sidebar({ canApprove, pendingCount, onLogout }: SidebarP
 
     const items: SidebarItem[] = [
         { href: '/dashboard/all', icon: <FileText size={20} />, label: 'All Applications' },
-        { href: '/dashboard/new', icon: <FilePlus size={20} />, label: 'New Application' },
         ...(canApprove ? [{ href: '/dashboard/pending', icon: <ClipboardList size={20} />, label: 'Pending Work', badge: pendingCount || undefined }] : []),
+        { href: '/dashboard/new', icon: <FilePlus size={20} />, label: 'New Application' },
     ];
 
     const isActive = (href: string) => {

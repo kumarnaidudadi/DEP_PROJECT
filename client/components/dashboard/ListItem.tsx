@@ -13,7 +13,7 @@ export default function ListItem({ children, sel, onClick }: Props) {
     return (
         <div onClick={onClick} style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '12px 18px', cursor: 'pointer',
+            padding: '16px 18px', cursor: 'pointer',
             background: sel ? '#eff6ff' : '#fff',
             borderLeft: sel ? '3px solid #2563eb' : '3px solid transparent',
             borderBottom: '1px solid #f3f4f6', transition: 'all 0.1s',

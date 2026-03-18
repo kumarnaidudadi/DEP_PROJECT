@@ -2,7 +2,7 @@
 // ─── NewApplicationView ────────────────────────────────────────────────────────
 // Renders the form-type picker (middle panel) and form-fill panel (right panel).
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronRight, FileText, Plus, Send, Loader2, Upload, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { FormType, Profile, getSchemaFields, buildAutoFillData } from '@/types';
 import ListItem from '../ListItem';
@@ -17,10 +17,9 @@ const inputStyle: React.CSSProperties = {
     color: '#1f2937', background: '#ffffff',
 };
 
-// ── Small helpers ──────────────────────────────────────────────────────────────
 function IconBox({ sel, children }: { sel: boolean; children: React.ReactNode }) {
     return (
-        <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: sel ? '#dbeafe' : '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: sel ? '#2563eb' : '#6b7280' }}>
+        <div style={{ flexShrink: 0, width: '32px', height: '32px', borderRadius: '8px', background: sel ? '#dbeafe' : '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: sel ? '#2563eb' : '#6b7280' }}>
             {children}
         </div>
     );
@@ -136,20 +135,29 @@ export default function NewApplicationView({
     // Tracks which field keys were auto-filled from profile so FieldRenderer can badge them
     const [autoFilledKeys, setAutoFilledKeys] = useState<Set<string>>(new Set());
 
+    const autoFillProcessed = useRef<number | null>(null);
+
     // Dynamically auto-fill fields once the form is selected and the profile is available
     useEffect(() => {
         if (selectedFormType && profile) {
-            const fields = getSchemaFields(selectedFormType.schema_definition);
-            const { data, autoFilledKeys: filled } = buildAutoFillData(fields, profile, liveRoles);
-            
-            setAutoFilledKeys(filled);
-            
-            // Auto-fill data if it's a fresh form
-            if (Object.keys(formData).length === 0) {
+            // Only autofill if we haven't processed this exact form's ID yet.
+            // This prevents an infinite loop triggering when formData is cleared.
+            if (autoFillProcessed.current !== selectedFormType.id) {
+                const fields = getSchemaFields(selectedFormType.schema_definition);
+                const { data, autoFilledKeys: filled } = buildAutoFillData(fields, profile, liveRoles);
+                
+                setAutoFilledKeys(filled);
+                
+                // Set the specific form's auto fill data! Wait for render!
                 onFormDataChange(data);
+                
+                autoFillProcessed.current = selectedFormType.id;
             }
+        } else {
+            // Reset the tracker if the form gets deselected entirely
+            autoFillProcessed.current = null;
         }
-    }, [selectedFormType, profile, liveRoles]);
+    }, [selectedFormType, profile, liveRoles, onFormDataChange]);
 
     const handleFieldChange = (key: string, value: any) => {
         onFormDataChange({ ...formData, [key]: value });
@@ -177,11 +185,10 @@ export default function NewApplicationView({
             onFormDataChange({}); // Reset any previous form data
             onSelectFormType(ft); // useEffect handles the auto-filling once selected
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', opacity: isInactiveSection ? 0.7 : 1 }}>
-                <IconBox sel={selectedFormType?.id === ft.id}><FileText size={14} /></IconBox>
-                <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: ft.is_active === false ? '#64748b' : '#1f2937' }}>{ft.name}</div>
-                    <div style={{ fontSize: '11px', color: '#9ca3af' }}>{ft.is_active === false ? 'Disabled' : (ft.description || 'Click to fill')}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', opacity: isInactiveSection ? 0.7 : 1, paddingRight: '8px' }}>
+                {/* <IconBox sel={selectedFormType?.id === ft.id}><FileText size={16} /></IconBox> */}
+                <div style={{ fontSize: '13px', fontWeight: 600, color: ft.is_active === false ? '#64748b' : '#1f2937', lineHeight: '1.5', textTransform: 'capitalize' }}>
+                    {ft.name.toLowerCase()}
                 </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
