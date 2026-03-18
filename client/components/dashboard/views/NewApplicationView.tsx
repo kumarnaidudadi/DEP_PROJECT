@@ -3,7 +3,7 @@
 // Renders the form-type picker (middle panel) and form-fill panel (right panel).
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronRight, FileText, Plus, Send, Loader2, Upload, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { ChevronRight, FileText, Plus, Send, Loader2, Upload, Trash2, ToggleLeft, ToggleRight, Clock } from 'lucide-react';
 import { FormType, Profile, getSchemaFields, buildAutoFillData } from '@/types';
 import ListItem from '../ListItem';
 import StatusBadge from '../StatusBadge';
@@ -114,7 +114,9 @@ interface Props {
     onSelectFormType: (ft: FormType) => void;
     onFormDataChange: (data: Record<string, any>) => void;
     onSubmit: () => void;
+    onSaveDraft?: () => void;
     onCancel: () => void;
+    isSavingDraft?: boolean;
     onEditFormType: (ft: FormType) => void;
     onToggleActive?: (ft: FormType) => void;
     adminTab?: 'active' | 'inactive';
@@ -126,7 +128,7 @@ interface Props {
 export default function NewApplicationView({
     formTypes, searchQuery, selectedFormType, activeFormTypeId, formData, submitting, submitSuccess,
     isAdmin, profile, sigUploading, availableDepartments, availableRoles, liveRoles,
-    onSelectFormType, onFormDataChange, onSubmit, onCancel, onEditFormType,
+    onSelectFormType, onFormDataChange, onSubmit, onSaveDraft, onCancel, isSavingDraft, onEditFormType,
     onToggleActive, adminTab = 'active', onAdminTabChange, onCreateFormType, onSigUpload,
 }: Props) {
     // activeFormTypeId is used for highlighting in list mode when selectedFormType is null
@@ -345,6 +347,28 @@ export default function NewApplicationView({
                 </div>
                 <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                     <BtnSecondary onClick={onCancel}>Cancel</BtnSecondary>
+                    {onSaveDraft && (
+                        <button 
+                            onClick={onSaveDraft} 
+                            disabled={isSavingDraft || submitting}
+                            style={{ 
+                                padding: '10px 20px', 
+                                border: '1px solid #3b82f6', 
+                                background: '#eff6ff', 
+                                borderRadius: '8px', 
+                                fontSize: '13px', 
+                                color: '#2563eb', 
+                                cursor: (isSavingDraft || submitting) ? 'not-allowed' : 'pointer', 
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}
+                        >
+                            {isSavingDraft ? <Loader2 size={14} className="animate-spin" /> : <Clock size={14} />}
+                            Save as Draft
+                        </button>
+                    )}
                     <BtnPrimary onClick={onSubmit} disabled={submitting}>
                         {submitting ? <><Loader2 size={14} className="animate-spin" /> Submitting...</> : <><Send size={14} /> Submit Application</>}
                     </BtnPrimary>

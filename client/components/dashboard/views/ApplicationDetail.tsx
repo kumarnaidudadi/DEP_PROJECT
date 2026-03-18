@@ -54,9 +54,10 @@ export default function ApplicationDetail({
                         {app.form_types?.name || 'Application'}
                     </h1>
                     <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
-                        {new Date(app.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        {app.current_status === 'DRAFT' ? 'Last saved ' : ''}
+                        {new Date(app.current_status === 'DRAFT' ? app.updated_at : app.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
-                    {app.office_orders?.order_number && (
+                    {app.current_status === 'APPROVED' && app.office_orders?.order_number && (
                         <div style={{ marginTop: '12px', padding: '8px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#1e40af', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                             <FileText size={16} /> Office Order: {app.office_orders.order_number}
                         </div>

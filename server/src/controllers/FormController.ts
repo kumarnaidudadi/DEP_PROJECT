@@ -114,7 +114,8 @@ export class FormController {
         const userId = req.user?.userId;
         if (!userId) { res.status(401).json({ error: 'Unauthorized' }); return; }
 
-        const { form_type_id, form_data } = req.body;
+        const form_type_id = req.body.form_type_id || req.params.type_id;
+        const { form_data, id } = req.body;
         if (!form_type_id) { res.status(400).json({ error: 'form_type_id is required' }); return; }
 
         try {
@@ -122,12 +123,33 @@ export class FormController {
                 form_type_id: Number(form_type_id),
                 form_data: form_data || {},
                 userId,
-            });
+            }, id ? Number(id) : undefined);
             res.status(201).json(form);
         } catch (e: any) {
             console.error('[FormController] createForm:', e.message);
             if (e.message === 'FORM_TYPE_NOT_FOUND') res.status(404).json({ error: 'Form type not found' });
             else res.status(500).json({ error: 'Failed to create form' });
+        }
+    };
+
+    saveDraft = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        const userId = req.user?.userId;
+        if (!userId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+
+        const form_type_id = req.body.form_type_id || req.params.type_id;
+        const { form_data, id } = req.body;
+        if (!form_type_id) { res.status(400).json({ error: 'form_type_id is required' }); return; }
+
+        try {
+            const form = await this.formService.saveDraft({
+                form_type_id: Number(form_type_id),
+                form_data: form_data || {},
+                userId,
+            }, id ? Number(id) : undefined);
+            res.status(200).json(form);
+        } catch (e: any) {
+            console.error('[FormController] saveDraft:', e.message);
+            res.status(500).json({ error: 'Failed to save draft' });
         }
     };
 

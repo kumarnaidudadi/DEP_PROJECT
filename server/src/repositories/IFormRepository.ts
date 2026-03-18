@@ -10,6 +10,7 @@ export interface IFormRepository {
     findById(id: number): Promise<any | null>;
     findAll(whereClause: object): Promise<any[]>;
     create(dto: CreateFormDto): Promise<any>;
+    saveDraft(dto: CreateFormDto, id?: number): Promise<any>;
     delete(id: number): Promise<void>;
     updateStatus(id: number, status: string, extra?: object): Promise<any>;
     updateFormData(id: number, formData: object): Promise<any>;

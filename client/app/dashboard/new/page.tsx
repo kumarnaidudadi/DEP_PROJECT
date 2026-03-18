@@ -2,7 +2,8 @@
 // ─── /dashboard/new ─────────────────────────────────────────────────────────────
 // New Application: form-type list (middle panel) + form fill (right panel)
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Loader2, Search } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useForms } from '@/hooks/useForms';
@@ -10,20 +11,39 @@ import { useProfile } from '@/hooks/useProfile';
 import { FormType, getSchemaFields } from '@/types';
 import NewApplicationView from '@/components/dashboard/views/NewApplicationView';
 import * as formTypeSvc from '@/services/formTypeService';
+import * as formSvc from '@/services/formService';
 import { Toast, ToastType } from '@/components/ui/Toast';
 
-export default function NewApplicationPage() {
+function NewApplicationContent() {
     const { user } = useAuth();
-    const { formTypes, setFormTypes, loading, fetchFormTypes, submitForm } = useForms();
+    const { formTypes, setFormTypes, loading, fetchFormTypes, submitForm, saveDraft } = useForms();
     const { profile, availableRoles, availableDepartments, sigUploading, fetchProfile, fetchRoles, fetchDepartments, handleSigUpload } = useProfile();
+    const searchParams = useSearchParams();
+    const draftIdFromUrl = searchParams.get('draftId');
 
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFormType, setSelectedFormType] = useState<FormType | null>(null);
     const [formData, setFormData] = useState<Record<string, any>>({});
     const [submitting, setSubmitting] = useState(false);
+    const [isDrafting, setIsDrafting] = useState(false);
+    const [currentDraftId, setCurrentDraftId] = useState<number | null>(null);
     const [submitSuccess, setSubmitSuccess] = useState(false);
     const [toast, setToast] = useState<{ message: string, type: ToastType } | null>(null);
     const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
+
+    // Load draft if draftId is present in URL
+    useEffect(() => {
+        if (draftIdFromUrl && !currentDraftId) {
+            const id = Number(draftIdFromUrl);
+            formSvc.getFormById(id).then(form => {
+                if (form && form.current_status === 'DRAFT' && form.form_types) {
+                    setSelectedFormType(form.form_types as FormType);
+                    setFormData((form.form_data as any) || {});
+                    setCurrentDraftId(id);
+                }
+            }).catch((e: any) => console.error('Failed to load draft', e));
+        }
+    }, [draftIdFromUrl, currentDraftId]);
 
     useEffect(() => {
         fetchFormTypes();
@@ -49,15 +69,31 @@ export default function NewApplicationPage() {
 
         setSubmitting(true);
         try {
-            await submitForm(selectedFormType.id, formData);
+            await submitForm(selectedFormType.id, formData, currentDraftId || undefined);
             setSubmitSuccess(true);
             setFormData({});
+            setCurrentDraftId(null);
             setTimeout(() => {
                 setSubmitSuccess(false);
                 setSelectedFormType(null);
             }, 1500);
         } catch { alert('Failed to submit'); }
         finally { setSubmitting(false); }
+    };
+
+    const handleSaveDraft = async () => {
+        if (!selectedFormType) return;
+        setIsDrafting(true);
+        try {
+            const res = await saveDraft(selectedFormType.id, formData, currentDraftId || undefined);
+            setCurrentDraftId(res.id);
+            setToast({ message: 'Draft saved successfully', type: 'success' });
+        } catch (e) {
+            console.error('Failed to save draft', e);
+            setToast({ message: 'Failed to save draft', type: 'error' });
+        } finally {
+            setIsDrafting(false);
+        }
     };
 
     const handleEditFormType = (ft: FormType) => {
@@ -146,15 +182,15 @@ export default function NewApplicationPage() {
                     <NewApplicationView
                         formTypes={formTypes} searchQuery={searchQuery}
                         selectedFormType={selectedFormType} formData={formData}
-                        submitting={submitting} submitSuccess={submitSuccess}
+                        submitting={submitting} isSavingDraft={isDrafting} submitSuccess={submitSuccess}
                         isAdmin={isAdmin} profile={profile} sigUploading={sigUploading}
                         availableDepartments={availableDepartments} availableRoles={availableRoles}
                         liveRoles={liveRoles}
                         adminTab={activeTab}
                         onAdminTabChange={setActiveTab}
                         onSelectFormType={setSelectedFormType} onFormDataChange={setFormData}
-                        onSubmit={handleSubmit}
-                        onCancel={() => { setSelectedFormType(null); setFormData({}); }}
+                        onSubmit={handleSubmit} onSaveDraft={handleSaveDraft}
+                        onCancel={() => { setSelectedFormType(null); setFormData({}); setCurrentDraftId(null); }}
                         onEditFormType={handleEditFormType}
                         onToggleActive={handleToggleFormType}
                         onCreateFormType={() => { window.location.href = '/dashboard/create'; }}
@@ -171,5 +207,13 @@ export default function NewApplicationPage() {
                 />
             )}
         </div>
+    );
+}
+
+export default function NewApplicationPage() {
+    return (
+        <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', padding: '100px' }}><Loader2 size={30} className="animate-spin" /></div>}>
+            <NewApplicationContent />
+        </Suspense>
     );
 }

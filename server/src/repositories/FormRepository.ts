@@ -73,6 +73,26 @@ export class FormRepository implements IFormRepository {
         });
     }
 
+    async saveDraft(dto: CreateFormDto, id?: number): Promise<any> {
+        if (id) {
+            return this.prisma.forms.update({
+                where: { id },
+                data: {
+                    form_data: dto.form_data as any,
+                    updated_at: new Date(),
+                },
+            });
+        }
+        return this.prisma.forms.create({
+            data: {
+                form_type_id: dto.form_type_id,
+                submitted_by: dto.userId,
+                form_data: dto.form_data as any,
+                current_status: 'DRAFT',
+            },
+        });
+    }
+
     async delete(id: number): Promise<void> {
         await this.prisma.forms.delete({ where: { id } });
     }

@@ -20,8 +20,9 @@ const isTerminal = (s: string) => ['APPROVED', 'REJECTED'].includes(s);
 function FormIcon({ status }: { status: string }) {
     const ok = status === 'APPROVED';
     const no = status === 'REJECTED';
-    const bg = ok ? '#dcfce7' : no ? '#fee2e2' : '#fef3c7';
-    const c  = ok ? '#16a34a' : no ? '#dc2626' : '#d97706';
+    const dr = status === 'DRAFT';
+    const bg = ok ? '#dcfce7' : no ? '#fee2e2' : dr ? '#e2e8f0' : '#fef3c7';
+    const c  = ok ? '#16a34a' : no ? '#dc2626' : dr ? '#64748b' : '#d97706';
     return (
         <div style={{
             width: 42, height: 42, borderRadius: '10px', flexShrink: 0,
@@ -155,6 +156,10 @@ function AllApplicationsContent() {
     useEffect(() => { fetchApplications(); fetchProfile(); }, [fetchApplications, fetchProfile]);
 
     const handleSelectApplication = (app: Application) => {
+        if (app.current_status === 'DRAFT') {
+            router.push(`/dashboard/new?draftId=${app.id}`);
+            return;
+        }
         router.push(`/dashboard/all/${app.id}?tab=${appTab}`);
     };
 
@@ -164,15 +169,16 @@ function AllApplicationsContent() {
     };
 
     // ── Filtering & sorting ──────────────────────────────────────────────────
-    const isAdmin = userRoles.map(r => (typeof r === 'string' ? r.toUpperCase() : '')).includes('ADMIN');
-    
-    const baseApps = isAdmin
-        ? applications
-        : applications.filter(a => Number(a.submitted_by) === Number(user?.id));
+    const baseApps = applications.filter(a => Number(a.submitted_by) === Number(user?.id));
 
-    let list = appTab === 'ongoing'
-        ? baseApps.filter(a => !isTerminal(a.current_status))
-        : baseApps.filter(a => isTerminal(a.current_status));
+    let list = baseApps;
+    if (appTab === 'ongoing') {
+        list = baseApps.filter(a => !isTerminal(a.current_status) && a.current_status !== 'DRAFT');
+    } else if (appTab === 'completed') {
+        list = baseApps.filter(a => isTerminal(a.current_status));
+    } else if (appTab === 'draft') {
+        list = baseApps.filter(a => a.current_status === 'DRAFT');
+    }
 
     if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -276,9 +282,19 @@ function AllApplicationsContent() {
 
                 {/* Tab pills */}
                 <div style={{ display: 'flex' }}>
-                    {(['ongoing', 'completed'] as AppTab[]).map(tab => {
+                    {(['ongoing', 'completed', 'draft'] as AppTab[]).map(tab => {
                         const active   = appTab === tab;
                         const isOngoing = tab === 'ongoing';
+                        const isCompleted = tab === 'completed';
+                        const isDraft = tab === 'draft';
+                        
+                        let color = '#6b7280';
+                        if (active) {
+                            if (isOngoing) color = '#2563eb';
+                            else if (isCompleted) color = '#059669';
+                            else if (isDraft) color = '#d97706';
+                        }
+
                         return (
                             <button
                                 key={tab}
@@ -289,16 +305,18 @@ function AllApplicationsContent() {
                                     background: 'none', border: 'none', cursor: 'pointer',
                                     fontSize: '14px',
                                     fontWeight: active ? 700 : 500,
-                                    color: active ? (isOngoing ? '#2563eb' : '#059669') : '#6b7280',
-                                    borderBottom: active
-                                        ? `2.5px solid ${isOngoing ? '#2563eb' : '#059669'}`
-                                        : '2.5px solid transparent',
+                                    color,
+                                    borderBottom: active ? `2.5px solid ${color}` : '2.5px solid transparent',
                                     transition: 'all 0.15s',
                                     marginBottom: '-1px',
                                 }}
                             >
-                                {isOngoing ? <Clock size={15} /> : <CheckCircle size={15} />}
-                                {isOngoing ? 'Ongoing Applications' : 'Completed Applications'}
+                                {isOngoing && <Clock size={15} />}
+                                {isCompleted && <CheckCircle size={15} />}
+                                {isDraft && <FileText size={15} />}
+                                {isOngoing && 'Ongoing Applications'}
+                                {isCompleted && 'Completed Applications'}
+                                {isDraft && 'Draft Applications'}
                             </button>
                         );
                     })}
@@ -353,8 +371,8 @@ function AllApplicationsContent() {
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#94a3b8', fontSize: '12px' }}>
                                             <CalendarDays size={12} />
-                                            <span>Submitted {fmtDate(app.submitted_at)}</span>
-                                            {app.office_orders?.order_number && (
+                                            <span>{app.current_status === 'DRAFT' ? 'Last saved' : 'Submitted'} {fmtDate(app.current_status === 'DRAFT' ? app.updated_at : app.submitted_at)}</span>
+                                            {app.current_status === 'APPROVED' && app.office_orders?.order_number && (
                                                 <>
                                                     <span style={{ margin: '0 4px', color: '#cbd5e1' }}>•</span>
                                                     <span style={{ color: '#2563eb', fontWeight: 600 }}>OO: {app.office_orders.order_number}</span>

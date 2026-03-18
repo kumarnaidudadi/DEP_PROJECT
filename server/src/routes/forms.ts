@@ -30,6 +30,9 @@ router.delete('/types/:id', verifyToken, controller.deleteFormType);
 // ─── Form / Application Routes ─────────────────────────────────────────────
 router.get('/', verifyToken, controller.getForms);
 router.post('/', verifyToken, controller.createForm);
+router.post('/draft', verifyToken, controller.saveDraft);
+router.post('/:type_id/submit', verifyToken, controller.createForm);
+router.post('/:type_id/draft', verifyToken, controller.saveDraft);
 router.get('/:id', verifyToken, controller.getFormById);
 router.patch('/:id/status', verifyToken, controller.updateFormStatus);
 router.delete('/:id', verifyToken, controller.deleteForm);

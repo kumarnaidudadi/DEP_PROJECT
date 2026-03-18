@@ -36,8 +36,16 @@ export function useForms() {
         }
     }, []);
 
-    const submitForm = useCallback(async (formTypeId: number, formData: Record<string, any>): Promise<Application> => {
-        const result = await formSvc.createForm(formTypeId, formData);
+    const submitForm = useCallback(async (formTypeId: number, formData: Record<string, any>, id?: number): Promise<Application> => {
+        const result = await formSvc.createForm(formTypeId, formData, id);
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('applications-updated'));
+        }
+        return result;
+    }, []);
+
+    const saveDraft = useCallback(async (formTypeId: number, formData: Record<string, any>, id?: number): Promise<Application> => {
+        const result = await formSvc.saveDraft(formTypeId, formData, id);
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new Event('applications-updated'));
         }
@@ -80,6 +88,7 @@ export function useForms() {
         fetchFormTypes,
         fetchApplications,
         submitForm,
+        saveDraft,
         makeDecision,
         triggerDownloadPdf,
         deleteApplication,

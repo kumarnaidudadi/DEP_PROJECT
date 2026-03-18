@@ -9,10 +9,11 @@ interface Props { status: string; lg?: boolean; truncate?: boolean; }
 export default function StatusBadge({ status, lg, truncate }: Props) {
     const ok = status === 'APPROVED';
     const no = status === 'REJECTED';
-    const bg = ok ? '#dcfce7' : no ? '#fee2e2' : '#fef3c7';
-    const c = ok ? '#16a34a' : no ? '#dc2626' : '#d97706';
-    const Icon = ok ? CheckCircle : no ? XCircle : Clock;
-    const label = ok ? 'Approved' : no ? 'Rejected' : status.replace(/_/g, ' ');
+    const dr = status === 'DRAFT';
+    const bg = ok ? '#dcfce7' : no ? '#fee2e2' : dr ? '#f1f5f9' : '#fef3c7';
+    const c = ok ? '#16a34a' : no ? '#dc2626' : dr ? '#64748b' : '#d97706';
+    const Icon = ok ? CheckCircle : no ? XCircle : dr ? Clock : Clock;
+    const label = ok ? 'Approved' : no ? 'Rejected' : dr ? 'Draft' : status.replace(/_/g, ' ');
     return (
         <span
             title={label}

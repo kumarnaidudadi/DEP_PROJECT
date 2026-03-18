@@ -14,8 +14,18 @@ export async function getForms(): Promise<Application[]> {
     return res.data;
 }
 
-export async function createForm(formTypeId: number, formData: Record<string, any>): Promise<Application> {
-    const res = await api.post('/forms', { form_type_id: formTypeId, form_data: formData });
+export async function getFormById(id: number): Promise<Application> {
+    const res = await api.get(`/forms/${id}`);
+    return res.data;
+}
+
+export async function createForm(formTypeId: number, formData: Record<string, any>, id?: number): Promise<Application> {
+    const res = await api.post('/forms', { form_type_id: formTypeId, form_data: formData, id });
+    return res.data;
+}
+
+export async function saveDraft(formTypeId: number, formData: Record<string, any>, id?: number): Promise<Application> {
+    const res = await api.post('/forms/draft', { form_type_id: formTypeId, form_data: formData, id });
     return res.data;
 }
 

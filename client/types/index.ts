@@ -95,7 +95,7 @@ export interface BuilderStep {
 
 // ─── Navigation ────────────────────────────────────────────────────────────────
 export type SidebarView = 'dashboard' | 'new' | 'all' | 'pending' | 'create_form' | 'profile';
-export type AppTab = 'ongoing' | 'completed';
+export type AppTab = 'ongoing' | 'completed' | 'draft';
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 export const FIELD_TYPES = [

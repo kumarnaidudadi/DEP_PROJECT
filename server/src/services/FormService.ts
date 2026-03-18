@@ -151,17 +151,33 @@ export class FormService implements IFormService {
         return form;
     }
 
-    async createForm(dto: CreateFormDto): Promise<any> {
+    async createForm(dto: CreateFormDto, id?: number): Promise<any> {
         const formType = await this.formRepo.findFormTypeById(dto.form_type_id);
         if (!formType) throw new Error('FORM_TYPE_NOT_FOUND');
 
-        const form = await this.formRepo.create(dto);
+        let form;
+        if (id) {
+            // Update an existing draft and promote it to SUBMITTED
+            form = await this.formRepo.updateStatus(id, 'SUBMITTED', { 
+                form_data: dto.form_data, 
+                submitted_at: new Date() 
+            });
+        } else {
+            // Create a brand new submission
+            form = await this.formRepo.create(dto);
+        }
 
         // Trigger workflow: advance to first step
         await this.workflowService.advanceWorkflow(form.id, 1);
 
-        // Return the updated form (status may have changed after workflow advance)
         return this.formRepo.findById(form.id);
+    }
+
+    async saveDraft(dto: CreateFormDto, id?: number): Promise<any> {
+        const formType = await this.formRepo.findFormTypeById(dto.form_type_id);
+        if (!formType) throw new Error('FORM_TYPE_NOT_FOUND');
+
+        return this.formRepo.saveDraft(dto, id);
     }
 
     async updateFormStatus(dto: UpdateFormStatusDto): Promise<any> {
