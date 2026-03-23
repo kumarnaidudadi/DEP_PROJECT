@@ -440,34 +440,87 @@ export default function CreateFormView({
                                                     <div style={{ marginTop: '8px', background: '#f0f4ff', borderRadius: '6px', padding: '10px 12px' }}>
                                                         <label style={{ ...labelStyle, marginBottom: '8px', display: 'block' }}>Columns</label>
                                                         {(field.subFields || []).map((sf, sfIdx) => (
-                                                            <div key={sfIdx} style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '6px' }}>
-                                                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#6366f1', minWidth: '18px' }}>{sfIdx + 1}.</span>
-                                                                <input value={sf.name} onChange={e => {
-                                                                    const next = [...builderSteps];
-                                                                    const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
-                                                                    sfs[sfIdx] = { ...sfs[sfIdx], name: e.target.value };
-                                                                    next[stepIndex].fields[fieldIndex].subFields = sfs;
-                                                                    onStepsChange(next);
-                                                                }} placeholder="Column name" style={{ ...inputStyleSm, flex: 2 }} />
-                                                                <select value={sf.type} onChange={e => {
-                                                                    const next = [...builderSteps];
-                                                                    const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
-                                                                    sfs[sfIdx] = { ...sfs[sfIdx], type: e.target.value };
-                                                                    next[stepIndex].fields[fieldIndex].subFields = sfs;
-                                                                    onStepsChange(next);
-                                                                }} style={{ ...inputStyleSm, flex: 1, background: '#fff' }}>
-                                                                    {['text', 'number', 'date', 'date_from_to', 'bool', 'select'].map(t => (
-                                                                        <option key={t} value={t}>{FIELD_TYPE_LABELS[t] || t}</option>
-                                                                    ))}
-                                                                </select>
-                                                                <button type="button" onClick={() => {
-                                                                    const next = [...builderSteps];
-                                                                    const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
-                                                                    sfs.splice(sfIdx, 1);
-                                                                    next[stepIndex].fields[fieldIndex].subFields = sfs;
-                                                                    onStepsChange(next);
-                                                                }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px', flexShrink: 0 }}>×</button>
-                                                            </div>
+                                                            <React.Fragment key={sfIdx}>
+                                                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '6px' }}>
+                                                                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#6366f1', minWidth: '18px' }}>{sfIdx + 1}.</span>
+                                                                    <input value={sf.name} onChange={e => {
+                                                                        const next = [...builderSteps];
+                                                                        const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
+                                                                        sfs[sfIdx] = { ...sfs[sfIdx], name: e.target.value };
+                                                                        next[stepIndex].fields[fieldIndex].subFields = sfs;
+                                                                        onStepsChange(next);
+                                                                    }} placeholder="Column name" style={{ ...inputStyleSm, flex: 2 }} />
+                                                                     <select value={sf.type} onChange={e => {
+                                                                        const next = [...builderSteps];
+                                                                        const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
+                                                                        const oldType = sfs[sfIdx].type;
+                                                                        sfs[sfIdx] = { ...sfs[sfIdx], type: e.target.value };
+                                                                        
+                                                                        // Initialize options for select type
+                                                                        if (e.target.value === 'select' && (!sfs[sfIdx].options || sfs[sfIdx].options.length === 0)) {
+                                                                            sfs[sfIdx].options = ['Option 1'];
+                                                                        }
+                                                                        
+                                                                        next[stepIndex].fields[fieldIndex].subFields = sfs;
+                                                                        onStepsChange(next);
+                                                                    }} style={{ ...inputStyleSm, flex: 1, background: '#fff' }}>
+                                                                        {['text', 'number', 'date', 'date_from_to', 'bool', 'select'].map(t => (
+                                                                            <option key={t} value={t}>{FIELD_TYPE_LABELS[t] || t}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                    <button type="button" onClick={() => {
+                                                                        const next = [...builderSteps];
+                                                                        const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
+                                                                        sfs.splice(sfIdx, 1);
+                                                                        next[stepIndex].fields[fieldIndex].subFields = sfs;
+                                                                        onStepsChange(next);
+                                                                    }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px', flexShrink: 0 }}>×</button>
+                                                                </div>
+
+                                                                {/* Select Options for Column */}
+                                                                {sf.type === 'select' && (
+                                                                    <div style={{ marginLeft: '24px', marginBottom: '10px', padding: '10px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
+                                                                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#6366f1', marginBottom: '8px', textTransform: 'uppercase' }}>Column Options</div>
+                                                                        {(sf.options || []).map((opt, optIdx) => (
+                                                                            <div key={optIdx} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                                                                <input 
+                                                                                    value={opt} 
+                                                                                    onChange={e => {
+                                                                                        const next = [...builderSteps];
+                                                                                        const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
+                                                                                        const opts = [...(sfs[sfIdx].options || [])];
+                                                                                        opts[optIdx] = e.target.value;
+                                                                                        sfs[sfIdx].options = opts;
+                                                                                        next[stepIndex].fields[fieldIndex].subFields = sfs;
+                                                                                        onStepsChange(next);
+                                                                                    }} 
+                                                                                    placeholder={`Option ${optIdx + 1}`} 
+                                                                                    style={{ ...inputStyleSm, padding: '5px 8px', fontSize: '11px', flex: 1 }} 
+                                                                                />
+                                                                                <button type="button" onClick={() => {
+                                                                                    const next = [...builderSteps];
+                                                                                    const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
+                                                                                    const opts = [...(sfs[sfIdx].options || [])];
+                                                                                    opts.splice(optIdx, 1);
+                                                                                    sfs[sfIdx].options = opts;
+                                                                                    next[stepIndex].fields[fieldIndex].subFields = sfs;
+                                                                                    onStepsChange(next);
+                                                                                }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '14px', flexShrink: 0 }}>×</button>
+                                                                            </div>
+                                                                        ))}
+                                                                        <button type="button" onClick={() => {
+                                                                            const next = [...builderSteps];
+                                                                            const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
+                                                                            const opts = [...(sfs[sfIdx].options || []), ''];
+                                                                            sfs[sfIdx].options = opts;
+                                                                            next[stepIndex].fields[fieldIndex].subFields = sfs;
+                                                                            onStepsChange(next);
+                                                                        }} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#2563eb', background: '#f0f7ff', border: '1px solid #bfdbfe', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}>
+                                                                            <Plus size={12} /> Add Option
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </React.Fragment>
                                                         ))}
                                                         <button type="button" onClick={() => {
                                                             const next = [...builderSteps];

@@ -83,7 +83,7 @@ export interface BuilderField {
     options?: string[];
     min?: number;
     max?: number;
-    subFields?: { name: string; type: string }[];
+    subFields?: { name: string; type: string; options?: string[]; min?: number; max?: number }[];
 }
 
 export interface BuilderStep {

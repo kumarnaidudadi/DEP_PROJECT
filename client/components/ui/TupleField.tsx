@@ -61,7 +61,7 @@ export default function TupleField({ subFields, value, onChange }: TupleFieldPro
                             style={{ width: '100%', padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', background: '#fff', color: '#1f2937' }}
                         >
                             <option value="">Select...</option>
-                            {(sf as any).options?.map((o: string) => <option key={o} value={o}>{o}</option>)}
+                            {sf.options?.map((o: string) => <option key={o} value={o}>{o}</option>)}
                         </select>
                     ) : sf.type === 'bool' ? (
                         <input
