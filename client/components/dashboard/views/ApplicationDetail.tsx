@@ -136,7 +136,7 @@ export default function ApplicationDetail({
                                 renderedFields.add(fromKey);
                                 renderedFields.add(toKey);
                             } else {
-                                if (sourceData[finalKey] !== undefined && sourceData[finalKey] !== '') fieldValues.push({ key: finalKey, value: sourceData[finalKey], index: currentFieldNum });
+                                if (sourceData[finalKey] !== undefined && sourceData[finalKey] !== '') fieldValues.push({ key: finalKey, value: sourceData[finalKey], index: currentFieldNum, type: f.type, options: f.options });
                                 renderedFields.add(finalKey);
                                 renderedFields.add(normalizedName);
                             }
@@ -233,16 +233,29 @@ export default function ApplicationDetail({
                                                                     </tbody>
                                                                 </table>
                                                             </div>
-                                                        ) : (
-                                                            <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>
-                                                                {typeof v === 'object' && v !== null ? (
-                                                                    Object.entries(v)
-                                                                        .filter(([_, val]) => val !== '' && val !== null)
-                                                                        .map(([sk, sv]) => `${sk.replace(/_/g, ' ')}: ${sv}`)
-                                                                        .join(' | ') || '—'
-                                                                ) : String(v || '—')}
-                                                            </div>
-                                                        )}
+                                                          ) : f.type === 'paragraph_blanks' ? (
+                                                              <div style={{ lineHeight: '1.8', color: '#374151', whiteSpace: 'pre-wrap', fontSize: '14px' }}>
+                                                                  {(f.options?.[0] || '').split('[____]').map((seg: string, i: number, arr: any[]) => (
+                                                                      <React.Fragment key={i}>
+                                                                          {seg}
+                                                                          {i < arr.length - 1 && (
+                                                                              <span style={{ borderBottom: '1px solid #94a3b8', padding: '0 4px', fontWeight: 600, color: '#1f2937' }}>
+                                                                                  {Array.isArray(v) && v[i] ? v[i] : '—'}
+                                                                              </span>
+                                                                          )}
+                                                                      </React.Fragment>
+                                                                  ))}
+                                                              </div>
+                                                          ) : (
+                                                              <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>
+                                                                  {typeof v === 'object' && v !== null ? (
+                                                                      Object.entries(v)
+                                                                          .filter(([_, val]) => val !== '' && val !== null)
+                                                                          .map(([sk, sv]) => `${sk.replace(/_/g, ' ')}: ${sv}`)
+                                                                          .join(' | ') || '—'
+                                                                  ) : String(v || '—')}
+                                                              </div>
+                                                          )}
                                                     </div>
                                                 );
                                             })}

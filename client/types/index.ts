@@ -102,7 +102,7 @@ export const FIELD_TYPES = [
     'text', 'number', 'date', 'date_from_to',
     'bool', 'select', 'textarea', 'signature',
     'department', 'role', 'tuple', 'list',
-    'name', 'designation', 'employee_code', 'heading'
+    'name', 'designation', 'employee_code', 'heading', 'paragraph_blanks'
 ];
 
 export const FIELD_TYPE_LABELS: Record<string, string> = {
@@ -112,6 +112,7 @@ export const FIELD_TYPE_LABELS: Record<string, string> = {
     tuple: 'Group (Tuple)', list: 'Repeating List',
     name: 'Name', designation: 'Designation', employee_code: 'Employee Code',
     heading: 'Section Heading',
+    paragraph_blanks: 'Paragraph with Blanks',
 };
 
 // ─── Auto-fill ─────────────────────────────────────────────────────────────────

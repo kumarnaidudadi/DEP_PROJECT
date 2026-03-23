@@ -294,17 +294,61 @@ export default function CreateFormView({
                                                                 }} placeholder={isHeading ? 'e.g. Personal Details' : 'e.g. Designation'} style={inputStyleSm} />
                                                             </div>
                                                             <div style={{ flex: 1.5 }}>
-                                                                <label style={labelStyle}>Type</label>
-                                                                <select value={field.type} onChange={e => {
-                                                                    const next = [...builderSteps];
-                                                                    next[stepIndex].fields[fieldIndex].type = e.target.value;
-                                                                    if (e.target.value === 'heading') {
-                                                                        next[stepIndex].fields[fieldIndex].required = false;
-                                                                    }
-                                                                    onStepsChange(next);
-                                                                }} style={{ ...inputStyleSm, background: '#fff' }}>
-                                                                    {FIELD_TYPES.map(t => <option key={t} value={t}>{FIELD_TYPE_LABELS[t] || t}</option>)}
-                                                                </select>
+                                                                <label style={labelStyle}>Field Type</label>
+                                                                <div style={{ position: 'relative' }}>
+                                                                    <select 
+                                                                        value={field.type} 
+                                                                        onChange={e => {
+                                                                            const next = [...builderSteps];
+                                                                            const val = e.target.value;
+                                                                            next[stepIndex].fields[fieldIndex].type = val;
+                                                                            if (val === 'heading') {
+                                                                                next[stepIndex].fields[fieldIndex].required = false;
+                                                                            }
+                                                                            onStepsChange(next);
+                                                                        }} 
+                                                                        style={{ 
+                                                                            ...inputStyleSm, 
+                                                                            background: '#fff', 
+                                                                            cursor: 'pointer',
+                                                                            appearance: 'none',
+                                                                            paddingRight: '30px',
+                                                                            border: '1.5px solid #3b82f6',
+                                                                            fontWeight: 600,
+                                                                            color: '#1e40af',
+                                                                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                                                        }}
+                                                                    >
+                                                                        <optgroup label="📝 BASIC INPUTS">
+                                                                            <option value="text">📄 Text (Short)</option>
+                                                                            <option value="textarea">📝 Text (Long / Paragraph)</option>
+                                                                            <option value="number">🔢 Number</option>
+                                                                            <option value="select">⌄ Dropdown Select</option>
+                                                                            <option value="bool">☑ Yes / No Toggle</option>
+                                                                        </optgroup>
+                                                                        <optgroup label="📅 DATES">
+                                                                            <option value="date">📅 Single Date</option>
+                                                                            <option value="date_from_to">↔ Date Range (From - To)</option>
+                                                                        </optgroup>
+                                                                        <optgroup label="👤 PROFILE (AUTO-FILL)">
+                                                                            <option value="name">👤 Full Name</option>
+                                                                            <option value="designation">👔 Designation</option>
+                                                                            <option value="employee_code">🆔 Employee Code</option>
+                                                                            <option value="department">🏢 Department</option>
+                                                                            <option value="role">🔑 System Role</option>
+                                                                            <option value="signature">✍ Signature</option>
+                                                                        </optgroup>
+                                                                        <optgroup label="🏗️ STRUCTURAL">
+                                                                            <option value="heading">🏷️ Section Heading</option>
+                                                                            <option value="paragraph_blanks">🖋️ Paragraph with Blanks</option>
+                                                                            <option value="tuple">📦 Data Group (Tuple)</option>
+                                                                            <option value="list">📋 Repeating List</option>
+                                                                        </optgroup>
+                                                                    </select>
+                                                                    <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#3b82f6' }}>
+                                                                        <ChevronDown size={14} />
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                             <div style={{ display: 'flex', alignItems: 'center', paddingBottom: '8px', gap: '4px' }}>
                                                                 {field.type !== 'heading' && (
@@ -433,6 +477,60 @@ export default function CreateFormView({
                                                         }} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '2px', background: '#e0e7ff', border: '1px solid #a5b4fc', color: '#3730a3', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
                                                             <Plus size={11} /> Add Column
                                                         </button>
+                                                    </div>
+                                                )}
+
+                                                {/* Paragraph with Blanks */}
+                                                {field.type === 'paragraph_blanks' && (
+                                                    <div style={{ marginTop: '8px' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '4px' }}>
+                                                            <label style={labelStyle}>Paragraph Template</label>
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => {
+                                                                    const textarea = document.getElementById(`para-${stepIndex}-${fieldIndex}`) as HTMLTextAreaElement;
+                                                                    if (!textarea) return;
+                                                                    const start = textarea.selectionStart;
+                                                                    const end = textarea.selectionEnd;
+                                                                    const text = textarea.value;
+                                                                    const nextText = text.substring(0, start) + '[____]' + text.substring(end);
+                                                                    
+                                                                    const next = [...builderSteps];
+                                                                    next[stepIndex].fields[fieldIndex].options = [nextText];
+                                                                    onStepsChange(next);
+                                                                    
+                                                                    // Restore focus after state update
+                                                                    setTimeout(() => {
+                                                                        textarea.focus();
+                                                                        textarea.setSelectionRange(start + 6, start + 6);
+                                                                    }, 10);
+                                                                }}
+                                                                style={{ fontSize: '11px', padding: '2px 8px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 600, marginBottom: '2px' }}
+                                                            >
+                                                                + Insert Blank
+                                                            </button>
+                                                        </div>
+                                                        <textarea 
+                                                            id={`para-${stepIndex}-${fieldIndex}`}
+                                                            value={field.options?.[0] || ''} 
+                                                            onChange={e => {
+                                                                const next = [...builderSteps];
+                                                                next[stepIndex].fields[fieldIndex].options = [e.target.value];
+                                                                onStepsChange(next);
+                                                            }} 
+                                                            placeholder="e.g. My name is [____] and I work at [____]."
+                                                            style={{ 
+                                                                ...inputStyleSm, 
+                                                                minHeight: '120px', 
+                                                                fontFamily: 'monospace', 
+                                                                lineHeight: '1.5',
+                                                                whiteSpace: 'pre', // Preserve spaces while typing
+                                                                overflowX: 'auto'
+                                                            }}
+                                                        />
+                                                        <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '6px' }}>
+                                                            Tip: Use <b>[____]</b> for blanks. Spaces and newlines will be preserved.
+                                                        </p>
                                                     </div>
                                                 )}
                                             </div>

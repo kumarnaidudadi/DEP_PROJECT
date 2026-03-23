@@ -322,7 +322,7 @@ export default function NewApplicationView({
                         }
 
                         return (
-                            <div key={uniqueKey} style={{ gridColumn: ['textarea', 'list', 'tuple', 'date_from_to', 'signature', 'name'].includes(f.type) || f.label.length > 50 ? 'span 2' : 'auto' }}>
+                            <div key={uniqueKey} style={{ gridColumn: ['textarea', 'list', 'tuple', 'date_from_to', 'signature', 'name', 'paragraph_blanks'].includes(f.type) || f.label.length > 50 ? 'span 2' : 'auto' }}>
                                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>
                                     {f.label} {f.required && <span style={{ color: '#ef4444' }}>*</span>}
                                 </label>

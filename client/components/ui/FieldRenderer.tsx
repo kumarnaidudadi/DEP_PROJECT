@@ -183,6 +183,64 @@ export default function FieldRenderer({
         );
     }
 
+    if (type === 'paragraph_blanks') {
+        const template = options?.[0] || '';
+        const segments = template.split('[____]');
+        const values = Array.isArray(value) ? value : [];
+
+        return (
+            <div style={{ 
+                lineHeight: '1.8', 
+                fontSize: '15px', 
+                color: '#374151',
+                padding: '0', // Full width, no extra padding inside container
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                fontFamily: 'inherit',
+            }}>
+                {segments.map((segment, idx) => (
+                    <React.Fragment key={idx}>
+                        <span style={{ verticalAlign: 'baseline' }}>{segment}</span>
+                        {idx < segments.length - 1 && (
+                            <span 
+                                contentEditable
+                                suppressContentEditableWarning
+                                onFocus={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                onBlur={(e) => {
+                                    e.currentTarget.style.background = 'transparent';
+                                    const nextValue = e.currentTarget.innerText;
+                                    const next = [...values];
+                                    next[idx] = nextValue;
+                                    onChange(key, next);
+                                }}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') e.preventDefault();
+                                }}
+                                style={{
+                                    display: 'inline',
+                                    borderBottom: '1px solid #94a3b8',
+                                    background: 'transparent',
+                                    padding: '0 2px',
+                                    margin: '0 1px',
+                                    outline: 'none',
+                                    fontWeight: 400,
+                                    color: 'inherit',
+                                    cursor: 'text',
+                                    verticalAlign: 'baseline',
+                                    wordBreak: 'break-word',
+                                    transition: 'background 0.2s',
+                                    minWidth: '60px',   
+                                }}
+                            >
+                                {values[idx] || '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0'}
+                            </span>
+                        )}
+                    </React.Fragment>
+                ))}
+            </div>
+        );
+    }
+
     // Default: text, number, date, tuple
     return (
         <input type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
