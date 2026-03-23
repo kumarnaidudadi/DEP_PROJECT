@@ -329,6 +329,7 @@ export default function CreateFormView({
                                                                         <optgroup label="📅 DATES">
                                                                             <option value="date">📅 Single Date</option>
                                                                             <option value="date_from_to">↔ Date Range (From - To)</option>
+                                                                            <option value="date_today">📅 Today's Date (Auto-fill)</option>
                                                                         </optgroup>
                                                                         <optgroup label="👤 PROFILE (AUTO-FILL)">
                                                                             <option value="name">👤 Full Name</option>
@@ -468,13 +469,24 @@ export default function CreateFormView({
                                                                             <option key={t} value={t}>{FIELD_TYPE_LABELS[t] || t}</option>
                                                                         ))}
                                                                     </select>
-                                                                    <button type="button" onClick={() => {
-                                                                        const next = [...builderSteps];
-                                                                        const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
-                                                                        sfs.splice(sfIdx, 1);
-                                                                        next[stepIndex].fields[fieldIndex].subFields = sfs;
-                                                                        onStepsChange(next);
-                                                                    }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px', flexShrink: 0 }}>×</button>
+                                                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                                                        <button type="button" title="Insert column after" onClick={() => {
+                                                                            const next = [...builderSteps];
+                                                                            const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
+                                                                            sfs.splice(sfIdx + 1, 0, { name: '', type: 'text' });
+                                                                            next[stepIndex].fields[fieldIndex].subFields = sfs;
+                                                                            onStepsChange(next);
+                                                                        }} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                                                                            <Plus size={14} />
+                                                                        </button>
+                                                                        <button type="button" title="Remove column" onClick={() => {
+                                                                            const next = [...builderSteps];
+                                                                            const sfs = [...(next[stepIndex].fields[fieldIndex].subFields || [])];
+                                                                            sfs.splice(sfIdx, 1);
+                                                                            next[stepIndex].fields[fieldIndex].subFields = sfs;
+                                                                            onStepsChange(next);
+                                                                        }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', lineHeight: 1, padding: '0 4px', flexShrink: 0 }}>×</button>
+                                                                    </div>
                                                                 </div>
 
                                                                 {/* Select Options for Column */}

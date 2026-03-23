@@ -102,7 +102,8 @@ export const FIELD_TYPES = [
     'text', 'number', 'date', 'date_from_to',
     'bool', 'select', 'textarea', 'signature',
     'department', 'role', 'tuple', 'list',
-    'name', 'designation', 'employee_code', 'heading', 'paragraph_blanks'
+    'name', 'designation', 'employee_code', 'heading', 'paragraph_blanks',
+    'date_today'
 ];
 
 export const FIELD_TYPE_LABELS: Record<string, string> = {
@@ -113,6 +114,7 @@ export const FIELD_TYPE_LABELS: Record<string, string> = {
     name: 'Name', designation: 'Designation', employee_code: 'Employee Code',
     heading: 'Section Heading',
     paragraph_blanks: 'Paragraph with Blanks',
+    date_today: "Today's Date (Auto-fill)",
 };
 
 // ─── Auto-fill ─────────────────────────────────────────────────────────────────
@@ -161,6 +163,13 @@ export function buildAutoFillData(
                 data[`${f.key}_to`]   = tomorrow.toISOString().split('T')[0];
                 autoFilledKeys.add(`${f.key}_from`);
                 autoFilledKeys.add(`${f.key}_to`);
+                break;
+            }
+
+            case 'date_today': {
+                const today = new Date().toISOString().split('T')[0];
+                data[f.key] = today;
+                autoFilledKeys.add(f.key);
                 break;
             }
 

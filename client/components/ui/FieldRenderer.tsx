@@ -166,19 +166,25 @@ export default function FieldRenderer({
         );
     }
 
-    if (type === 'name' || type === 'designation' || type === 'employee_code') {
+    if (type === 'name' || type === 'designation' || type === 'employee_code' || type === 'date_today') {
         const placeholders: Record<string, string> = {
             name: 'Enter full name',
             designation: 'Enter designation',
             employee_code: 'Enter employee code',
+            date_today: 'Today\'s date',
         };
         return (
             <input
                 type="text"
                 value={value || ''}
-                onChange={e => onChange(key, e.target.value)}
+                readOnly={type === 'date_today'}
                 placeholder={placeholders[type]}
-                style={currentInputStyle}
+                style={{
+                    ...currentInputStyle,
+                    background: type === 'date_today' ? '#f3f4f6' : (currentInputStyle.background || '#ffffff'),
+                    cursor: type === 'date_today' ? 'not-allowed' : 'text',
+                    color: type === 'date_today' ? '#6b7280' : (currentInputStyle.color || '#1f2937'),
+                }}
             />
         );
     }
