@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronRight, FileText, Plus, Send, Loader2, Upload, Trash2, ToggleLeft, ToggleRight, Clock } from 'lucide-react';
-import { FormType, Profile, getSchemaFields, buildAutoFillData } from '@/types';
+import { FormType, Profile, getSchemaFields, buildAutoFillData, isFieldVisible } from '@/types';
 import ListItem from '../ListItem';
 import StatusBadge from '../StatusBadge';
 import WorkflowProgress from '../WorkflowProgress';
@@ -313,10 +313,13 @@ export default function NewApplicationView({
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     {fields.map((f, idx) => {
                         const uniqueKey = `${f.key}_${idx}`;
+                        if (!isFieldVisible(f, formData)) return null;
+
                         if (f.type === 'heading') {
                             return (
                                 <div key={uniqueKey} style={{ gridColumn: 'span 2', marginTop: '16px', marginBottom: '8px', borderBottom: '2px solid #e5e7eb', paddingBottom: '8px' }}>
                                     <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1f2937', margin: 0 }}>{f.label}</h3>
+                                    {f.helpText && <p style={{ marginTop: '8px', fontSize: '12px', color: '#6b7280', lineHeight: 1.5 }}>{f.helpText}</p>}
                                 </div>
                             );
                         }
@@ -326,6 +329,11 @@ export default function NewApplicationView({
                                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>
                                     {f.label} {f.required && <span style={{ color: '#ef4444' }}>*</span>}
                                 </label>
+                                {f.helpText && (
+                                    <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#6b7280', lineHeight: 1.5 }}>
+                                        {f.helpText}
+                                    </p>
+                                )}
                                 <FieldRenderer
                                     field={f}
                                     value={f.type === 'date_from_to' ? undefined : formData[f.key]}

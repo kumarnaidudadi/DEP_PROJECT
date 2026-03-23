@@ -177,6 +177,7 @@ export default function FieldRenderer({
             <input
                 type="text"
                 value={value || ''}
+                onChange={e => onChange(key, e.target.value)}
                 readOnly={type === 'date_today'}
                 placeholder={placeholders[type]}
                 style={{

@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { FileText, CheckCircle, XCircle, Upload } from 'lucide-react';
-import { Application, Profile, getApprovalFields } from '@/types';
+import { Application, Profile, getApprovalFields, isFieldVisible } from '@/types';
 import Panel from '../Panel';
 import StatusBadge from '../StatusBadge';
 import WorkflowProgress from '../WorkflowProgress';
@@ -342,10 +342,13 @@ export default function ApplicationDetail({
                             return (
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                                     {approvalFields.map(f => {
+                                        if (!isFieldVisible(f, approvalData)) return null;
+
                                         if (f.type === 'heading') {
                                             return (
                                                 <div key={f.key} style={{ gridColumn: 'span 2', marginTop: '12px', borderBottom: '1px solid #e5e7eb', paddingBottom: '4px' }}>
                                                     <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#374151', margin: 0 }}>{f.label}</h4>
+                                                    {f.helpText && <p style={{ marginTop: '6px', fontSize: '12px', color: '#6b7280', lineHeight: 1.5 }}>{f.helpText}</p>}
                                                 </div>
                                             );
                                         }
@@ -355,6 +358,11 @@ export default function ApplicationDetail({
                                                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>
                                                     {f.label} {f.required && <span style={{ color: '#ef4444' }}>*</span>}
                                                 </label>
+                                                {f.helpText && (
+                                                    <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#6b7280', lineHeight: 1.5 }}>
+                                                        {f.helpText}
+                                                    </p>
+                                                )}
                                                 <FieldRenderer
                                                     field={f}
                                                     value={approvalData[f.key]}
