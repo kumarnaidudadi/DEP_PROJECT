@@ -461,7 +461,7 @@ export default function CreateFormView({
             </div>
 
             {/* ── Right Sidebar (Sticky) ── */}
-            <div style={{ position: 'sticky', top: '32px', width: '240px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ position: 'sticky', top: '50vh', transform: 'translateY(-50%)', width: '240px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <Panel title="Quick Actions">
                     <button onClick={onSave} disabled={creating} style={{ width: '100%', padding: '10px 16px', border: 'none', background: creating ? '#93c5fd' : 'linear-gradient(135deg,#2563eb,#1d4ed8)', color: '#fff', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: creating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(37,99,235,0.3)', marginBottom: '12px' }}>
                         {creating ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : <><CheckCircle size={14} /> Save Form</>}
