@@ -6,7 +6,7 @@ import React, { useEffect, useRef, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Loader2, Search, FileText, CheckCircle, Clock,
-    ChevronRight, CalendarDays, ChevronDown, Check,
+    ChevronRight, CalendarDays, ChevronDown, Check, Trash2,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useForms } from '@/hooks/useForms';
@@ -143,7 +143,7 @@ function AllApplicationsContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user, userRoles } = useAuth();
-    const { applications, loading, fetchApplications } = useForms();
+    const { applications, loading, fetchApplications, deleteApplication } = useForms();
     const { profile, fetchProfile } = useProfile();
 
     const [searchQuery, setSearchQuery]       = useState('');
@@ -382,6 +382,32 @@ function AllApplicationsContent() {
                                     </div>
 
                                     <StatusBadge status={app.current_status} />
+
+                                    {app.current_status === 'DRAFT' && (
+                                        <button
+                                            title="Delete draft"
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                if (!window.confirm('Delete this draft? This cannot be undone.')) return;
+                                                try {
+                                                    await deleteApplication(app.id);
+                                                } catch (err) {
+                                                    console.error('Failed to delete draft', err);
+                                                    alert('Failed to delete draft. Please try again.');
+                                                }
+                                            }}
+                                            style={{
+                                                background: 'none', border: 'none', cursor: 'pointer',
+                                                color: '#94a3b8', padding: '6px', borderRadius: '6px',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                transition: 'color 0.15s, background 0.15s',
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = '#fef2f2'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.background = 'none'; }}
+                                        >
+                                            <Trash2 size={15} />
+                                        </button>
+                                    )}
 
                                     <ChevronRight
                                         size={16}

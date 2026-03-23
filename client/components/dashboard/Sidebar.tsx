@@ -94,7 +94,7 @@ export default function Sidebar({ canApprove, pendingCount, onLogout }: SidebarP
             <div style={{ padding: '12px 0', borderTop: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {navBtn('/dashboard/profile', <User size={20} />, 'Profile')}
                 <div style={{ position: 'relative' }} className="group">
-                    <button onClick={onLogout} style={{
+                    <button onClick={() => { if (window.confirm('Are you sure you want to sign out?')) onLogout(); }} style={{
                         width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         padding: '12px 0', border: 'none', background: 'transparent',
                         color: '#6b7280', cursor: 'pointer', transition: 'background 0.2s',

@@ -6,11 +6,24 @@ import React, { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useProfile } from '@/hooks/useProfile';
 import { useForms } from '@/hooks/useForms';
-import { BuilderStep } from '@/types';
+import { BuilderField, BuilderStep, createBuilderField, createBuilderFieldId } from '@/types';
 import CreateFormView from '@/components/dashboard/views/CreateFormView';
 import * as formTypeSvc from '@/services/formTypeService';
 
-const EMPTY_STEP: BuilderStep = { status: 'Draft', approval_roles: [], fields: [{ name: '', type: 'text', required: true }] };
+const EMPTY_STEP: BuilderStep = { status: 'Draft', approval_roles: [], fields: [createBuilderField()] };
+
+type PersistedBuilderField = {
+    id?: string;
+    name?: string;
+    type?: string;
+    required?: boolean;
+    options?: string[];
+    min?: number;
+    max?: number;
+    helpText?: string;
+    conditionalLogic?: BuilderField['conditionalLogic'];
+    subFields?: BuilderField['subFields'];
+};
 
 function CreateFormInner() {
     const router = useRouter();
@@ -40,14 +53,21 @@ function CreateFormInner() {
         setNewFormDesc(ft.description || '');
         if (ft.schema_definition && ft.workflow) {
             const stepsMap = (ft.workflow.steps || []).map((dbStep, i) => {
-                const stepSchemaArr = ft.schema_definition[String(i + 1)];
+                const stepSchemaArr = ft.schema_definition[String(i + 1)] as PersistedBuilderField[] | undefined;
                 const fields = Array.isArray(stepSchemaArr)
-                    ? stepSchemaArr.filter((item: any) => item.name).map((item: any) => ({
-                        name: item.name, type: item.type || 'text',
+                    ? stepSchemaArr.filter((item): item is PersistedBuilderField & { name: string } => typeof item?.name === 'string' && item.name.trim().length > 0).map(item => ({
+                        id: item.id || createBuilderFieldId(),
+                        name: item.name,
+                        type: item.type || 'text',
                         required: item.required === true,
-                        options: item.options, min: item.min, max: item.max, subFields: item.subFields,
+                        options: item.options,
+                        min: item.min,
+                        max: item.max,
+                        helpText: item.helpText,
+                        conditionalLogic: item.conditionalLogic || null,
+                        subFields: item.subFields,
                     }))
-                    : [{ name: '', type: 'text', required: true }];
+                    : [createBuilderField()];
                 return { status: dbStep.step_name, approval_roles: dbStep.approval_roles || [], fields };
             });
             if (stepsMap.length > 0) setBuilderSteps(stepsMap);
@@ -58,15 +78,20 @@ function CreateFormInner() {
         if (!newFormName.trim()) { alert('Form name is required'); return; }
         setCreating(true); setCreateSuccess(false);
         try {
-            const schema: any = {};
+            const schema: Record<string, Array<Record<string, unknown>>> = {};
             builderSteps.forEach((s, i) => {
                 schema[String(i + 1)] = [
                     { status: s.status },
                     ...s.fields.filter(f => f.name.trim()).map(f => ({
-                        name: f.name.trim(), type: f.type, required: f.required,
+                        id: f.id,
+                        name: f.name.trim(),
+                        type: f.type,
+                        required: f.required,
                         ...(f.options?.length ? { options: f.options.filter(Boolean) } : {}),
                         ...(f.min !== undefined ? { min: f.min } : {}),
                         ...(f.max !== undefined ? { max: f.max } : {}),
+                        ...(f.helpText?.trim() ? { helpText: f.helpText.trim() } : {}),
+                        ...(f.conditionalLogic?.dependsOn ? { conditionalLogic: f.conditionalLogic } : {}),
                         ...(f.subFields?.length ? { subFields: f.subFields } : {}),
                     })),
                 ];
@@ -87,8 +112,11 @@ function CreateFormInner() {
             setNewFormName(''); setNewFormDesc('');
             setBuilderSteps([{ ...EMPTY_STEP }]);
             setTimeout(() => { setCreateSuccess(false); router.push('/dashboard/new'); }, 2000);
-        } catch (e: any) {
-            alert(e.response?.data?.error || 'Failed to save the form type');
+        } catch (error: unknown) {
+            const message = typeof error === 'object' && error !== null && 'response' in error
+                ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
+                : null;
+            alert(message || 'Failed to save the form type');
         } finally { setCreating(false); }
     };
 

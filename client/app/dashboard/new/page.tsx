@@ -124,11 +124,7 @@ function NewApplicationListContent() {
                         </button>
                     </div>
                 )}
-                {isAdmin && (
-                    <button onClick={() => router.push('/dashboard/create')} style={{ position: 'absolute', bottom: '20px', right: '32px', width: '48px', height: '48px', borderRadius: '24px', background: '#3b82f6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(59,130,246,0.5)', border: 'none', cursor: 'pointer', zIndex: 10 }}>
-                        <Plus size={24} />
-                    </button>
-                )}
+                
             </div>
 
             {/* ── List ───────────────────────────────────────────────────────── */}
@@ -200,6 +196,28 @@ function NewApplicationListContent() {
                     </div>
                 )}
             </main>
+
+            {/* ── FAB: Create New Form (Admin only) ───────────────────────── */}
+            {isAdmin && (
+                <button
+                    onClick={() => router.push('/dashboard/create')}
+                    title="Create New Form Type"
+                    style={{
+                        position: 'fixed', bottom: '32px', right: '32px',
+                        width: '52px', height: '52px', borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                        color: '#fff', border: 'none', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 6px 20px rgba(37,99,235,0.45)',
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                        zIndex: 30,
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(37,99,235,0.55)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(37,99,235,0.45)'; }}
+                >
+                    <Plus size={24} />
+                </button>
+            )}
         </div>
     );
 }
