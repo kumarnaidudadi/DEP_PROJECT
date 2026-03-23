@@ -101,7 +101,7 @@ function CreateFormInner() {
                 creating={creating} createSuccess={createSuccess}
                 onNameChange={setNewFormName} onDescChange={setNewFormDesc}
                 onStepsChange={setBuilderSteps} onSave={handleSave}
-                onCancel={() => router.push('/dashboard')}
+                onCancel={() => router.back()}
             />
         </main>
     );

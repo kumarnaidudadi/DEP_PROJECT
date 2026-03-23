@@ -257,46 +257,44 @@ export default function NewApplicationView({
 
     const rightPanel = submitSuccess ? <SuccessMsg /> : (
         <div style={{ padding: '32px 40px', maxWidth: '1000px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1f2937', margin: 0 }}>{selectedFormType.name}</h1>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    {isAdmin && (
+            {isAdmin && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
                         <button onClick={() => onEditFormType(selectedFormType)} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
                             <FileText size={14} /> Edit Form
                         </button>
-                    )}
-                    {isAdmin && onToggleActive && (
-                        <div 
-                            style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '10px', 
-                                background: selectedFormType.is_active === false ? '#f8fafc' : '#f0fdf4', 
-                                padding: '6px 16px', 
-                                borderRadius: '12px', 
-                                border: `1px solid ${selectedFormType.is_active === false ? '#e2e8f0' : '#bbf7d0'}`,
-                                transition: 'all 0.3s ease'
-                            }}
-                        >
-                            <span style={{ 
-                                fontSize: '11px', 
-                                fontWeight: 800, 
-                                color: selectedFormType.is_active === false ? '#64748b' : '#059669',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.02em',
-                                minWidth: '55px'
-                            }}>
-                                {selectedFormType.is_active === false ? 'Inactive' : 'Active'}
-                            </span>
-                            <PremiumToggle 
-                                checked={selectedFormType.is_active !== false} 
-                                onChange={() => onToggleActive(selectedFormType)} 
-                            />
-                        </div>
-                    )}
+                        {onToggleActive && (
+                            <div 
+                                style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '10px', 
+                                    background: selectedFormType.is_active === false ? '#f8fafc' : '#f0fdf4', 
+                                    padding: '6px 16px', 
+                                    borderRadius: '12px', 
+                                    border: `1px solid ${selectedFormType.is_active === false ? '#e2e8f0' : '#bbf7d0'}`,
+                                    transition: 'all 0.3s ease'
+                                }}
+                            >
+                                <span style={{ 
+                                    fontSize: '11px', 
+                                    fontWeight: 800, 
+                                    color: selectedFormType.is_active === false ? '#64748b' : '#059669',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.02em',
+                                    minWidth: '55px'
+                                }}>
+                                    {selectedFormType.is_active === false ? 'Inactive' : 'Active'}
+                                </span>
+                                <PremiumToggle 
+                                    checked={selectedFormType.is_active !== false} 
+                                    onChange={() => onToggleActive(selectedFormType)} 
+                                />
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
-            <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 24px' }}>{selectedFormType.description || 'Fill in the details below.'}</p>
+            )}
 
             {/* Workflow preview */}
             {selectedFormType.workflow && selectedFormType.workflow.steps.length > 0 && (

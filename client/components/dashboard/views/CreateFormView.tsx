@@ -88,11 +88,40 @@ export default function CreateFormView({
         setDragOverIdx(null);
     };
 
+    const scrollToStep = (index: number) => {
+        const el = document.getElementById(`step-${index}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
     return (
-        <div style={{ padding: '32px 40px', maxWidth: '740px', margin: '0 auto' }}>
-            <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1f2937', margin: '0 0 4px' }}>
-                {isEdit ? 'Edit Form' : 'Create New Form'}
-            </h1>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '32px', padding: '32px 40px', maxWidth: '1400px', margin: '0 auto', alignItems: 'flex-start' }}>
+            {/* ── Left Sidebar (Sticky) ── */}
+            <div style={{ position: 'sticky', top: '32px', width: '240px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <Panel title="Form Steps">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: 'calc(100vh - 120px)', overflowY: 'auto', paddingRight: '4px' }}>
+                        {builderSteps.map((step, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => scrollToStep(idx)}
+                                style={{
+                                    textAlign: 'left', padding: '8px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', cursor: 'pointer', color: '#374151', fontSize: '12px', fontWeight: 500, transition: 'all 0.15s',
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'}
+                                onMouseLeave={e => e.currentTarget.style.background = '#f8fafc'}
+                            >
+                                <span style={{ fontWeight: 700, color: '#2563eb', marginRight: '6px' }}>{idx + 1}.</span>
+                                {step.status || `Step ${idx + 1}`}
+                            </button>
+                        ))}
+                    </div>
+                </Panel>
+            </div>
+
+            {/* ── Main Canvas ── */}
+            <div style={{ flex: 1, minWidth: 0, maxWidth: '740px', paddingBottom: '40px' }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1f2937', margin: '0 0 4px' }}>
+                    {isEdit ? 'Edit Form' : 'Create New Form'}
+                </h1>
             <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 24px' }}>
                 Define a custom application form with fields and approval workflow.
             </p>
@@ -120,7 +149,8 @@ export default function CreateFormView({
             {/* Step builder */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {builderSteps.map((step, stepIndex) => (
-                    <Panel key={stepIndex} title={`Step ${stepIndex + 1}`}>
+                    <div key={stepIndex} id={`step-${stepIndex}`}>
+                        <Panel title={`Step ${stepIndex + 1}`}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                             {/* Status name */}
                             <div style={{ flex: 1, marginRight: '16px' }}>
@@ -419,7 +449,8 @@ export default function CreateFormView({
                                 <Plus size={14} /> Add Field
                             </button>
                         </div>
-                    </Panel>
+                        </Panel>
+                    </div>
                 ))}
 
                 <button onClick={() => onStepsChange([...builderSteps, { status: '', approval_roles: [], fields: [{ name: '', type: 'text', required: true }] }])}
@@ -427,12 +458,18 @@ export default function CreateFormView({
                     <Plus size={16} /> Add new Step
                 </button>
             </div>
+            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', margin: '24px 0' }}>
-                <button onClick={onCancel} style={{ padding: '10px 20px', border: '1px solid #d1d5db', background: '#fff', borderRadius: '8px', fontSize: '13px', color: '#6b7280', cursor: 'pointer', fontWeight: 500 }}>Cancel</button>
-                <button onClick={onSave} disabled={creating} style={{ padding: '10px 24px', border: 'none', background: creating ? '#93c5fd' : 'linear-gradient(135deg,#2563eb,#1d4ed8)', color: '#fff', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: creating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(37,99,235,0.3)' }}>
-                    {creating ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : <><CheckCircle size={14} /> Save Form</>}
-                </button>
+            {/* ── Right Sidebar (Sticky) ── */}
+            <div style={{ position: 'sticky', top: '32px', width: '240px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <Panel title="Quick Actions">
+                    <button onClick={onSave} disabled={creating} style={{ width: '100%', padding: '10px 16px', border: 'none', background: creating ? '#93c5fd' : 'linear-gradient(135deg,#2563eb,#1d4ed8)', color: '#fff', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: creating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(37,99,235,0.3)', marginBottom: '12px' }}>
+                        {creating ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : <><CheckCircle size={14} /> Save Form</>}
+                    </button>
+                    <button onClick={onCancel} style={{ width: '100%', padding: '10px 16px', border: '1px solid #d1d5db', background: '#fff', borderRadius: '8px', fontSize: '13px', color: '#6b7280', cursor: 'pointer', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        Cancel
+                    </button>
+                </Panel>
             </div>
         </div>
     );

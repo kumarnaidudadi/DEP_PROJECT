@@ -38,7 +38,7 @@ export default function PendingWorkDetailPage() {
     const hasPendingApprovalForThisUser = selectedApp && selectedApp.form_approvals?.some((appr: any) => 
         appr.decision === 'PENDING' && Number(appr.approved_by) === Number(user?.id)
     );
-    const canApprove = isApprovalRole && hasPendingApprovalForThisUser;
+    const canApprove = Boolean(isApprovalRole && hasPendingApprovalForThisUser);
 
     const handleDecision = async (decision: 'APPROVED' | 'REJECTED') => {
         if (!selectedApp) return;

@@ -157,7 +157,7 @@ function AllApplicationsContent() {
 
     const handleSelectApplication = (app: Application) => {
         if (app.current_status === 'DRAFT') {
-            router.push(`/dashboard/new?draftId=${app.id}`);
+            router.push(`/dashboard/new/${app.form_types?.id}?draftId=${app.id}`);
             return;
         }
         router.push(`/dashboard/all/${app.id}?tab=${appTab}`);
