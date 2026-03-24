@@ -18,7 +18,7 @@ export class PdfService implements IPdfService {
     async generateFormPdf(formId: number): Promise<Buffer> {
         const form = await this.prisma.forms.findUnique({
             where: { id: formId },
-            include: { users: true, form_approvals: true, form_types: true }
+            include: { users: true, form_approvals: { include: { users: true } }, form_types: true }
         });
 
         if (!form) throw new Error('FORM_NOT_FOUND');
@@ -75,9 +75,41 @@ export class PdfService implements IPdfService {
         const fd = form.form_data as any;
 
         const getFd = (keySub: string) => {
-            const keys = Object.keys(fd || {});
-            const found = keys.find(k => k.toLowerCase().includes(keySub.toLowerCase()));
-            return found ? fd[found] : '';
+            if (!fd) return '';
+            const keyLower = keySub.toLowerCase();
+            
+            // 1) Direct key or substring match against form_data
+            const keys = Object.keys(fd);
+            const found = keys.find(k => k.toLowerCase().includes(keyLower));
+            if (found && fd[found]) return fd[found];
+
+            // 2) Schema-based match: search for field by label/name, then use its ID to get value
+            const schema = form.form_types?.schema_definition as any;
+            if (schema && typeof schema === 'object') {
+                for (const stepKey of Object.keys(schema)) {
+                    const stepArr = schema[stepKey];
+                    if (!Array.isArray(stepArr)) continue;
+                    
+                    for (const field of stepArr) {
+                        if (field.name && field.name.toLowerCase().includes(keyLower)) {
+                            // Extract direct value using exact field.id
+                            if (fd[field.id] !== undefined && fd[field.id] !== '') return fd[field.id];
+                            
+                            // Also check approval_data
+                            if (form.form_approvals) {
+                                for (const approval of form.form_approvals as any[]) {
+                                    if (approval.approval_data && approval.decision === 'APPROVED') {
+                                        if (approval.approval_data[field.id] !== undefined && approval.approval_data[field.id] !== '') {
+                                            return approval.approval_data[field.id];
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return '';
         };
 
         // ── Field mapping ──────────────────────────────────────────────────
@@ -89,8 +121,14 @@ export class PdfService implements IPdfService {
         }
 
         // ── Embed signatures ───────────────────────────────────────────────
-        const embedSig = async (sigUrl: string | undefined | null, targetY: number, targetX = 350) => {
+        const embedSig = async (sigUrl: string | undefined | null, targetY: number, targetX = 350, signerName = '') => {
             if (!sigUrl || typeof sigUrl !== 'string' || !sigUrl.includes('/uploads/')) return;
+
+            const dateStr = form.updated_at
+                ? new Date(form.updated_at).toLocaleDateString()
+                : new Date().toLocaleDateString();
+
+            let imageDrawn = false;
             try {
                 const cleanUrl = sigUrl.split('?')[0].replace(/^\/+/, '');
                 const sigPath = path.join(__dirname, '../../', cleanUrl);
@@ -102,59 +140,74 @@ export class PdfService implements IPdfService {
                         sigImageBytes = EncryptionService.decrypt(encryptedBytes);
                     } catch (decErr) {
                         console.error('Failed to decrypt signature:', decErr);
-                        return; // Handle gracefully without breaking PDF gen
                     }
 
-                    let sigImage;
+                    if (sigImageBytes) {
+                        let sigImage;
+                        if (sigPath.toLowerCase().endsWith('.png')) {
+                            sigImage = await pdfDoc.embedPng(sigImageBytes);
+                        } else if (sigPath.toLowerCase().match(/\.jpe?g$/)) {
+                            sigImage = await pdfDoc.embedJpg(sigImageBytes);
+                        }
 
-                    if (sigPath.toLowerCase().endsWith('.png')) {
-                        sigImage = await pdfDoc.embedPng(sigImageBytes);
-                    } else if (sigPath.toLowerCase().match(/\.jpe?g$/)) {
-                        sigImage = await pdfDoc.embedJpg(sigImageBytes);
-                    }
-
-                    if (sigImage) {
-                        page.drawImage(sigImage, {
-                            x: targetX,
-                            y: height - targetY,
-                            width: 100,
-                            height: 38,
-                        });
-                        const dateStr = form.updated_at
-                            ? new Date(form.updated_at).toLocaleDateString()
-                            : new Date().toLocaleDateString();
-                        draw(dateStr, targetX + 20, targetY + 5, 9);
+                        if (sigImage) {
+                            page.drawImage(sigImage, {
+                                x: targetX,
+                                y: height - targetY,
+                                width: 100,
+                                height: 38,
+                            });
+                            imageDrawn = true;
+                        }
                     }
                 }
             } catch (e) {
                 console.error('Signature embed failed:', e);
             }
+
+            // Fallback securely to textual representation if image isn't supported (e.g. .webp) or couldn't be loaded
+            if (signerName && !imageDrawn) {
+                draw(`Digitally signed by ${signerName}`, targetX - 20, targetY, 10);
+                draw(`Date: ${dateStr}`, targetX - 20, targetY + 12, 10);
+            } else if (imageDrawn) {
+                draw(dateStr, targetX + 20, targetY + 5, 9);
+            }
         };
 
         const applicantSig = getFd('applicant') || form.users?.signature_url;
+        const applicantName = form.users ? `${form.users.first_name || ''} ${form.users.last_name || ''}`.trim() : '';
 
         const getStageSig = (stageStart: string) => {
             if (!Array.isArray(form.form_approvals)) return null;
             const approval = form.form_approvals.find(
                 (a: any) => a.stage?.toLowerCase().includes(stageStart) && a.decision === 'APPROVED'
             );
-            if (!approval?.approval_data) return null;
-            const ad = approval.approval_data as any;
-            for (const key of Object.keys(ad)) {
-                if (typeof ad[key] === 'string' && ad[key].includes('/uploads/')) return ad[key];
+            if (!approval) return null;
+            
+            let sigUrl = null;
+            if (approval.approval_data) {
+                const ad = approval.approval_data as any;
+                for (const key of Object.keys(ad)) {
+                    if (typeof ad[key] === 'string' && ad[key].includes('/uploads/')) {
+                        sigUrl = ad[key];
+                        break;
+                    }
+                }
             }
-            return null;
+            
+            const signerName = (approval as any).users ? `${(approval as any).users.first_name || ''} ${(approval as any).users.last_name || ''}`.trim() : '';
+            return { sigUrl, signerName };
         };
 
         for (const sigMapping of mappingToUse.signatures) {
            if (sigMapping.stage === 'applicant') {
-               await embedSig(applicantSig, sigMapping.y, sigMapping.x);
+               await embedSig(applicantSig, sigMapping.y, sigMapping.x, applicantName);
            } else {
                const stagesToCheck = Array.isArray(sigMapping.stage) ? sigMapping.stage : [sigMapping.stage];
                for (const s of stagesToCheck) {
-                   const sigUrl = getStageSig(s);
-                   if (sigUrl) {
-                       await embedSig(sigUrl, sigMapping.y, sigMapping.x);
+                   const stageSigData = getStageSig(s);
+                   if (stageSigData && stageSigData.sigUrl) {
+                       await embedSig(stageSigData.sigUrl, sigMapping.y, sigMapping.x, stageSigData.signerName);
                        break;
                    }
                }

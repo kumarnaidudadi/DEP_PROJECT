@@ -113,6 +113,7 @@ export default function CreateFormView({
     const [previewEnabled, setPreviewEnabled] = React.useState(true);
     const [previewData, setPreviewData] = React.useState<Record<string, unknown>>({});
     const [expandedCondIdx, setExpandedCondIdx] = React.useState<string | null>(null);
+    const [expandedHelpKeys, setExpandedHelpKeys] = React.useState<Record<string, boolean>>({});
 
     const [isMobile, setIsMobile] = React.useState(false);
     const [leftOpen, setLeftOpen] = React.useState(false);
@@ -176,6 +177,37 @@ export default function CreateFormView({
         else { const tgt = [...next[tsi].fields]; tgt.splice(tfi, 0, moved); next[draggedIdx.step] = { ...next[draggedIdx.step], fields: src }; next[tsi] = { ...next[tsi], fields: tgt }; }
         onStepsChange(next); setDraggedIdx(null); setDragOverIdx(null);
     }, [builderSteps, draggedIdx, onStepsChange]);
+
+    // Auto-scroll when dragging near viewport edges
+    React.useEffect(() => {
+        let scrollFrame: number;
+        const handleDrag = (e: DragEvent) => {
+            if (!draggedIdx || !e.clientY) return;
+            const threshold = 100;
+            const scrollSpeed = 15;
+            const doScroll = () => {
+                if (e.clientY < threshold) {
+                    window.scrollBy(0, -scrollSpeed);
+                    scrollFrame = requestAnimationFrame(doScroll);
+                } else if (window.innerHeight - e.clientY < threshold) {
+                    window.scrollBy(0, scrollSpeed);
+                    scrollFrame = requestAnimationFrame(doScroll);
+                }
+            };
+            cancelAnimationFrame(scrollFrame);
+            if (e.clientY < threshold || window.innerHeight - e.clientY < threshold) scrollFrame = requestAnimationFrame(doScroll);
+        };
+        const handleDragEnd = () => cancelAnimationFrame(scrollFrame);
+        window.addEventListener('dragover', handleDrag);
+        window.addEventListener('dragend', handleDragEnd);
+        window.addEventListener('drop', handleDragEnd);
+        return () => {
+            window.removeEventListener('dragover', handleDrag);
+            window.removeEventListener('dragend', handleDragEnd);
+            window.removeEventListener('drop', handleDragEnd);
+            cancelAnimationFrame(scrollFrame);
+        };
+    }, [draggedIdx]);
 
     const scrollToStep = (i: number) => {
         if (isMobile) setLeftOpen(false);
@@ -395,6 +427,9 @@ export default function CreateFormView({
 
                                     return (
                                         <React.Fragment key={field.id}>
+                                        {isOver && (
+                                            <div style={{ height: '4px', background: '#3b82f6', borderRadius: '2px', width: '100%', boxShadow: '0 0 8px rgba(59,130,246,0.5)' }} />
+                                        )}
                                         <div
                                             draggable={draggableIdx?.step === stepIndex && draggableIdx?.field === fi}
                                             onDragStart={() => handleDragStart(stepIndex, fi)}
@@ -402,8 +437,8 @@ export default function CreateFormView({
                                             onDrop={e => { e.stopPropagation(); handleDrop(stepIndex, fi); }}
                                             onDragEnd={() => { setDraggedIdx(null); setDragOverIdx(null); setDraggableIdx(null); }}
                                             style={{
-                                                background: isHeading ? '#f1f5f9' : '#fff', borderRadius: '10px', border: `1px solid ${isOver ? '#3b82f6' : '#e5e7eb'}`,
-                                                padding: '12px', opacity: isDragging ? 0.4 : 1, transition: 'opacity 0.15s, border-color 0.15s',
+                                                background: isHeading ? '#f1f5f9' : '#fff', borderRadius: '10px', border: '1px solid #e5e7eb',
+                                                padding: '12px', opacity: isDragging ? 0.4 : 1, transition: 'opacity 0.15s',
                                             }}>
                                             <div style={{ display: 'flex', gap: '8px' }}>
                                                 {/* Drag handle */}
@@ -431,11 +466,13 @@ export default function CreateFormView({
                                                     </div>
 
                                                     {/* Row 2: Help Text */}
-                                                    <div style={{ marginTop: '6px' }}>
-                                                        <label style={labelStyle}>Help Text</label>
-                                                        <input value={field.helpText || ''} onChange={e => updateField(stepIndex, fi, f => ({ ...f, helpText: e.target.value }))}
-                                                            placeholder="Short instruction for the applicant" style={inputStyleSm} />
-                                                    </div>
+                                                    {expandedHelpKeys[condKey] && (
+                                                        <div style={{ marginTop: '6px' }}>
+                                                            <label style={labelStyle}>Help Text</label>
+                                                            <input value={field.helpText || ''} onChange={e => updateField(stepIndex, fi, f => ({ ...f, helpText: e.target.value }))}
+                                                                placeholder="Short instruction for the applicant" style={inputStyleSm} autoFocus />
+                                                        </div>
+                                                    )}
 
                                                     {/* Row 3: Action bar — compact horizontal strip */}
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', paddingTop: '6px', borderTop: '1px solid #f1f5f9' }}>
@@ -447,6 +484,13 @@ export default function CreateFormView({
                                                             </label>
                                                         )}
                                                         <span style={{ flex: 1 }} />
+                                                        <button type="button" onClick={() => setExpandedHelpKeys(prev => ({ ...prev, [condKey]: !prev[condKey] }))}
+                                                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '3px',
+                                                                color: field.helpText ? '#10b981' : '#9ca3af' }}>
+                                                            {expandedHelpKeys[condKey] ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+                                                            {field.helpText ? 'Help Text' : '+ Help Text'}
+                                                        </button>
+                                                        <span style={{ width: '1px', height: '14px', background: '#e5e7eb', margin: '0 2px' }} />
                                                         <button type="button" onClick={() => {
                                                             if (field.conditionalLogic) { setExpandedCondIdx(condExpanded ? null : condKey); }
                                                             else { updateField(stepIndex, fi, f => ({ ...f, conditionalLogic: { dependsOn: depOptions[0]?.id || '', operator: 'equals', value: '' } })); setExpandedCondIdx(condKey); }

@@ -41,10 +41,102 @@ export const airIndiaMapping: PdfMappingConfig = {
     ]
 };
 
+export const stationLeaveMapping: PdfMappingConfig = {
+  fields: [
+    // 1. Name
+    { getter: (form, getFd) => form.form_data?.Name || form.users?.first_name || '', x: 350, y: 229 },
+
+    // 2. Designation
+    { getter: (form, getFd) => getFd('Designation'), x: 350, y: 262 },
+
+    // 3. Department
+    { getter: (form, getFd) => getFd('Department'), x: 350, y: 295 },
+
+    // 4. No of days
+    {
+      getter: (form, getFd) => {
+        const val = getFd('Timing(s)');
+        if (val && typeof val === 'object') {
+          for (const k of Object.keys(val)) {
+            if (k.toLowerCase().includes('no_of_days') || k.toLowerCase().includes('no of days')) {
+              return String(val[k]);
+            }
+          }
+        }
+        return String(getFd('No of days') || '');
+      },
+      x: 395, y: 327,
+    },
+
+    // From date
+    {
+      getter: (form, getFd) => {
+        const val = getFd('Timing(s)');
+        if (val && typeof val === 'object') {
+          for (const k of Object.keys(val)) {
+            if (k.toLowerCase().includes('from')) return String(val[k]);
+          }
+        }
+        return String(getFd('from') || '');
+      },
+      x: 339, y: 342,
+    },
+
+    // To date
+    {
+      getter: (form, getFd) => {
+        const val = getFd('Timing(s)');
+        if (val && typeof val === 'object') {
+          for (const k of Object.keys(val)) {
+            if (k.toLowerCase().includes('to')) return String(val[k]);
+          }
+        }
+        return String(getFd('to') || '');
+      },
+      x: 449, y: 342,
+    },
+
+    // 5. Nature of Leave
+    { getter: (form, getFd) => getFd('Nature of Leave'), x: 350, y: 375 },
+
+    // 6. Purpose
+    { getter: (form, getFd) => getFd('Purpose'), x: 350, y: 405 },
+
+    // 7. Contact Number
+    { getter: (form, getFd) => String(getFd('Contact Number')).substring(0, 100), x: 350, y: 438 },
+
+    // Place
+    { getter: (form, getFd) => getFd('Place'), x: 105, y: 502 },
+
+    // Date
+    { getter: (form, getFd) => {
+        return form.updated_at ? new Date(form.updated_at).toLocaleDateString() : new Date().toLocaleDateString();
+    }, x: 105, y: 521 },
+
+    // Permitted
+    {
+      getter: (form, getFd) => {
+        const p = getFd('Permitted');
+        return typeof p === 'boolean' ? (p ? 'Yes' : 'No') : String(p || '');
+      },
+      x: 390,   
+      y: 605,
+    },
+  ],
+
+  signatures: [
+    { stage: 'applicant', x: 438, y: 535 },
+    { stage: ['hod', 'hod_review'], x: 435, y: 670 },
+    { stage: ['esst', 'esst section'], x: 110, y: 720 },
+  ],
+};
+
 // Map of form type name (case-insensitively) to its mapping configuration.
 // For testing/fallback, we store the air india one under its true name.
 export const formTypePdfMappings: Record<string, PdfMappingConfig> = {
     'application for permission to travel by airline other than air india': airIndiaMapping,
+    'station leave permission': stationLeaveMapping,
+    'station leave': stationLeaveMapping,
     // Add other form types here in lowercase...
     // 'leave travel concession': leaveTravelConcessionMapping,
 };
