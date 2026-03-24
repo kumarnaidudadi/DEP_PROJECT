@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { FileText, CheckCircle, XCircle, Upload, ShieldCheck, Loader2 } from 'lucide-react';
-import { Application, Profile, getApprovalFields, isFieldVisible } from '@/types';
+import { Application, Profile, getApprovalFields, isFieldVisible, formatTitleCase } from '@/types';
 import Panel from '../Panel';
 import StatusBadge from '../StatusBadge';
 import WorkflowProgress from '../WorkflowProgress';
@@ -53,6 +53,41 @@ function getSignerName(app: Application, stepKey: string, statusObj: any): strin
         return [approval.users.first_name, approval.users.last_name].filter(Boolean).join(' ');
     }
     return '';
+}
+
+function getSubFieldLabel(colKey: string, subFields: any[] | undefined, formatTitleCaseFn: (s: string) => string): string {
+    const isFrom = colKey.endsWith('_from');
+    const isTo = colKey.endsWith('_to');
+    
+    let matchKey = colKey;
+    if (isFrom) matchKey = colKey.slice(0, -5);
+    else if (isTo) matchKey = colKey.slice(0, -3);
+
+    let targetSf: any = null;
+    if (subFields && Array.isArray(subFields)) {
+        targetSf = subFields.find(sf => 
+            sf.id === matchKey || 
+            sf.key === matchKey ||
+            sf.name?.replace(/\s+/g,'_') === matchKey || 
+            `${sf.name?.replace(/\s+/g,'_')}_1` === matchKey
+        );
+    }
+    
+    let baseLabel = '';
+    if (targetSf) {
+        baseLabel = targetSf.name;
+    } else {
+        const parts = matchKey.split('_');
+        const num = parseInt(parts[parts.length - 1]);
+        if (!isNaN(num)) parts.pop();
+        baseLabel = parts.join(' ');
+    }
+    
+    baseLabel = formatTitleCaseFn(baseLabel);
+    if (isFrom) baseLabel += ' (From)';
+    if (isTo) baseLabel += ' (To)';
+    
+    return baseLabel;
 }
 
 export default function ApplicationDetail({
@@ -134,29 +169,38 @@ export default function ApplicationDetail({
 
                             // headings don't increment field counter or get a number
                             if (f.type === 'heading') {
-                                return { type: 'heading', name: f.name, key: normalizedName };
+                                return { type: 'heading', name: f.name, key: f.id || `${normalizedName}_heading` };
                             }
 
                             fieldCounter++;
                             const currentFieldNum = fieldCounter;
                             const keyWithIdx = `${normalizedName}_${currentFieldNum}`;
-                            const isOldKey = sourceData[normalizedName] !== undefined && sourceData[keyWithIdx] === undefined;
-                            const finalKey = isOldKey ? normalizedName : keyWithIdx;
+                            const standardKey = f.id || keyWithIdx;
+                            const finalKey = (sourceData[normalizedName] !== undefined && sourceData[standardKey] === undefined) 
+                                             ? normalizedName 
+                                             : standardKey;
 
                             let fieldValues: any[] = [];
                             if (f.type === 'date_from_to') {
-                                const fromKey = isOldKey ? `${normalizedName}_from` : `${keyWithIdx}_from`;
-                                const toKey = isOldKey ? `${normalizedName}_to` : `${keyWithIdx}_to`;
+                                const fromKey = `${finalKey}_from`;
+                                const toKey = `${finalKey}_to`;
+                                const oldFromKey = `${normalizedName}_from`;
+                                const oldToKey = `${normalizedName}_to`;
                                 
-                                if (sourceData[fromKey] !== undefined && sourceData[fromKey] !== '') fieldValues.push({ key: fromKey, value: sourceData[fromKey], index: currentFieldNum });
-                                if (sourceData[toKey] !== undefined && sourceData[toKey] !== '') fieldValues.push({ key: toKey, value: sourceData[toKey], index: currentFieldNum });
+                                const actualFrom = (sourceData[oldFromKey] !== undefined && sourceData[fromKey] === undefined) ? oldFromKey : fromKey;
+                                const actualTo = (sourceData[oldToKey] !== undefined && sourceData[toKey] === undefined) ? oldToKey : toKey;
+                                
+                                if (sourceData[actualFrom] !== undefined && sourceData[actualFrom] !== '') fieldValues.push({ key: actualFrom, label: `${f.name} (From)`, value: sourceData[actualFrom], index: currentFieldNum });
+                                if (sourceData[actualTo] !== undefined && sourceData[actualTo] !== '') fieldValues.push({ key: actualTo, label: `${f.name} (To)`, value: sourceData[actualTo], index: currentFieldNum });
                                 
                                 renderedFields.add(finalKey);
                                 renderedFields.add(normalizedName);
-                                renderedFields.add(fromKey);
-                                renderedFields.add(toKey);
+                                renderedFields.add(actualFrom);
+                                renderedFields.add(actualTo);
                             } else {
-                                if (sourceData[finalKey] !== undefined && sourceData[finalKey] !== '') fieldValues.push({ key: finalKey, value: sourceData[finalKey], index: currentFieldNum, type: f.type, options: f.options, signerName });
+                                if (sourceData[finalKey] !== undefined && sourceData[finalKey] !== '') {
+                                    fieldValues.push({ key: finalKey, label: f.name, value: sourceData[finalKey], index: currentFieldNum, type: f.type, options: f.options, subFields: f.subFields, signerName });
+                                }
                                 renderedFields.add(finalKey);
                                 renderedFields.add(normalizedName);
                             }
@@ -195,14 +239,17 @@ export default function ApplicationDetail({
                                                   const idxInKey = parseInt(lastPart);
                                                   const displayIdx = f.index || (!isNaN(idxInKey) ? idxInKey : null);
                                                   
-                                                  let baseLabel = k.replace(/_/g, ' ');
-                                                  if (!isNaN(idxInKey)) {
-                                                      baseLabel = parts.slice(0, -1).join(' ');
+                                                  let baseLabel = f.label;
+                                                  if (!baseLabel) {
+                                                      baseLabel = k.replace(/_/g, ' ');
+                                                      if (!isNaN(idxInKey)) {
+                                                          baseLabel = parts.slice(0, -1).join(' ');
+                                                      }
                                                   }
                                                   
                                                   const label = displayIdx 
-                                                      ? `${displayIdx}. ${baseLabel.replace(/\b\w/g, (l: string) => l.toUpperCase())}`
-                                                      : baseLabel.replace(/\b\w/g, (l: string) => l.toUpperCase());
+                                                      ? `${displayIdx}. ${formatTitleCase(baseLabel)}`
+                                                      : formatTitleCase(baseLabel);
 
                                                 return (
                                                     <div key={uniqueKey} style={{ gridColumn: isWide ? 'span 2' : 'auto' }}>
@@ -230,12 +277,7 @@ export default function ApplicationDetail({
                                                                     <thead style={{ background: '#f9fafb' }}>
                                                                         <tr>
                                                                             {Object.keys(v[0]).map(col => {
-                                                                                const cParts = col.split('_');
-                                                                                const cIdx = parseInt(cParts[cParts.length - 1]);
-                                                                                let cLabel = col.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()); // Title-case by default
-                                                                                 if (!isNaN(cIdx)) {
-                                                                                     cLabel = `${cIdx}. ${cParts.slice(0, -1).join(' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}`;
-                                                                                 }
+                                                                                const cLabel = getSubFieldLabel(col, f.subFields, formatTitleCase);
                                                                                 return (
                                                                                     <th key={col} style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontWeight: 600, textTransform: 'capitalize' }}>
                                                                                         {cLabel}
@@ -271,7 +313,10 @@ export default function ApplicationDetail({
                                                                   {typeof v === 'object' && v !== null ? (
                                                                       Object.entries(v)
                                                                           .filter(([_, val]) => val !== '' && val !== null)
-                                                                          .map(([sk, sv]) => `${sk.replace(/_/g, ' ')}: ${sv}`)
+                                                                          .map(([sk, sv]) => {
+                                                                              const labelText = getSubFieldLabel(sk, f.subFields, formatTitleCase);
+                                                                              return `${labelText}: ${sv}`;
+                                                                          })
                                                                           .join(' | ') || '—'
                                                                   ) : String(v || '—')}
                                                               </div>
@@ -304,7 +349,7 @@ export default function ApplicationDetail({
                                         if (!isNaN(idxVal)) {
                                              baseName = parts.slice(0, -1).join(' ');
                                          }
-                                         const label = `${finalIdx}. ${baseName.replace(/\b\w/g, (l: string) => l.toUpperCase())}`;
+                                         const label = `${finalIdx}. ${formatTitleCase(baseName)}`;
 
                                         return (
                                             <div key={k} style={{ gridColumn: isWide ? 'span 2' : 'auto' }}>

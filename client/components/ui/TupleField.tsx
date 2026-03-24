@@ -40,19 +40,35 @@ export default function TupleField({ subFields, value, onChange }: TupleFieldPro
                     </label>
                     {sf.type === 'date_from_to' ? (
                         <div style={{ display: 'flex', gap: '4px' }}>
-                            <input
-                                type="date"
-                                value={value[`${sf.key}_from`] ?? ''}
-                                onChange={e => updateCell(`${sf.key}_from`, e.target.value)}
-                                style={{ width: '100%', padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', color: '#1f2937', background: '#fff' }}
-                            />
-                            <span style={{ display: 'flex', alignItems: 'center', color: '#6b7280', fontSize: '11px' }}>to</span>
-                            <input
-                                type="date"
-                                value={value[`${sf.key}_to`] ?? ''}
-                                onChange={e => updateCell(`${sf.key}_to`, e.target.value)}
-                                style={{ width: '100%', padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', color: '#1f2937', background: '#fff' }}
-                            />
+                                <input
+                                    type="date"
+                                    value={value[`${sf.key}_from`] ?? ''}
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        const toVal = value[`${sf.key}_to`];
+                                        if (toVal && val > toVal) {
+                                            alert('From Date cannot be later than To Date');
+                                        } else {
+                                            updateCell(`${sf.key}_from`, val);
+                                        }
+                                    }}
+                                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', color: '#1f2937', background: '#fff' }}
+                                />
+                                <span style={{ display: 'flex', alignItems: 'center', color: '#6b7280', fontSize: '11px' }}>to</span>
+                                <input
+                                    type="date"
+                                    value={value[`${sf.key}_to`] ?? ''}
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        const fromVal = value[`${sf.key}_from`];
+                                        if (fromVal && val < fromVal) {
+                                            alert('To Date cannot be earlier than From Date');
+                                        } else {
+                                            updateCell(`${sf.key}_to`, val);
+                                        }
+                                    }}
+                                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', color: '#1f2937', background: '#fff' }}
+                                />
                         </div>
                     ) : sf.type === 'select' ? (
                         <select

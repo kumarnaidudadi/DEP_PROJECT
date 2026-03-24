@@ -60,14 +60,30 @@ export default function ListField({ subFields, value, onChange }: ListFieldProps
                                             <input
                                                 type="date"
                                                 value={row[`${sf.key}_from`] ?? ''}
-                                                onChange={e => updateCell(rowIdx, `${sf.key}_from`, e.target.value)}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    const toVal = row[`${sf.key}_to`];
+                                                    if (toVal && val > toVal) {
+                                                        alert('From Date cannot be later than To Date');
+                                                    } else {
+                                                        updateCell(rowIdx, `${sf.key}_from`, val);
+                                                    }
+                                                }}
                                                 style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', color: '#1f2937', background: '#fff' }}
                                             />
                                             <span style={{ display: 'flex', alignItems: 'center', color: '#6b7280', fontSize: '11px' }}>to</span>
                                             <input
                                                 type="date"
                                                 value={row[`${sf.key}_to`] ?? ''}
-                                                onChange={e => updateCell(rowIdx, `${sf.key}_to`, e.target.value)}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    const fromVal = row[`${sf.key}_from`];
+                                                    if (fromVal && val < fromVal) {
+                                                        alert('To Date cannot be earlier than From Date');
+                                                    } else {
+                                                        updateCell(rowIdx, `${sf.key}_to`, val);
+                                                    }
+                                                }}
                                                 style={{ width: '100%', padding: '5px 8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', boxSizing: 'border-box', color: '#1f2937', background: '#fff' }}
                                             />
                                         </div>

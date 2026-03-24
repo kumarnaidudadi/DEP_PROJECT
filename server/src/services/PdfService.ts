@@ -10,6 +10,7 @@ import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { IPdfService } from './IPdfService';
 import { EncryptionService } from './EncryptionService';
+import { getPdfMappingForForm, airIndiaMapping } from './pdfMappings';
 
 export class PdfService implements IPdfService {
     constructor(private readonly prisma: PrismaClient) { }
@@ -17,15 +18,38 @@ export class PdfService implements IPdfService {
     async generateFormPdf(formId: number): Promise<Buffer> {
         const form = await this.prisma.forms.findUnique({
             where: { id: formId },
-            include: { users: true, form_approvals: true }
+            include: { users: true, form_approvals: true, form_types: true }
         });
 
         if (!form) throw new Error('FORM_NOT_FOUND');
 
-        const templatePath = path.join(
-            __dirname,
-            '../../../forms/Permission to travel by airline other than air india.pdf'
-        );
+        const formTypeName = form.form_types?.name || '';
+        let templatePath = '';
+
+        const formsDir = path.join(__dirname, '../../../forms');
+        if (fs.existsSync(formsDir)) {
+            const allPdfs = fs.readdirSync(formsDir).filter(f => f.toLowerCase().endsWith('.pdf'));
+            const matchingPdf = allPdfs.find(f => f.toLowerCase() === `${formTypeName.toLowerCase()}.pdf`);
+            
+            if (matchingPdf) {
+                templatePath = path.join(formsDir, matchingPdf);
+            }
+        }
+
+        if (!templatePath) {
+            templatePath = path.join(
+                __dirname,
+                '../../../forms/Permission to travel by airline other than air india.pdf'
+            );
+        }
+
+        if (!fs.existsSync(templatePath)) {
+            // Attempt another fallback just in case
+            templatePath = path.join(
+                __dirname,
+                '../../../forms/APPLICATION FOR PERMISSION TO TRAVEL BY AIRLINE OTHER THAN AIR INDIA.pdf'
+            );
+        }
 
         if (!fs.existsSync(templatePath)) {
             throw new Error('PDF_TEMPLATE_NOT_FOUND');
@@ -57,31 +81,12 @@ export class PdfService implements IPdfService {
         };
 
         // ── Field mapping ──────────────────────────────────────────────────
-        const nameText = fd.Name || form.users?.first_name || '';
-        const desigText = getFd('Designation');
-        const deptText = getFd('Department');
-        const onwardText = getFd('from');
-        const returnText = getFd('to');
-        const placeText = getFd('place');
-        const purposeText = getFd('purpose');
-        const sectorsText = getFd('sectors');
-        const reasonsText = getFd('reason_for_travel');
-        const mhrdObj = getFd('mhrd');
-        const mhrdText = typeof mhrdObj === 'boolean' ? (mhrdObj ? 'Yes' : 'No') : String(mhrdObj || '');
-        const budgetText = getFd('budget');
+        const mappingToUse = getPdfMappingForForm(formTypeName) || airIndiaMapping;
 
         // ── Draw fields onto PDF ───────────────────────────────────────────
-        draw(nameText, 310, 172);
-        draw(desigText, 310, 198);
-        draw(deptText, 310, 218);
-        draw(onwardText, 320, 262, 10);
-        draw(returnText, 435, 262, 10);
-        draw(placeText, 310, 287);
-        draw(purposeText, 310, 309);
-        draw(String(sectorsText).substring(0, 50), 310, 338);
-        draw(String(reasonsText).substring(0, 50), 310, 392);
-        draw(mhrdText, 435, 432);
-        draw(String(budgetText).substring(0, 50), 310, 475);
+        for (const field of mappingToUse.fields) {
+            draw(field.getter(form, getFd), field.x, field.y, field.size || 11);
+        }
 
         // ── Embed signatures ───────────────────────────────────────────────
         const embedSig = async (sigUrl: string | undefined | null, targetY: number, targetX = 350) => {
@@ -127,24 +132,33 @@ export class PdfService implements IPdfService {
         };
 
         const applicantSig = getFd('applicant') || form.users?.signature_url;
-        await embedSig(applicantSig, 578, 350);
 
-        if (Array.isArray(form.form_approvals)) {
-            const getStageSig = (stageStart: string) => {
-                const approval = form.form_approvals.find(
-                    (a: any) => a.stage?.toLowerCase().includes(stageStart) && a.decision === 'APPROVED'
-                );
-                if (!approval?.approval_data) return null;
-                const ad = approval.approval_data as any;
-                for (const key of Object.keys(ad)) {
-                    if (typeof ad[key] === 'string' && ad[key].includes('/uploads/')) return ad[key];
-                }
-                return null;
-            };
+        const getStageSig = (stageStart: string) => {
+            if (!Array.isArray(form.form_approvals)) return null;
+            const approval = form.form_approvals.find(
+                (a: any) => a.stage?.toLowerCase().includes(stageStart) && a.decision === 'APPROVED'
+            );
+            if (!approval?.approval_data) return null;
+            const ad = approval.approval_data as any;
+            for (const key of Object.keys(ad)) {
+                if (typeof ad[key] === 'string' && ad[key].includes('/uploads/')) return ad[key];
+            }
+            return null;
+        };
 
-            await embedSig(getStageSig('hod') || getStageSig('recommendation'), 630, 200);
-            await embedSig(getStageSig('dean'), 670, 80);
-            await embedSig(getStageSig('director'), 730, 80);
+        for (const sigMapping of mappingToUse.signatures) {
+           if (sigMapping.stage === 'applicant') {
+               await embedSig(applicantSig, sigMapping.y, sigMapping.x);
+           } else {
+               const stagesToCheck = Array.isArray(sigMapping.stage) ? sigMapping.stage : [sigMapping.stage];
+               for (const s of stagesToCheck) {
+                   const sigUrl = getStageSig(s);
+                   if (sigUrl) {
+                       await embedSig(sigUrl, sigMapping.y, sigMapping.x);
+                       break;
+                   }
+               }
+           }
         }
 
         const outBytes = await pdfDoc.save();

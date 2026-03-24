@@ -207,8 +207,14 @@ export function suggestFieldTypeFromName(fieldName: string): string | null {
     return null;
 }
 
+export function formatTitleCase(name: string) {
+    return name.replace(/_/g, ' ')
+               .replace(/\b\w/g, (char: string) => char.toUpperCase())
+               .replace(/\(S\)/g, '(s)');
+}
+
 function formatFieldName(name: string) {
-    return name.replace(/_/g, ' ').replace(/\b\w/g, (char: string) => char.toUpperCase());
+    return formatTitleCase(name);
 }
 
 function parseStepFields(stepConfig: any): FieldDef[] {
@@ -376,7 +382,7 @@ export function getSchemaFields(schema: any): FieldDef[] {
     }
 
     return Object.entries(schema).map(([k, v]: [string, any], idx: number) => {
-        const baseLabel = v?.label || k.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+        const baseLabel = v?.label || formatTitleCase(k);
         return {
             key: k,
             label: `${idx + 1}. ${baseLabel}`,
