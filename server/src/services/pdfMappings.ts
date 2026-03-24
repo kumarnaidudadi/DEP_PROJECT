@@ -9,6 +9,7 @@ export interface PdfSignatureMapping {
     stage: string | string[]; // 'applicant' is special, others match form_approvals
     x: number;
     y: number;
+    size?: number;
 }
 
 export interface PdfMappingConfig {
@@ -131,10 +132,61 @@ export const stationLeaveMapping: PdfMappingConfig = {
   ],
 };
 
-// Map of form type name (case-insensitively) to its mapping configuration.
-// For testing/fallback, we store the air india one under its true name.
+export const joiningReportMapping: PdfMappingConfig = {
+    fields: [
+        // English section (using user-provided coordinates)
+        { getter: (form, getFd) => {
+            const v = getFd('LETTER') || getFd('Report') || getFd('Joining');
+            return Array.isArray(v) ? v[0] : '';
+        }, x: 285, y: 465, size: 10 }, // Session
+        
+        { getter: (form, getFd) => {
+            const v = getFd('LETTER') || getFd('Report') || getFd('Joining');
+            return Array.isArray(v) ? v[1] : '';
+        }, x: 78, y: 519, size: 10 }, // Days
+        
+        { getter: (form, getFd) => {
+            const v = getFd('LETTER') || getFd('Report') || getFd('Joining');
+            return Array.isArray(v) ? v[2] : '';
+        }, x: 194, y: 520, size: 10 }, // From
+        
+        { getter: (form, getFd) => {
+            const v = getFd('LETTER') || getFd('Report') || getFd('Joining');
+            return Array.isArray(v) ? v[3] : '';
+        }, x: 312, y: 520, size: 10 }, // To
+        
+        { getter: (form, getFd) => {
+            const v = getFd('LETTER') || getFd('Report') || getFd('Joining');
+            return Array.isArray(v) ? v[4] : '';
+        }, x: 84, y: 548, size: 10 }, // Order No
+        
+        { getter: (form, getFd) => {
+            const v = getFd('LETTER') || getFd('Report') || getFd('Joining');
+            return Array.isArray(v) ? v[5] : '';
+        }, x: 286, y: 548, size: 10 }, // Order Date
+
+        // Footer
+        { getter: (form, getFd) => {
+            const v = getFd('LETTER') || getFd('Report') || getFd('Joining');
+            return Array.isArray(v) ? v[6] : '';
+        }, x: 130, y: 658, size: 10 }, // Dated
+        { getter: (form, getFd) => {
+            const v = getFd('LETTER') || getFd('Report') || getFd('Joining');
+            return Array.isArray(v) ? v[7] : '';
+        }, x: 476, y: 664, size: 10 }, // Name
+        { getter: (form, getFd) => {
+            const v = getFd('LETTER') || getFd('Report') || getFd('Joining');
+            return Array.isArray(v) ? v[8] : '';
+        }, x: 476, y: 682, size: 10 }, // Designation
+    ],
+    signatures: [
+        { stage: 'applicant', x: 500, y: 630, size: 6},
+    ]
+};
+
 export const formTypePdfMappings: Record<string, PdfMappingConfig> = {
     'application for permission to travel by airline other than air india': airIndiaMapping,
+    'joining report': joiningReportMapping,
     'station leave permission': stationLeaveMapping,
     'station leave': stationLeaveMapping,
     // Add other form types here in lowercase...

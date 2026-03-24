@@ -18,7 +18,31 @@ export class PdfService implements IPdfService {
     async generateFormPdf(formId: number): Promise<Buffer> {
         const form = await this.prisma.forms.findUnique({
             where: { id: formId },
-            include: { users: true, form_approvals: { include: { users: true } }, form_types: true }
+            include: { 
+                users: {
+                    include: {
+                        user_roles: {
+                            include: {
+                                roles: true
+                            }
+                        }
+                    }
+                }, 
+                form_approvals: { 
+                    include: { 
+                        users: {
+                            include: {
+                                user_roles: {
+                                    include: {
+                                        roles: true
+                                    }
+                                }
+                            }
+                        } 
+                    } 
+                }, 
+                form_types: true 
+            }
         });
 
         if (!form) throw new Error('FORM_NOT_FOUND');
@@ -121,7 +145,7 @@ export class PdfService implements IPdfService {
         }
 
         // ── Embed signatures ───────────────────────────────────────────────
-        const embedSig = async (sigUrl: string | undefined | null, targetY: number, targetX = 350, signerName = '') => {
+        const embedSig = async (sigUrl: string | undefined | null, targetY: number, targetX = 350, signerName = '', size?: number) => {
             if (!sigUrl || typeof sigUrl !== 'string' || !sigUrl.includes('/uploads/')) return;
 
             const dateStr = form.updated_at
@@ -134,12 +158,14 @@ export class PdfService implements IPdfService {
                 const sigPath = path.join(__dirname, '../../', cleanUrl);
 
                 if (fs.existsSync(sigPath)) {
-                    const encryptedBytes = fs.readFileSync(sigPath);
+                    const storedBytes = fs.readFileSync(sigPath);
                     let sigImageBytes;
                     try {
-                        sigImageBytes = EncryptionService.decrypt(encryptedBytes);
+                        sigImageBytes = EncryptionService.decrypt(storedBytes);
                     } catch (decErr) {
                         console.error('Failed to decrypt signature:', decErr);
+                        // Some older uploads were stored as plain image bytes instead of encrypted blobs.
+                        sigImageBytes = storedBytes;
                     }
 
                     if (sigImageBytes) {
@@ -151,11 +177,12 @@ export class PdfService implements IPdfService {
                         }
 
                         if (sigImage) {
+                            const scale = size ? size / 11 : 1; 
                             page.drawImage(sigImage, {
                                 x: targetX,
                                 y: height - targetY,
-                                width: 100,
-                                height: 38,
+                                width: 100 * scale,
+                                height: 38 * scale,
                             });
                             imageDrawn = true;
                         }
@@ -167,10 +194,11 @@ export class PdfService implements IPdfService {
 
             // Fallback securely to textual representation if image isn't supported (e.g. .webp) or couldn't be loaded
             if (signerName && !imageDrawn) {
-                draw(`Digitally signed by ${signerName}`, targetX - 20, targetY, 10);
-                draw(`Date: ${dateStr}`, targetX - 20, targetY + 12, 10);
+                const fs = size || 10;
+                draw(`Digitally signed by ${signerName}`, targetX - 20, targetY, fs);
+                draw(`Date: ${dateStr}`, targetX - 20, targetY + 12, fs);
             } else if (imageDrawn) {
-                draw(dateStr, targetX + 20, targetY + 5, 9);
+                draw(dateStr, targetX + 20, targetY + 5, (size || 11) * 0.8);
             }
         };
 
@@ -205,13 +233,13 @@ export class PdfService implements IPdfService {
 
         for (const sigMapping of mappingToUse.signatures) {
            if (sigMapping.stage === 'applicant') {
-               await embedSig(applicantSig, sigMapping.y, sigMapping.x, applicantName);
+               await embedSig(applicantSig, sigMapping.y, sigMapping.x, applicantName, sigMapping.size);
            } else {
                const stagesToCheck = Array.isArray(sigMapping.stage) ? sigMapping.stage : [sigMapping.stage];
                for (const s of stagesToCheck) {
                    const stageSigData = getStageSig(s);
                    if (stageSigData && stageSigData.sigUrl) {
-                       await embedSig(stageSigData.sigUrl, sigMapping.y, sigMapping.x, stageSigData.signerName);
+                       await embedSig(stageSigData.sigUrl, sigMapping.y, sigMapping.x, stageSigData.signerName, sigMapping.size);
                        break;
                    }
                }
