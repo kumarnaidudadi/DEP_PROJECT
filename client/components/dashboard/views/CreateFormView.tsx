@@ -114,6 +114,17 @@ export default function CreateFormView({
     const [previewData, setPreviewData] = React.useState<Record<string, unknown>>({});
     const [expandedCondIdx, setExpandedCondIdx] = React.useState<string | null>(null);
 
+    const [isMobile, setIsMobile] = React.useState(false);
+    const [leftOpen, setLeftOpen] = React.useState(false);
+    const [rightOpen, setRightOpen] = React.useState(false);
+
+    React.useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 1200);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
     // Recent field types persistence
     React.useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -166,16 +177,61 @@ export default function CreateFormView({
         onStepsChange(next); setDraggedIdx(null); setDragOverIdx(null);
     }, [builderSteps, draggedIdx, onStepsChange]);
 
-    const scrollToStep = (i: number) => { const el = document.getElementById(`builder-step-${i}`); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
-    const totalFields = builderSteps.reduce((n, s) => n + s.fields.length, 0);
+    const scrollToStep = (i: number) => {
+        if (isMobile) setLeftOpen(false);
+        const el = document.getElementById(`builder-step-${i}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    const flexLayoutProps = isMobile ? { justifyContent: 'center' } : {};
+
+    const leftAsideStyle: React.CSSProperties = isMobile ? {
+        position: 'fixed',
+        left: leftOpen ? 0 : '-300px',
+        top: 0,
+        bottom: 0,
+        width: '260px',
+        zIndex: 50,
+        background: '#f8fafc',
+        boxShadow: '4px 0 16px rgba(0,0,0,0.15)',
+        transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        padding: '24px 16px',
+        overflowY: 'auto'
+    } : {
+        width: '240px', flexShrink: 0, position: 'sticky', top: '24px', alignSelf: 'flex-start'
+    };
 
     /* ─── Render ──────────────────────────────────────────────────────────── */
 
     return (
-        <div style={{ display: 'flex', gap: '24px', padding: '24px', maxWidth: '1720px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', gap: '24px', padding: '24px', maxWidth: '1720px', margin: '0 auto', ...flexLayoutProps, position: 'relative' }}>
+            {/* Toggle Buttons for Mobile Component View */}
+            {isMobile && (
+                <div style={{ position: 'fixed', inset: '0', pointerEvents: 'none', zIndex: 40 }}>
+                    {!leftOpen && (
+                        <button type="button" onClick={() => setLeftOpen(true)} style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'auto', background: '#2563eb', color: '#fff', border: 'none', padding: '12px 4px', borderTopRightRadius: '8px', borderBottomRightRadius: '8px', boxShadow: '2px 0 8px rgba(0,0,0,0.15)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span style={{ writingMode: 'vertical-rl', transform: 'scale(-1, -1)', fontSize: '11px', fontWeight: 600, letterSpacing: '1px', marginBottom: '8px' }}>STEPS</span>
+                        </button>
+                    )}
+                    {!rightOpen && (
+                        <button type="button" onClick={() => setRightOpen(true)} style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'auto', background: '#2563eb', color: '#fff', border: 'none', padding: '12px 4px', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px', boxShadow: '-2px 0 8px rgba(0,0,0,0.15)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span style={{ writingMode: 'vertical-rl', fontSize: '11px', fontWeight: 600, letterSpacing: '1px', marginBottom: '8px' }}>PREVIEW</span>
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {isMobile && leftOpen && (
+                <div onClick={() => setLeftOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 45, backdropFilter: 'blur(2px)' }} />
+            )}
 
             {/* ── LEFT SIDEBAR: Workflow Map + Actions ────────────────────────── */}
-            <aside style={{ width: '240px', flexShrink: 0, position: 'sticky', top: '24px', alignSelf: 'flex-start' }}>
+            <aside style={leftAsideStyle}>
+                {isMobile && (
+                    <button type="button" onClick={() => setLeftOpen(false)} style={{ marginBottom: '16px', background: 'none', border: 'none', fontSize: '13px', fontWeight: 600, color: '#4b5563', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span>Close Steps →</span>
+                    </button>
+                )}
                 <div style={cardStyle}>
                     <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
                         Form Steps
@@ -210,7 +266,7 @@ export default function CreateFormView({
             </aside>
 
             {/* ── MAIN CONTENT ────────────────────────────────────────────────── */}
-            <main style={{ flex: 1, minWidth: 0, maxWidth: '860px' }}>
+            <main style={{ flex: 1, minWidth: 0, maxWidth: '860px', width: '100%' }}>
 
                 {/* Header */}
                 <div style={{ ...cardStyle, marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -592,6 +648,9 @@ export default function CreateFormView({
                 availableRoles={availableRoles}
                 onToggle={() => setPreviewEnabled(c => !c)}
                 onPreviewDataChange={setPreviewData}
+                isMobile={isMobile}
+                rightOpen={rightOpen}
+                setRightOpen={setRightOpen}
             />
         </div>
     );

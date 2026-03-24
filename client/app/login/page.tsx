@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GoogleLogin } from '@react-oauth/google';
 import { Button, Input, Label } from '@/components/ui';
-import { Loader2, AlertCircle, Mail, KeyRound, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Loader2, AlertCircle, Mail, KeyRound, ShieldCheck, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { sendOtp, verifyOtp, googleLogin } from '@/services/authService';
 
 export default function LoginPage() {
@@ -12,6 +12,7 @@ export default function LoginPage() {
     const [step, setStep] = useState<'email' | 'otp'>('email');
     const [email, setEmail] = useState('');
     const [otp, setOtp] = useState('');
+    const [showOtp, setShowOtp] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -159,21 +160,55 @@ export default function LoginPage() {
                                         Change Email?
                                     </button>
                                 </div>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                        <KeyRound className="h-[18px] w-[18px] text-gray-400" />
+                                <div className="space-y-4">
+                                    <div className="relative flex items-center gap-2 w-full max-w-[340px] mx-auto">
+                                        {/* Hidden real input */}
+                                        <input
+                                            id="otp"
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={otp}
+                                            onChange={(e) => {
+                                                const val = e.target.value.replace(/[^0-9]/g, '');
+                                                if (val.length <= 6) setOtp(val);
+                                            }}
+                                            required
+                                            disabled={isLoading}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-text z-20"
+                                            autoComplete="one-time-code"
+                                        />
+
+                                        {/* 6 Squares */}
+                                        <div className="flex w-full justify-between gap-2 relative z-10 pointer-events-none">
+                                            {Array.from({ length: 6 }).map((_, i) => {
+                                                const char = otp[i];
+                                                const isActive = otp.length === i; // currently focused/typing box
+                                                return (
+                                                    <div
+                                                        key={i}
+                                                        className={`flex-1 aspect-square max-h-14 border-2 rounded-[12px] flex items-center justify-center text-2xl transition-all duration-200 ${
+                                                            char ? 'border-[#1A62FF] bg-blue-50/40 text-blue-700 font-bold' 
+                                                            : isActive ? 'border-blue-400 ring-[3px] ring-blue-500/10' 
+                                                            : 'border-gray-200 bg-white shadow-sm'
+                                                        }`}
+                                                    >
+                                                        {char ? (showOtp ? char : <span className="font-extrabold pb-2">.</span>) : ''}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Toggle button */}
+                                        <div className="relative z-30 ml-1">
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.preventDefault(); setShowOtp(!showOtp); }}
+                                                className="flex items-center justify-center p-3 bg-white border border-gray-200 rounded-xl text-gray-400 hover:text-blue-600 hover:bg-gray-50 transition-colors shadow-sm"
+                                            >
+                                                {showOtp ? <EyeOff className="w-[20px] h-[20px]" /> : <Eye className="w-[20px] h-[20px]" />}
+                                            </button>
+                                        </div>
                                     </div>
-                                    <Input
-                                        id="otp"
-                                        type="text"
-                                        placeholder="••••••"
-                                        value={otp}
-                                        onChange={(e) => setOtp(e.target.value)}
-                                        required
-                                        disabled={isLoading}
-                                        maxLength={6}
-                                        className="pl-12 h-14 bg-white border border-gray-200 shadow-sm rounded-xl text-xl text-black tracking-widest focus:ring-2 focus:ring-blue-500 font-medium text-center tracking-[0.5em]"
-                                    />
                                 </div>
                             </div>
 

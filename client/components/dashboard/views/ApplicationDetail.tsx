@@ -4,7 +4,7 @@
 // approve/reject action panel, and PDF download.
 
 import React from 'react';
-import { FileText, CheckCircle, XCircle, Upload, ShieldCheck } from 'lucide-react';
+import { FileText, CheckCircle, XCircle, Upload, ShieldCheck, Loader2 } from 'lucide-react';
 import { Application, Profile, getApprovalFields, isFieldVisible } from '@/types';
 import Panel from '../Panel';
 import StatusBadge from '../StatusBadge';
@@ -402,12 +402,14 @@ export default function ApplicationDetail({
                     <textarea placeholder="Remarks (optional)..." value={remarks} onChange={e => onRemarks(e.target.value)} rows={2} style={{ ...inputStyle, marginBottom: '14px' }} />
                     <div style={{ display: 'flex', gap: '10px' }}>
                         <button onClick={() => onDecision('REJECTED')} disabled={actionLoading}
-                            style={{ flex: 1, padding: '10px', border: '1px solid #fca5a5', background: '#fff', color: '#dc2626', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                            <XCircle size={14} /> Reject
+                            style={{ flex: 1, padding: '10px', border: '1px solid #fca5a5', background: '#fff', color: '#dc2626', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: actionLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: actionLoading ? 0.7 : 1 }}>
+                            {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />} 
+                            {actionLoading ? 'Processing...' : 'Reject'}
                         </button>
                         <button onClick={() => onDecision('APPROVED')} disabled={actionLoading}
-                            style={{ flex: 1, padding: '10px', border: 'none', background: 'linear-gradient(135deg,#16a34a,#15803d)', color: '#fff', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(22,163,74,0.3)' }}>
-                            <CheckCircle size={14} /> Approve
+                            style={{ flex: 1, padding: '10px', border: 'none', background: 'linear-gradient(135deg,#16a34a,#15803d)', color: '#fff', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: actionLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(22,163,74,0.3)', opacity: actionLoading ? 0.7 : 1 }}>
+                            {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />} 
+                            {actionLoading ? 'Approving...' : 'Approve'}
                         </button>
                     </div>
                 </Panel>
