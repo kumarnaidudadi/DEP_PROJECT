@@ -153,4 +153,39 @@ router.post('/signature', verifyToken, upload.single('signature'), async (req: A
     }
 });
 
+// ─── SERVE Decrypted Signature Image (for profile page only) ──────────
+router.get('/signature-image', verifyToken, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+        const user = await prisma.users.findUnique({ where: { id: userId }, select: { signature_url: true } });
+        if (!user?.signature_url) return res.status(404).json({ error: 'No signature found' });
+
+        const sigPath = path.join(__dirname, '../..', user.signature_url);
+        if (!fs.existsSync(sigPath)) return res.status(404).json({ error: 'Signature file not found' });
+
+        const encryptedBytes = fs.readFileSync(sigPath);
+        const decryptedBytes = EncryptionService.decrypt(encryptedBytes);
+
+        // Determine content type from extension
+        const ext = path.extname(sigPath).toLowerCase();
+        const mimeTypes: Record<string, string> = {
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.gif': 'image/gif',
+            '.webp': 'image/webp',
+        };
+        const contentType = mimeTypes[ext] || 'image/png';
+
+        res.set('Content-Type', contentType);
+        res.set('Cache-Control', 'private, max-age=300');
+        res.send(decryptedBytes);
+    } catch (error) {
+        console.error('Serve signature image error:', error);
+        res.status(500).json({ error: 'Failed to serve signature image' });
+    }
+});
+
 export default router;

@@ -4,7 +4,7 @@
 // approve/reject action panel, and PDF download.
 
 import React from 'react';
-import { FileText, CheckCircle, XCircle, Upload } from 'lucide-react';
+import { FileText, CheckCircle, XCircle, Upload, ShieldCheck } from 'lucide-react';
 import { Application, Profile, getApprovalFields, isFieldVisible } from '@/types';
 import Panel from '../Panel';
 import StatusBadge from '../StatusBadge';
@@ -35,6 +35,25 @@ const inputStyle: React.CSSProperties = {
 };
 
 const isTerminal = (s: string) => ['APPROVED', 'REJECTED'].includes(s);
+
+/** Get the signer name for a given step */
+function getSignerName(app: Application, stepKey: string, statusObj: any): string {
+    // Step 1 (Draft / Applicant) — the signer is the applicant
+    if (stepKey === '1' || statusObj?.status === 'Draft') {
+        if (app.users) {
+            return [app.users.first_name, app.users.last_name].filter(Boolean).join(' ');
+        }
+        return '';
+    }
+    // Other steps — find the approval for this stage
+    const approval = (app.form_approvals || []).find(
+        (a: any) => a.stage === statusObj?.status && a.decision === 'APPROVED'
+    );
+    if (approval?.users) {
+        return [approval.users.first_name, approval.users.last_name].filter(Boolean).join(' ');
+    }
+    return '';
+}
 
 export default function ApplicationDetail({
     app, canApprove, isInPendingView, profile, sigUploading,
@@ -98,6 +117,7 @@ export default function ApplicationDetail({
                         if (!Array.isArray(stepConfig) || stepConfig.length === 0) return;
                         const statusObj = stepConfig[0] || {};
                         const panelTitle = statusObj.status === 'Draft' ? 'Applicant' : statusObj.status;
+                        const signerName = getSignerName(app, stepKey, statusObj);
 
                         let sourceData: any = {};
                         if (stepKey === '1' || statusObj.status === 'Draft') {
@@ -136,7 +156,7 @@ export default function ApplicationDetail({
                                 renderedFields.add(fromKey);
                                 renderedFields.add(toKey);
                             } else {
-                                if (sourceData[finalKey] !== undefined && sourceData[finalKey] !== '') fieldValues.push({ key: finalKey, value: sourceData[finalKey], index: currentFieldNum, type: f.type, options: f.options });
+                                if (sourceData[finalKey] !== undefined && sourceData[finalKey] !== '') fieldValues.push({ key: finalKey, value: sourceData[finalKey], index: currentFieldNum, type: f.type, options: f.options, signerName });
                                 renderedFields.add(finalKey);
                                 renderedFields.add(normalizedName);
                             }
@@ -202,7 +222,7 @@ export default function ApplicationDetail({
                                                                 fontWeight: 600,
                                                                 border: '1px solid #d1fae5'
                                                             }}>
-                                                                <CheckCircle size={12} /> Digitally Signed
+                                                                <ShieldCheck size={12} /> Digitally Signed{f.signerName ? ` by ${f.signerName}` : ''}
                                                             </div>
                                                         ) : Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' ? (
                                                             <div style={{ marginTop: '6px', overflowX: 'auto', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
@@ -305,7 +325,7 @@ export default function ApplicationDetail({
                                                         border: '1px solid #d1fae5',
                                                         marginTop: '2px'
                                                     }}>
-                                                        <CheckCircle size={12} /> Digitally Signed
+                                                        <ShieldCheck size={12} /> Digitally Signed{app.users ? ` by ${[app.users.first_name, app.users.last_name].filter(Boolean).join(' ')}` : ''}
                                                     </div>
                                                 ) : (
                                                     <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>

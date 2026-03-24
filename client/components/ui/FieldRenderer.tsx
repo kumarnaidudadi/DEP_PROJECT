@@ -4,7 +4,7 @@
 // eliminating the duplicated switch-case logic that existed in page.tsx.
 
 import React from 'react';
-import { Upload } from 'lucide-react';
+import { Upload, ShieldCheck } from 'lucide-react';
 import SignaturePad from './SignaturePad';
 import ListField from './ListField';
 import TupleField from './TupleField';
@@ -132,7 +132,15 @@ export default function FieldRenderer({
                             onChange={e => onChange(key, e.target.checked ? profileSignatureUrl : '')}
                             style={{ width: '16px', height: '16px', accentColor: '#2563eb' }} />
                         Attach my saved signature
-                        <img src={`${apiBaseUrl}${profileSignatureUrl}`} alt="Saved Signature" style={{ height: '30px', marginLeft: 'auto', background: 'white', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '2px' }} />
+                        <div style={{
+                            marginLeft: 'auto',
+                            display: 'inline-flex', alignItems: 'center', gap: '5px',
+                            padding: '4px 10px', background: '#ecfdf5', color: '#059669',
+                            borderRadius: '6px', fontSize: '11px', fontWeight: 600,
+                            border: '1px solid #d1fae5',
+                        }}>
+                            <ShieldCheck size={12} /> Signature on file
+                        </div>
                     </label>
                 </div>
             );

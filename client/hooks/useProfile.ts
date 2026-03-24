@@ -13,18 +13,30 @@ export function useProfile() {
     const [availableDepartments, setAvailableDepartments] = useState<any[]>([]);
     const [sigUploading, setSigUploading] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [decryptedSigUrl, setDecryptedSigUrl] = useState<string | null>(null);
+
+    const fetchDecryptedSig = useCallback(async () => {
+        try {
+            const url = await profileSvc.getDecryptedSignatureUrl();
+            setDecryptedSigUrl(url);
+        } catch {
+            setDecryptedSigUrl(null);
+        }
+    }, []);
 
     const fetchProfile = useCallback(async () => {
         setLoading(true);
         try {
             const data = await profileSvc.getProfile();
             setProfile(data);
+            // If user has a signature, fetch the decrypted image
+            if (data.signature_url) fetchDecryptedSig();
         } catch (e) {
             console.error('Failed to fetch profile', e);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [fetchDecryptedSig]);
 
     const fetchRoles = useCallback(async () => {
         try {
@@ -49,13 +61,15 @@ export function useProfile() {
         try {
             const url = await profileSvc.uploadSignature(file);
             setProfile(prev => prev ? { ...prev, signature_url: url } : prev);
+            // Refresh decrypted image after upload
+            fetchDecryptedSig();
         } catch (e: any) {
             const msg = e.response?.data?.error || e.message || 'Failed to upload';
             alert(`Upload failed: ${msg}. Max 5MB, JPG/PNG only.`);
         } finally {
             setSigUploading(false);
         }
-    }, []);
+    }, [fetchDecryptedSig]);
 
     return {
         profile, setProfile,
@@ -63,6 +77,7 @@ export function useProfile() {
         availableDepartments,
         sigUploading,
         loading,
+        decryptedSigUrl,
         fetchProfile,
         fetchRoles,
         fetchDepartments,

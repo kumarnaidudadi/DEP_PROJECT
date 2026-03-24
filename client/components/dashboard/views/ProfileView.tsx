@@ -10,6 +10,7 @@ interface Props {
     profile: Profile | null;
     sigUploading: boolean;
     onSigUpload: (file: File) => void;
+    decryptedSigUrl?: string | null;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -55,7 +56,7 @@ function InfoCard({
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 
-export default function ProfileView({ user, profile, sigUploading, onSigUpload }: Props) {
+export default function ProfileView({ user, profile, sigUploading, onSigUpload, decryptedSigUrl }: Props) {
     const displayName = profile?.display_name || user?.name || '—';
     const initials    = getInitials(displayName);
     const primaryRole = profile?.roles?.[0] || null;
@@ -145,7 +146,7 @@ export default function ProfileView({ user, profile, sigUploading, onSigUpload }
                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
                         <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px' }}>
                             <img
-                                src={`http://localhost:4000${profile.signature_url}`}
+                                src={decryptedSigUrl || `http://localhost:4000${profile.signature_url}`}
                                 alt="Signature"
                                 style={{ maxHeight: '64px', maxWidth: '200px', display: 'block' }}
                             />

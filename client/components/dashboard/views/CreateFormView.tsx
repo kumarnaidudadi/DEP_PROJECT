@@ -178,13 +178,7 @@ export default function CreateFormView({
             <aside style={{ width: '240px', flexShrink: 0, position: 'sticky', top: '24px', alignSelf: 'flex-start' }}>
                 <div style={cardStyle}>
                     <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
-                        Workflow Map
-                    </div>
-
-                    {/* Stats */}
-                    <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 12px', marginBottom: '14px' }}>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e40af' }}>{builderSteps.length} step{builderSteps.length > 1 ? 's' : ''}</div>
-                        <div style={{ fontSize: '12px', color: '#3b82f6', marginTop: '2px' }}>{totalFields} field{totalFields !== 1 ? 's' : ''}</div>
+                        Form Steps
                     </div>
 
                     {/* Step list */}

@@ -14,5 +14,5 @@ export interface IFormService {
     createForm(dto: CreateFormDto, id?: number): Promise<any>;
     saveDraft(dto: CreateFormDto, id?: number): Promise<any>;
     updateFormStatus(dto: UpdateFormStatusDto): Promise<any>;
-    deleteForm(id: number, roles: string[]): Promise<void>;
+    deleteForm(id: number, roles: string[], userId?: number): Promise<void>;
 }

@@ -180,13 +180,14 @@ export class FormController {
     deleteForm = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         const id = Number(req.params.id);
         const roles = req.user?.roles || [];
+        const userId = req.user?.userId;
 
         try {
-            await this.formService.deleteForm(id, roles);
+            await this.formService.deleteForm(id, roles, userId);
             res.json({ message: 'Form deleted successfully' });
         } catch (e: any) {
             console.error('[FormController] deleteForm:', e.message);
-            if (e.message === 'UNAUTHORIZED') res.status(403).json({ error: 'Only admins can delete forms' });
+            if (e.message === 'UNAUTHORIZED') res.status(403).json({ error: 'You do not have permission to delete this form' });
             else res.status(500).json({ error: 'Failed to delete form' });
         }
     }

@@ -237,8 +237,14 @@ export class FormService implements IFormService {
         return this.formRepo.updateStatus(dto.formId, 'APPROVED', { form_data: mergedFormData });
     }
 
-    async deleteForm(id: number, roles: string[]): Promise<void> {
-        if (!roles.includes('ADMIN')) {
+    async deleteForm(id: number, roles: string[], userId?: number): Promise<void> {
+        const form = await this.formRepo.findById(id);
+        if (!form) throw new Error('FORM_NOT_FOUND');
+
+        const isAdmin = roles.includes('ADMIN');
+        const isOwnerDraft = form.submitted_by === userId && form.current_status === 'DRAFT';
+
+        if (!isAdmin && !isOwnerDraft) {
             throw new Error('UNAUTHORIZED');
         }
         await this.formRepo.delete(id);
