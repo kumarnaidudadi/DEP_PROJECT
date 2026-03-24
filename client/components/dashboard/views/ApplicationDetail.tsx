@@ -36,23 +36,220 @@ const inputStyle: React.CSSProperties = {
 
 const isTerminal = (s: string) => ['APPROVED', 'REJECTED'].includes(s);
 
-/** Get the signer name for a given step */
-function getSignerName(app: Application, stepKey: string, statusObj: any): string {
-    // Step 1 (Draft / Applicant) — the signer is the applicant
-    if (stepKey === '1' || statusObj?.status === 'Draft') {
-        if (app.users) {
-            return [app.users.first_name, app.users.last_name].filter(Boolean).join(' ');
+function normalizeStageName(value: string | undefined | null): string {
+    return String(value || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '');
+}
+
+function getStepFieldCandidates(field: any, fieldIndex: number): string[] {
+    const normalizedName = field?.name?.replace(/\s+/g, '_');
+    const candidates = [
+        field?.id,
+        normalizedName ? `${normalizedName}_${fieldIndex}` : null,
+        normalizedName,
+    ];
+
+    return candidates.filter((candidate): candidate is string => Boolean(candidate));
+}
+
+function collectExpectedStepKeys(stepConfig: any[]): Set<string> {
+    const keys = new Set<string>();
+    let fieldCounter = 0;
+
+    stepConfig.slice(1).forEach((field: any) => {
+        if (!field?.name || field.type === 'heading') return;
+
+        fieldCounter++;
+        const candidates = getStepFieldCandidates(field, fieldCounter);
+        candidates.forEach(candidate => keys.add(candidate));
+
+        if (field.type === 'date_from_to') {
+            candidates.forEach(candidate => {
+                keys.add(`${candidate}_from`);
+                keys.add(`${candidate}_to`);
+            });
         }
-        return '';
-    }
-    // Other steps — find the approval for this stage
-    const approval = (app.form_approvals || []).find(
-        (a: any) => a.stage === statusObj?.status && a.decision === 'APPROVED'
+    });
+
+    return keys;
+}
+
+function pickStepData(stepConfig: any[], source: any): Record<string, any> {
+    if (!source || typeof source !== 'object' || Array.isArray(source)) return {};
+
+    const picked: Record<string, any> = {};
+    let fieldCounter = 0;
+
+    stepConfig.slice(1).forEach((field: any) => {
+        if (!field?.name || field.type === 'heading') return;
+
+        fieldCounter++;
+        const candidates = getStepFieldCandidates(field, fieldCounter);
+
+        candidates.forEach(candidate => {
+            if (source[candidate] !== undefined) {
+                picked[candidate] = source[candidate];
+            }
+        });
+
+        if (field.type === 'date_from_to') {
+            candidates.forEach(candidate => {
+                const fromKey = `${candidate}_from`;
+                const toKey = `${candidate}_to`;
+                if (source[fromKey] !== undefined) picked[fromKey] = source[fromKey];
+                if (source[toKey] !== undefined) picked[toKey] = source[toKey];
+            });
+        }
+    });
+
+    return picked;
+}
+
+function resolveApprovalForStep(app: Application, stepConfig: any[], status: string) {
+    const completedApprovals = (app.form_approvals || []).filter((approval: any) => approval?.decision !== 'PENDING');
+    const normalizedStatus = normalizeStageName(status);
+    const exactMatch = completedApprovals.find(
+        (approval: any) => normalizeStageName(approval?.stage) === normalizedStatus
     );
-    if (approval?.users) {
-        return [approval.users.first_name, approval.users.last_name].filter(Boolean).join(' ');
+
+    if (exactMatch) return exactMatch;
+
+    const looseMatch = completedApprovals.find((approval: any) => {
+        const normalizedStage = normalizeStageName(approval?.stage);
+        return normalizedStage && normalizedStatus &&
+            (normalizedStage.includes(normalizedStatus) || normalizedStatus.includes(normalizedStage));
+    });
+
+    if (looseMatch) return looseMatch;
+
+    const expectedKeys = collectExpectedStepKeys(stepConfig);
+    let bestMatch: any = null;
+    let bestScore = 0;
+
+    completedApprovals.forEach((approval: any) => {
+        const approvalData = approval?.approval_data;
+        if (!approvalData || typeof approvalData !== 'object' || Array.isArray(approvalData)) return;
+
+        const score = Object.keys(approvalData).reduce((total, key) => {
+            return total + (expectedKeys.has(key) ? 1 : 0);
+        }, 0);
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestMatch = approval;
+        }
+    });
+
+    return bestScore > 0 ? bestMatch : null;
+}
+
+function inferFieldType(value: any): string {
+    if (typeof value === 'string' && value.includes('/uploads/signatures')) return 'signature';
+    if (typeof value === 'boolean') return 'bool';
+    if (Array.isArray(value)) return 'list';
+    if (value && typeof value === 'object') return 'tuple';
+    return 'text';
+}
+
+function buildInferredField(key: string, value: any) {
+    return {
+        id: key,
+        name: formatTitleCase(key),
+        type: inferFieldType(value),
+        required: false,
+    };
+}
+
+function getCurrentFormDefinition(app: Application) {
+    const formMeta = app.form_data?.__form_meta;
+    const hasSnapshotSchema = formMeta?.schema_definition && typeof formMeta.schema_definition === 'object';
+    const hasSnapshotSteps = Array.isArray(formMeta?.workflow_steps) && formMeta.workflow_steps.length > 0;
+
+    return {
+        schema: hasSnapshotSchema ? formMeta.schema_definition : (app.form_types?.schema_definition || {}),
+        steps: hasSnapshotSteps ? formMeta.workflow_steps : (app.form_types?.workflow?.steps || []),
+        hasSnapshot: Boolean(hasSnapshotSchema && hasSnapshotSteps),
+    };
+}
+
+function buildDisplayFormDefinition(app: Application) {
+    const current = getCurrentFormDefinition(app);
+    if (current.hasSnapshot) return current;
+
+    const completedApprovals = (app.form_approvals || [])
+        .filter((approval: any) => approval?.decision !== 'PENDING')
+        .sort((a: any, b: any) => {
+            const aTime = new Date(a?.decided_at || 0).getTime();
+            const bTime = new Date(b?.decided_at || 0).getTime();
+            if (aTime !== bTime) return aTime - bTime;
+            return (a?.id || 0) - (b?.id || 0);
+        });
+
+    if (completedApprovals.length === 0) {
+        return current;
     }
-    return '';
+
+    const schema: Record<string, any[]> = {};
+    const steps: any[] = [];
+    const currentSchema = current.schema || {};
+    const currentSteps = current.steps || [];
+
+    if (Array.isArray(currentSchema['1']) && currentSchema['1'].length > 0) {
+        schema['1'] = currentSchema['1'];
+    }
+
+    const draftStep = currentSteps.find((step: any) => String(step?.step_name || '').toLowerCase() === 'draft');
+    if (draftStep) {
+        steps.push(draftStep);
+    } else if (schema['1']) {
+        steps.push({ id: 'draft', step_order: 1, step_name: 'Draft', approval_roles: [], is_terminal: false });
+    }
+
+    completedApprovals.forEach((approval: any, index: number) => {
+        const matchedCurrentStepKey = Object.keys(currentSchema).find((key) => {
+            const status = currentSchema[key]?.[0]?.status;
+            return normalizeStageName(status) === normalizeStageName(approval.stage);
+        });
+        const matchedCurrentStep = currentSteps.find((step: any) =>
+            normalizeStageName(step?.step_name) === normalizeStageName(approval.stage)
+        );
+
+        const baseStepConfig = matchedCurrentStepKey && Array.isArray(currentSchema[matchedCurrentStepKey])
+            ? currentSchema[matchedCurrentStepKey]
+            : [{ status: approval.stage }];
+        const baseFields = baseStepConfig.slice(1);
+        const knownKeys = new Set<string>();
+        let fieldCounter = 0;
+
+        baseFields.forEach((field: any) => {
+            if (!field?.name || field.type === 'heading') return;
+            fieldCounter++;
+            getStepFieldCandidates(field, fieldCounter).forEach((candidate) => knownKeys.add(candidate));
+        });
+
+        const extraFields: any[] = [];
+        Object.entries(approval?.approval_data || {}).forEach(([key, value]) => {
+            if (key.startsWith('__') || knownKeys.has(key)) return;
+            extraFields.push(buildInferredField(key, value));
+        });
+
+        const stepConfig = [
+            { status: approval.stage },
+            ...baseFields,
+            ...extraFields,
+        ];
+
+        const stepOrder = index + 2;
+        schema[String(stepOrder)] = stepConfig;
+        steps.push(
+            matchedCurrentStep
+                ? { ...matchedCurrentStep, step_order: stepOrder, step_name: approval.stage }
+                : { id: `approval-${approval.id}`, step_order: stepOrder, step_name: approval.stage, approval_roles: [], is_terminal: index === completedApprovals.length - 1 }
+        );
+    });
+
+    return { schema, steps, hasSnapshot: false };
 }
 
 function getSubFieldLabel(colKey: string, subFields: any[] | undefined, formatTitleCaseFn: (s: string) => string): string {
@@ -97,7 +294,8 @@ export default function ApplicationDetail({
 }: Props) {
     const isApproved = app.current_status === 'APPROVED';
     const isRejected = app.current_status === 'REJECTED';
-    const steps = app.form_types?.workflow?.steps || [];
+    const { schema: displaySchema, steps: displaySteps } = buildDisplayFormDefinition(app);
+    const { schema: actionSchema, steps: actionSteps } = getCurrentFormDefinition(app);
 
     return (
         <div style={{ padding: '32px 40px', maxWidth: '1000px', margin: '0 auto' }}>
@@ -133,9 +331,9 @@ export default function ApplicationDetail({
             </div>
 
             {/* Workflow progress */}
-            {steps.length > 0 && (
+            {displaySteps.length > 0 && (
                 <Panel title="Workflow Progress">
-                    <WorkflowProgress steps={steps} currentStatus={app.current_status} isApproved={isApproved} isRejected={isRejected} />
+                    <WorkflowProgress steps={displaySteps} currentStatus={app.current_status} isApproved={isApproved} isRejected={isRejected} />
                 </Panel>
             )}
 
@@ -143,24 +341,36 @@ export default function ApplicationDetail({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '20px' }}>
                 {(() => {
                     const panels: React.ReactNode[] = [];
-                    const schema = app.form_types?.schema_definition || {};
-                    const stepsKeys = Object.keys(schema).sort((a, b) => Number(a) - Number(b));
+                    const stepsKeys = Object.keys(displaySchema).sort((a, b) => Number(a) - Number(b));
                     const renderedFields = new Set<string>();
 
                     stepsKeys.forEach(stepKey => {
-                        const stepConfig = schema[stepKey];
+                        const stepConfig = displaySchema[stepKey];
                         if (!Array.isArray(stepConfig) || stepConfig.length === 0) return;
                         const statusObj = stepConfig[0] || {};
                         const panelTitle = statusObj.status === 'Draft' ? 'Applicant' : statusObj.status;
-                        const signerName = getSignerName(app, stepKey, statusObj);
+                        const approval = (stepKey === '1' || statusObj.status === 'Draft')
+                            ? null
+                            : resolveApprovalForStep(app, stepConfig, statusObj.status);
+                        const formDataForStep = pickStepData(stepConfig, app.form_data || {});
+                        const approvalDataForStep = pickStepData(stepConfig, approval?.approval_data || {});
+                        const remarksDataForStep = stepConfig.slice(1).reduce((acc: Record<string, any>, field: any, idx: number) => {
+                            if (!field?.name) return acc;
+                            if (normalizeStageName(field.name) !== 'remarks') return acc;
 
-                        let sourceData: any = {};
-                        if (stepKey === '1' || statusObj.status === 'Draft') {
-                            sourceData = app.form_data || {};
-                        } else {
-                            const approval = (app.form_approvals || []).find((a: any) => a.stage === statusObj.status && a.decision === 'APPROVED');
-                            if (approval?.approval_data) sourceData = approval.approval_data;
-                        }
+                            const candidates = getStepFieldCandidates(field, idx + 1);
+                            const targetKey = candidates[0];
+                            if (targetKey && (approval?.remarks !== undefined && approval?.remarks !== null)) {
+                                acc[targetKey] = approval.remarks;
+                            }
+                            return acc;
+                        }, {});
+                        const sourceData: any = (stepKey === '1' || statusObj.status === 'Draft')
+                            ? formDataForStep
+                            : { ...formDataForStep, ...approvalDataForStep, ...remarksDataForStep };
+                        const signerName = (stepKey === '1' || statusObj.status === 'Draft')
+                            ? (app.users ? [app.users.first_name, app.users.last_name].filter(Boolean).join(' ') : '')
+                            : (approval?.users ? [approval.users.first_name, approval.users.last_name].filter(Boolean).join(' ') : '');
 
                         let fieldCounter = 0;
                         const mappedItems = stepConfig.slice(1).map((f: any) => {
@@ -189,18 +399,37 @@ export default function ApplicationDetail({
                                 
                                 const actualFrom = (sourceData[oldFromKey] !== undefined && sourceData[fromKey] === undefined) ? oldFromKey : fromKey;
                                 const actualTo = (sourceData[oldToKey] !== undefined && sourceData[toKey] === undefined) ? oldToKey : toKey;
-                                
-                                if (sourceData[actualFrom] !== undefined && sourceData[actualFrom] !== '') fieldValues.push({ key: actualFrom, label: `${f.name} (From)`, value: sourceData[actualFrom], index: currentFieldNum });
-                                if (sourceData[actualTo] !== undefined && sourceData[actualTo] !== '') fieldValues.push({ key: actualTo, label: `${f.name} (To)`, value: sourceData[actualTo], index: currentFieldNum });
+
+                                fieldValues.push({
+                                    key: actualFrom,
+                                    label: `${f.name} (From)`,
+                                    value: sourceData[actualFrom],
+                                    index: currentFieldNum,
+                                    type: 'date'
+                                });
+                                fieldValues.push({
+                                    key: actualTo,
+                                    label: `${f.name} (To)`,
+                                    value: sourceData[actualTo],
+                                    index: currentFieldNum,
+                                    type: 'date'
+                                });
                                 
                                 renderedFields.add(finalKey);
                                 renderedFields.add(normalizedName);
                                 renderedFields.add(actualFrom);
                                 renderedFields.add(actualTo);
                             } else {
-                                if (sourceData[finalKey] !== undefined && sourceData[finalKey] !== '') {
-                                    fieldValues.push({ key: finalKey, label: f.name, value: sourceData[finalKey], index: currentFieldNum, type: f.type, options: f.options, subFields: f.subFields, signerName });
-                                }
+                                fieldValues.push({
+                                    key: finalKey,
+                                    label: f.name,
+                                    value: sourceData[finalKey],
+                                    index: currentFieldNum,
+                                    type: f.type,
+                                    options: f.options,
+                                    subFields: f.subFields,
+                                    signerName
+                                });
                                 renderedFields.add(finalKey);
                                 renderedFields.add(normalizedName);
                             }
@@ -224,10 +453,10 @@ export default function ApplicationDetail({
                         });
 
                         groups.forEach((g, gIdx) => {
-                            if (g.fields.length > 0) {
-                                g.fields.forEach((f: any) => renderedFields.add(f.key));
-                                panels.push(
-                                    <Panel key={`step-${stepKey}-g-${gIdx}`} title={g.isHeading ? `${panelTitle} • ${g.title}` : g.title} style={{ marginBottom: '16px' }}>
+                            g.fields.forEach((f: any) => renderedFields.add(f.key));
+                            panels.push(
+                                <Panel key={`step-${stepKey}-g-${gIdx}`} title={g.isHeading ? `${panelTitle} • ${g.title}` : g.title} style={{ marginBottom: '16px' }}>
+                                    {g.fields.length > 0 ? (
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                                             {g.fields.map((f: any, fIdx: number) => {
                                                 const { key: k, value: v } = f;
@@ -256,7 +485,7 @@ export default function ApplicationDetail({
                                                         <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                                                             {label}
                                                         </div>
-                                                        {typeof v === 'string' && v.includes('/uploads/signatures') ? (
+                                                        {(typeof v === 'string' && v.includes('/uploads/signatures')) || (f.type === 'signature' && !v && f.signerName) ? (
                                                             <div style={{ 
                                                                 display: 'inline-flex', 
                                                                 alignItems: 'center', 
@@ -318,21 +547,28 @@ export default function ApplicationDetail({
                                                                               return `${labelText}: ${sv}`;
                                                                           })
                                                                           .join(' | ') || '—'
-                                                                  ) : String(v || '—')}
+                                                                  ) : (v === undefined || v === null || v === '' ? '—' : String(v))}
                                                               </div>
                                                           )}
                                                     </div>
                                                 );
                                             })}
                                         </div>
-                                    </Panel>
-                                );
-                            }
+                                    ) : (
+                                        <div style={{ fontSize: '13px', color: '#9ca3af', fontWeight: 500 }}>No fields configured for this stage.</div>
+                                    )}
+                                </Panel>
+                            );
                         });
                     });
 
                     // Unmapped fields
-                    const unmapped = Object.entries(app.form_data || {}).filter(([k, v]) => !renderedFields.has(k) && v !== '' && v !== null);
+                    const unmapped = Object.entries(app.form_data || {}).filter(([k, v]) =>
+                        !k.startsWith('__') &&
+                        !renderedFields.has(k) &&
+                        v !== '' &&
+                        v !== null
+                    );
                     if (unmapped.length > 0) {
                         panels.push(
                             <Panel key="unmapped" title="Other Details" style={{ marginBottom: 0 }}>
@@ -399,8 +635,8 @@ export default function ApplicationDetail({
                 <Panel title="Take Action">
                     {(() => {
                         const approvalFields = getApprovalFields(
-                            app.form_types?.schema_definition || {},
-                            steps,
+                            actionSchema,
+                            actionSteps,
                             app.current_status
                         );
                         if (approvalFields.length > 0) {

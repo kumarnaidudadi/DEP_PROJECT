@@ -15,6 +15,32 @@ export class FormService implements IFormService {
         private readonly workflowService: IWorkflowService
     ) { }
 
+    private buildFormDataSnapshot(formType: any, formData: Record<string, any> = {}): Record<string, any> {
+        const safeFormData = formData && typeof formData === 'object' && !Array.isArray(formData)
+            ? formData
+            : {};
+
+        const workflowSteps = Array.isArray(formType?.workflow?.steps)
+            ? formType.workflow.steps.map((step: any) => ({
+                id: step.id,
+                step_order: step.step_order,
+                step_name: step.step_name,
+                approval_roles: step.approval_roles || [],
+                is_terminal: step.is_terminal === true,
+            }))
+            : [];
+
+        return {
+            ...safeFormData,
+            __form_meta: {
+                form_type_id: formType?.id ?? null,
+                form_type_name: formType?.name ?? '',
+                schema_definition: formType?.schema_definition || {},
+                workflow_steps: workflowSteps,
+            }
+        };
+    }
+
     // ── Form Types ─────────────────────────────────────────────────────────
 
     async getFormTypes(roles: string[] = []): Promise<any[]> {
@@ -154,17 +180,21 @@ export class FormService implements IFormService {
     async createForm(dto: CreateFormDto, id?: number): Promise<any> {
         const formType = await this.formRepo.findFormTypeById(dto.form_type_id);
         if (!formType) throw new Error('FORM_TYPE_NOT_FOUND');
+        const formDataWithSnapshot = this.buildFormDataSnapshot(formType, dto.form_data as Record<string, any>);
 
         let form;
         if (id) {
             // Update an existing draft and promote it to SUBMITTED
             form = await this.formRepo.updateStatus(id, 'SUBMITTED', { 
-                form_data: dto.form_data, 
+                form_data: formDataWithSnapshot,
                 submitted_at: new Date() 
             });
         } else {
             // Create a brand new submission
-            form = await this.formRepo.create(dto);
+            form = await this.formRepo.create({
+                ...dto,
+                form_data: formDataWithSnapshot,
+            });
         }
 
         // Trigger workflow: advance to first step
@@ -177,7 +207,10 @@ export class FormService implements IFormService {
         const formType = await this.formRepo.findFormTypeById(dto.form_type_id);
         if (!formType) throw new Error('FORM_TYPE_NOT_FOUND');
 
-        return this.formRepo.saveDraft(dto, id);
+        return this.formRepo.saveDraft({
+            ...dto,
+            form_data: this.buildFormDataSnapshot(formType, dto.form_data as Record<string, any>)
+        }, id);
     }
 
     async updateFormStatus(dto: UpdateFormStatusDto): Promise<any> {

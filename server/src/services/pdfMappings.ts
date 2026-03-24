@@ -127,7 +127,7 @@ export const stationLeaveMapping: PdfMappingConfig = {
   signatures: [
     { stage: 'applicant', x: 438, y: 535 },
     { stage: ['hod', 'hod_review'], x: 435, y: 670 },
-    { stage: ['esst', 'esst section'], x: 110, y: 720 },
+    { stage: ['ar/dr approval', 'ar_dr_estt approval', 'esst', 'esst section'], x: 80, y: 710 },
   ],
 };
 

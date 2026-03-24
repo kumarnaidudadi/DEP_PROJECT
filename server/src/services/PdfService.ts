@@ -194,6 +194,10 @@ export class PdfService implements IPdfService {
                     }
                 }
             }
+
+            if (!sigUrl && (approval as any).users?.signature_url) {
+                sigUrl = (approval as any).users.signature_url;
+            }
             
             const signerName = (approval as any).users ? `${(approval as any).users.first_name || ''} ${(approval as any).users.last_name || ''}`.trim() : '';
             return { sigUrl, signerName };

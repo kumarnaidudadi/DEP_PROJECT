@@ -54,7 +54,7 @@ export default function WorkflowProgress({
           const state = getStepState(i, step.step_name);
 
           return (
-            <div key={step.id} className="flex items-center">
+            <div key={step.id ?? `${step.step_order}-${step.step_name}`} className="flex items-center">
               {/* Step */}
               <div className="group relative flex flex-col items-center">
                 <div
