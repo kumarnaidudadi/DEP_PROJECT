@@ -148,7 +148,8 @@ export class FormRepository implements IFormRepository {
                 workflow: {
                     include: { steps: { orderBy: { step_order: 'asc' } } }
                 }
-            }
+            },
+            orderBy: { name: 'asc' }
         });
     }
 

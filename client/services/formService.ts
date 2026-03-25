@@ -6,7 +6,11 @@ import { FormType, Application } from '@/types';
 
 export async function getFormTypes(): Promise<FormType[]> {
     const res = await api.get('/forms/types');
-    return res.data;
+    const data = res.data;
+    if (Array.isArray(data)) {
+        return data.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return data;
 }
 
 export async function getForms(): Promise<Application[]> {
