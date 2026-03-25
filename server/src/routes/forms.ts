@@ -9,6 +9,7 @@ import { FormController } from '../controllers/FormController';
 import { FormService } from '../services/FormService';
 import { WorkflowService } from '../services/WorkflowService';
 import { PdfService } from '../services/PdfService';
+import { EmailService } from '../services/EmailService';
 import { FormRepository } from '../repositories/FormRepository';
 import prismaClient from '../prisma';
 
@@ -16,7 +17,8 @@ const router = express.Router();
 
 // ─── Dependency Injection (manual composition root) ────────────────────────
 const formRepo = new FormRepository(prismaClient);
-const workflowService = new WorkflowService(prismaClient);
+const emailService = new EmailService(prismaClient);
+const workflowService = new WorkflowService(prismaClient, emailService);
 const pdfService = new PdfService(prismaClient);
 const formService = new FormService(formRepo, workflowService);
 const controller = new FormController(formService, pdfService);

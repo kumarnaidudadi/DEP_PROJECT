@@ -5,9 +5,13 @@
 
 import { PrismaClient } from '@prisma/client';
 import { IWorkflowService } from './IWorkflowService';
+import { IEmailService, EmailMetadata } from './IEmailService';
 
 export class WorkflowService implements IWorkflowService {
-    constructor(private readonly prisma: PrismaClient) { }
+    constructor(
+        private readonly prisma: PrismaClient,
+        private readonly emailService: IEmailService
+    ) { }
 
     // ─── Finalize: Create Office Order when a form is fully approved ───────
     async finalizeForm(form: any): Promise<void> {
@@ -25,6 +29,25 @@ export class WorkflowService implements IWorkflowService {
                     issued_by: form.submitted_by || 1,
                 }
             });
+        }
+
+        // Notify APPLICANT about completion
+        const applicant = form.users;
+        if (applicant && applicant.email) {
+            try {
+                const metadata: EmailMetadata = {
+                    requestId: form.id,
+                    applicantName: `${applicant.first_name} ${applicant.last_name}`,
+                    formType: form.form_types?.name || 'Unknown',
+                    status: 'APPROVED',
+                    actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard/applications/${form.id}`,
+                    timestamp: new Date()
+                };
+                // Fire and forget, don't block
+                this.emailService.sendEmailNotification('REQUEST_COMPLETED', applicant.email, metadata).catch(e => console.error(e));
+            } catch (err) {
+                console.error('Failed to prepare REQUEST_COMPLETED email:', err);
+            }
         }
     }
 
@@ -140,5 +163,24 @@ export class WorkflowService implements IWorkflowService {
                 approved_by: assignedApproverId
             }
         });
+
+        // Notify APPROVER about assignment
+        if (assignedApproverId) {
+            const approver = await this.prisma.users.findUnique({ where: { id: assignedApproverId } });
+            if (approver && approver.email) {
+                const applicantName = form.users ? `${form.users.first_name} ${form.users.last_name}` : 'Unknown';
+                const metadata: EmailMetadata = {
+                    requestId: form.id,
+                    applicantName,
+                    formType: form.form_types?.name || 'Unknown',
+                    currentStep: step.step_name,
+                    status: 'PENDING',
+                    actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard/pending-work`,
+                    timestamp: new Date()
+                };
+                
+                this.emailService.sendEmailNotification('REQUEST_ASSIGNED', approver.email, metadata).catch(e => console.error(e));
+            }
+        }
     }
 }
