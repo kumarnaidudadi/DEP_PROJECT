@@ -31,8 +31,7 @@ export default function AllApplicationsView({
         const q = searchQuery.toLowerCase();
         list = list.filter(a =>
             a.form_types?.name.toLowerCase().includes(q) ||
-            a.users?.first_name.toLowerCase().includes(q) ||
-            a.users?.last_name.toLowerCase().includes(q)
+            a.users?.name.toLowerCase().includes(q)
         );
     }
 

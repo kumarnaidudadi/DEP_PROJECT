@@ -22,7 +22,7 @@ function FormIcon({ status }: { status: string }) {
     const no = status === 'REJECTED';
     const dr = status === 'DRAFT';
     const bg = ok ? '#dcfce7' : no ? '#fee2e2' : dr ? '#e2e8f0' : '#fef3c7';
-    const c  = ok ? '#16a34a' : no ? '#dc2626' : dr ? '#64748b' : '#d97706';
+    const c = ok ? '#16a34a' : no ? '#dc2626' : dr ? '#64748b' : '#d97706';
     return (
         <div style={{
             width: 42, height: 42, borderRadius: '10px', flexShrink: 0,
@@ -146,12 +146,12 @@ function AllApplicationsContent() {
     const { applications, loading, fetchApplications, deleteApplication } = useForms();
     const { profile, fetchProfile } = useProfile();
 
-    const [searchQuery, setSearchQuery]       = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
     const [filterFormType, setFilterFormType] = useState<string>('all');
-    const [filterStatus, setFilterStatus]     = useState<string>('all');
-    const [sortOrder, setSortOrder]           = useState<'desc' | 'asc'>('desc');
-    const [appTab, setAppTab]                 = useState<AppTab>((searchParams.get('tab') as AppTab) || 'ongoing');
-    const [hoveredId, setHoveredId]           = useState<number | null>(null);
+    const [filterStatus, setFilterStatus] = useState<string>('all');
+    const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+    const [appTab, setAppTab] = useState<AppTab>((searchParams.get('tab') as AppTab) || 'ongoing');
+    const [hoveredId, setHoveredId] = useState<number | null>(null);
 
     useEffect(() => { fetchApplications(); fetchProfile(); }, [fetchApplications, fetchProfile]);
 
@@ -184,12 +184,11 @@ function AllApplicationsContent() {
         const q = searchQuery.toLowerCase();
         list = list.filter(a =>
             a.form_types?.name.toLowerCase().includes(q) ||
-            a.users?.first_name.toLowerCase().includes(q) ||
-            a.users?.last_name.toLowerCase().includes(q)
+            a.users?.name.toLowerCase().includes(q)
         );
     }
     if (filterFormType !== 'all') list = list.filter(a => a.form_types?.name === filterFormType);
-    if (filterStatus   !== 'all') list = list.filter(a => a.current_status === filterStatus);
+    if (filterStatus !== 'all') list = list.filter(a => a.current_status === filterStatus);
 
     list.sort((a, b) => {
         const tA = new Date(a.submitted_at).getTime();
@@ -198,7 +197,7 @@ function AllApplicationsContent() {
     });
 
     const uniqueFormTypes = Array.from(new Set(baseApps.map(a => a.form_types?.name).filter(Boolean))) as string[];
-    const uniqueStatuses  = Array.from(new Set(baseApps.map(a => a.current_status).filter(Boolean))) as string[];
+    const uniqueStatuses = Array.from(new Set(baseApps.map(a => a.current_status).filter(Boolean))) as string[];
 
     const formTypeOptions = [
         { value: 'all', label: 'All Form Types' },
@@ -210,7 +209,7 @@ function AllApplicationsContent() {
     ];
     const sortOptions = [
         { value: 'desc', label: 'Newest First' },
-        { value: 'asc',  label: 'Oldest First' },
+        { value: 'asc', label: 'Oldest First' },
     ];
 
     const fmtDate = (iso: string) =>
@@ -283,11 +282,11 @@ function AllApplicationsContent() {
                 {/* Tab pills */}
                 <div style={{ display: 'flex' }}>
                     {(['ongoing', 'completed', 'draft'] as AppTab[]).map(tab => {
-                        const active   = appTab === tab;
+                        const active = appTab === tab;
                         const isOngoing = tab === 'ongoing';
                         const isCompleted = tab === 'completed';
                         const isDraft = tab === 'draft';
-                        
+
                         let color = '#6b7280';
                         if (active) {
                             if (isOngoing) color = '#2563eb';
@@ -344,7 +343,7 @@ function AllApplicationsContent() {
                     }}>
                         {list.map((app, idx) => {
                             const isHovered = hoveredId === app.id;
-                            const isLast    = idx === list.length - 1;
+                            const isLast = idx === list.length - 1;
                             return (
                                 <div
                                     key={app.id}

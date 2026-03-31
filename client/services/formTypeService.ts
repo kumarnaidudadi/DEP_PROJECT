@@ -8,7 +8,7 @@ export interface FormTypePayload {
     name: string;
     description: string;
     schema_definition: any;
-    workflow_steps: { step_name: string; approval_roles: string[]; is_terminal: boolean }[];
+    approval_rules?: { required_roles: string[] };
     is_active?: boolean;
 }
 

@@ -51,11 +51,19 @@ function CreateFormInner() {
         if (!ft) return;
         setNewFormName(ft.name);
         setNewFormDesc(ft.description || '');
-        if (ft.schema_definition && ft.workflow) {
-            const stepsMap = (ft.workflow.steps || []).map((dbStep, i) => {
-                const stepSchemaArr = ft.schema_definition[String(i + 1)] as PersistedBuilderField[] | undefined;
-                const fields = Array.isArray(stepSchemaArr)
-                    ? stepSchemaArr.filter((item): item is PersistedBuilderField & { name: string } => typeof item?.name === 'string' && item.name.trim().length > 0).map(item => ({
+        if (ft.schema_definition) {
+            // Parse schema into builder steps (schema keys are step numbers)
+            const schemaKeys = Object.keys(ft.schema_definition).sort((a, b) => Number(a) - Number(b));
+            const stepsMap = schemaKeys.map((key) => {
+                const stepSchemaArr = ft.schema_definition[key] as PersistedBuilderField[] | undefined;
+                const statusObj = Array.isArray(stepSchemaArr) && stepSchemaArr[0] && 'status' in (stepSchemaArr[0] as any)
+                    ? (stepSchemaArr[0] as any)
+                    : null;
+                const fieldsArr = Array.isArray(stepSchemaArr)
+                    ? stepSchemaArr.filter((item): item is PersistedBuilderField & { name: string } => typeof item?.name === 'string' && item.name.trim().length > 0)
+                    : [];
+                const fields = fieldsArr.length > 0
+                    ? fieldsArr.map(item => ({
                         id: item.id || createBuilderFieldId(),
                         name: item.name,
                         type: item.type || 'text',
@@ -68,7 +76,14 @@ function CreateFormInner() {
                         subFields: item.subFields,
                     }))
                     : [createBuilderField()];
-                return { status: dbStep.step_name, approval_roles: dbStep.approval_roles || [], fields };
+                // Extract approval roles from approval_rules if available
+                const approvalRules = (ft.approval_rules as any) || {};
+                const requiredRoles: string[] = approvalRules.required_roles || [];
+                return {
+                    status: statusObj?.status || `Step ${key}`,
+                    approval_roles: requiredRoles,
+                    fields
+                };
             });
             if (stepsMap.length > 0) setBuilderSteps(stepsMap);
         }
@@ -96,15 +111,15 @@ function CreateFormInner() {
                     })),
                 ];
             });
-            const payload = {
+            // Collect unique approval roles from all steps
+                const allRoles = new Set<string>();
+                builderSteps.forEach(s => s.approval_roles.forEach(r => allRoles.add(r)));
+
+                const payload = {
                 name: newFormName.trim(),
                 description: newFormDesc.trim(),
                 schema_definition: schema,
-                workflow_steps: builderSteps.map((s, i) => ({
-                    step_name: s.status,
-                    approval_roles: s.approval_roles,
-                    is_terminal: i === builderSteps.length - 1,
-                })),
+                approval_rules: { required_roles: Array.from(allRoles) },
             };
             if (editId) { await formTypeSvc.updateFormType(Number(editId), payload); }
             else { await formTypeSvc.createFormType(payload); }

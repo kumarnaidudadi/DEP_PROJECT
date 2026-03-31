@@ -132,7 +132,7 @@ function NewApplicationFormContent() {
                 name: ft.name,
                 description: ft.description,
                 schema_definition: ft.schema_definition,
-                workflow_steps: [], 
+                approval_rules: (ft.approval_rules as any) || { required_roles: [] },
                 is_active: newActive
             });
             

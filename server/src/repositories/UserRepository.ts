@@ -1,6 +1,7 @@
 // ─── UserRepository ───────────────────────────────────────────────────────────
 // Concrete Prisma implementation of IUserRepository.
 // Single Responsibility: purely responsible for user data persistence.
+// Schema: users has: id (BigInt), name, email, password, department_id, created_at, updated_at
 
 import { PrismaClient } from '@prisma/client';
 import { IUserRepository } from './IUserRepository';
@@ -17,7 +18,7 @@ export class UserRepository implements IUserRepository {
 
     async findById(id: number): Promise<any | null> {
         return this.prisma.users.findUnique({
-            where: { id },
+            where: { id: BigInt(id) },
             include: { user_roles: { include: { roles: true } } },
         });
     }
@@ -27,10 +28,9 @@ export class UserRepository implements IUserRepository {
     }
 
     async updateOtp(email: string, otp: string | null, expiry: Date | null): Promise<void> {
-        await this.prisma.users.update({
-            where: { email },
-            data: { otp_code: otp, otp_expiry: expiry },
-        });
+        // No otp columns in actual DB — this is a no-op placeholder
+        // OTP support requires adding otp_code/otp_expiry columns to the users table
+        console.warn('[UserRepository] updateOtp called but DB has no OTP columns');
     }
 
     async findDefaultRole(): Promise<any | null> {
@@ -41,7 +41,7 @@ export class UserRepository implements IUserRepository {
 
     async assignRole(userId: number, roleId: number): Promise<void> {
         await this.prisma.user_roles.create({
-            data: { user_id: userId, role_id: roleId },
+            data: { user_id: BigInt(userId), role_id: BigInt(roleId) },
         });
     }
 }

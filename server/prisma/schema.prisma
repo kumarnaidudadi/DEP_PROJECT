@@ -6,200 +6,128 @@ datasource db {
   provider = "postgresql"
 }
 
-// ─── AUTH & RBAC (UNTOUCHED) ─────────────────────────────────────────
-
-model permissions {
-  id               Int                @id @default(autoincrement())
-  name             String             @unique @db.VarChar
-  description      String?
-  role_permissions role_permissions[]
-}
-
-model role_permissions {
-  role_id       Int
-  permission_id Int
-  permissions   permissions @relation(fields: [permission_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  roles         roles       @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@id([role_id, permission_id])
-}
-
 model roles {
-  id               Int                @id @default(autoincrement())
-  name             String             @unique @db.VarChar
-  description      String?
-  created_at       DateTime?          @default(now()) @db.Timestamp(6)
-  role_permissions role_permissions[]
-  user_roles       user_roles[]
+  id              BigInt       @id @default(autoincrement())
+  name            String       @unique
+  hierarchy_level Int
+  created_at      DateTime?    @default(now()) @db.Timestamp(6)
+  user_roles      user_roles[]
 }
 
 model user_roles {
-  user_id Int
-  role_id Int
-  roles   roles @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users   users @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id         BigInt    @id @default(autoincrement())
+  user_id    BigInt?
+  role_id    BigInt?
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+  roles      roles?    @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@id([user_id, role_id])
+  @@unique([user_id, role_id])
 }
 
 model users {
-  id                  Int                   @id @default(autoincrement())
-  first_name          String                @db.VarChar
-  middle_name         String?               @db.VarChar
-  last_name           String                @db.VarChar
-  email               String                @unique @db.VarChar
-  password_hash       String?
-  otp_code            String?
-  otp_expiry          DateTime?
-  auth_provider       String?               @db.VarChar(50)
-  is_active           Boolean?              @default(true)
-  created_at          DateTime?             @default(now()) @db.Timestamp(6)
-  updated_at          DateTime?             @default(now()) @db.Timestamp(6)
-  department_id       Int?
-  signature_url       String?
-  emp_code            String?               @db.VarChar
-  joining_date        DateTime?             @db.Timestamp(6)
-  department_heads    department_heads[]
-  form_approvals      form_approvals[]
-  form_status_history form_status_history[]
-  forms               forms[]
-  office_orders       office_orders[]
-  user_roles          user_roles[]
-  departments         departments?          @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id               BigInt             @id @default(autoincrement())
+  name             String
+  email            String             @unique
+  password         String
+  department_id    BigInt?
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at       DateTime?          @default(now()) @db.Timestamp(6)
+  applied_forms    applied_forms[]
+  department_heads department_heads[]
+  form_history     form_history[]
+  form_types       form_types[]
+  office_orders    office_orders[]
+  user_roles       user_roles[]
+  forwards_sent    form_forwards[]    @relation("ForwardFrom")
+  forwards_received form_forwards[]   @relation("ForwardTo")
 }
 
 model department_heads {
-  id            Int         @id @default(autoincrement())
-  department_id Int
-  user_id       Int
-  role_type     String      @db.VarChar(50)
-  assigned_at   DateTime?   @default(now()) @db.Timestamp(6)
-  is_active     Boolean?    @default(true)
-  departments   departments @relation(fields: [department_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users         users       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id            BigInt       @id @default(autoincrement())
+  department_id BigInt?
+  user_id       BigInt?
+  created_at    DateTime?    @default(now()) @db.Timestamp(6)
+  departments   departments? @relation(fields: [department_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users         users?       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@unique([department_id, role_type, is_active])
+  @@unique([department_id, user_id])
 }
 
 model departments {
-  id               Int                @id @default(autoincrement())
-  name             String             @unique @db.VarChar(150)
-  description      String?
+  id               BigInt             @id @default(autoincrement())
+  name             String             @unique
   created_at       DateTime?          @default(now()) @db.Timestamp(6)
   department_heads department_heads[]
-  users            users[]
 }
-
-// ─── WORKFLOW ENGINE ─────────────────────────────────────────────────
-
-model workflows {
-  id          Int              @id @default(autoincrement())
-  name        String           @unique @db.VarChar
-  description String?
-  created_at  DateTime?        @default(now()) @db.Timestamp(6)
-  form_types  form_types[]
-  steps       workflow_steps[]
-}
-
-model workflow_steps {
-  id             Int       @id @default(autoincrement())
-  workflow_id    Int
-  step_order     Int
-  step_name      String    @db.VarChar
-  approval_roles String[]  @db.VarChar
-  is_terminal    Boolean   @default(false)
-  created_at     DateTime? @default(now()) @db.Timestamp(6)
-  workflow       workflows @relation(fields: [workflow_id], references: [id], onDelete: Cascade)
-
-  @@unique([workflow_id, step_order])
-}
-
-/// Reusable step templates for building workflows
-model workflow_step_templates {
-  id              Int       @id @default(autoincrement())
-  name            String    @unique @db.VarChar
-  description     String?
-  schema_template Json
-  created_at      DateTime? @default(now()) @db.Timestamp(6)
-}
-
-// ─── FORMS ───────────────────────────────────────────────────────────
 
 model form_types {
-  id                Int       @id @default(autoincrement())
-  name              String    @unique @db.VarChar
-  description       String?
-  schema_definition Json      @default("{}")
-  is_active         Boolean?  @default(true)
-  workflow_id       Int?
-  workflow          workflows? @relation(fields: [workflow_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  forms             forms[]
-}
-
-model forms {
-  id                  Int                   @id @default(autoincrement())
-  form_type_id        Int?
-  submitted_by        Int?
-  current_status      String                @default("DRAFT") @db.VarChar
-  submitted_at        DateTime?             @db.Timestamp(6)
-  updated_at          DateTime?             @default(now()) @db.Timestamp(6)
-  form_data           Json                  @default("{}")
-  form_approvals      form_approvals[]
-  form_status_history form_status_history[]
-  form_types          form_types?           @relation(fields: [form_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  users               users?                @relation(fields: [submitted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  office_orders       office_orders?
-
-  @@index([current_status], map: "idx_forms_status")
-  @@index([submitted_by], map: "idx_forms_submitted_by")
-}
-
-model form_approvals {
-  id            Int       @id @default(autoincrement())
-  form_id       Int?
-  stage         String    @db.VarChar
-  approved_by   Int?
-  decision      String    @default("PENDING") @db.VarChar
-  remarks       String?
-  decided_at    DateTime? @default(now()) @db.Timestamp(6)
-  approval_data Json?     @default("{}")
-  users         users?    @relation(fields: [approved_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  forms         forms?    @relation(fields: [form_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([form_id], map: "idx_approvals_form")
-}
-
-model form_status_history {
-  id         Int       @id @default(autoincrement())
-  form_id    Int?
-  old_status String?   @db.VarChar
-  new_status String?   @db.VarChar
-  changed_by Int?
-  changed_at DateTime? @default(now()) @db.Timestamp(6)
-  users      users?    @relation(fields: [changed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  forms      forms?    @relation(fields: [form_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id             BigInt          @id @default(autoincrement())
+  name           String
+  description    String?
+  schema         Json
+  created_by     BigInt?
+  created_at     DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at     DateTime?       @default(now()) @db.Timestamp(6)
+  approval_rules Json?           @default("{}")  // e.g. { "required_roles": ["HOD", "REGISTRAR"] }
+  applied_forms  applied_forms[]
+  users          users?          @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model office_orders {
-  id           Int       @id @default(autoincrement())
-  form_id      Int?      @unique
-  order_number String    @unique @db.VarChar(100)
-  issued_by    Int?
-  issued_at    DateTime? @default(now()) @db.Timestamp(6)
-  pdf_url      String?
-  forms        forms?    @relation(fields: [form_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users        users?    @relation(fields: [issued_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id              BigInt         @id @default(autoincrement())
+  applied_form_id BigInt?
+  order_number    String?
+  generated_by    BigInt?
+  generated_at    DateTime?      @default(now()) @db.Timestamp(6)
+  document_url    String?
+  applied_forms   applied_forms? @relation(fields: [applied_form_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users           users?         @relation(fields: [generated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
-model email_logs {
-  id           Int       @id @default(autoincrement())
-  event_type   String    @db.VarChar
-  recipient    String    @db.VarChar
-  subject      String    @db.VarChar
-  body         String?
-  status       String    @default("PENDING") @db.VarChar
-  error        String?
-  retry_count  Int       @default(0)
-  created_at   DateTime? @default(now()) @db.Timestamp(6)
-  sent_at      DateTime? @db.Timestamp(6)
+model applied_forms {
+  id                     BigInt          @id @default(autoincrement())
+  form_type_id           BigInt?
+  applicant_id           BigInt?
+  form_data              Json
+  status                 String?         @default("pending")
+  current_approval_level Int?            @default(1)
+  submitted_at           DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at             DateTime?       @default(now()) @db.Timestamp(6)
+  users                  users?          @relation(fields: [applicant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  form_types             form_types?     @relation(fields: [form_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  form_history           form_history[]
+  form_forwards          form_forwards[]
+  office_orders          office_orders[]
+}
+
+model form_history {
+  id              BigInt         @id @default(autoincrement())
+  applied_form_id BigInt?
+  changed_by      BigInt?
+  old_data        Json?
+  new_data        Json?
+  action          String?
+  remarks         String?
+  created_at      DateTime?      @default(now()) @db.Timestamp(6)
+  applied_forms   applied_forms? @relation(fields: [applied_form_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users           users?         @relation(fields: [changed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+// ─── DYNAMIC FORWARDING ─────────────────────────────────────────────
+
+model form_forwards {
+  id             BigInt        @id @default(autoincrement())
+  form_id        BigInt
+  forwarded_by   BigInt
+  forwarded_to   BigInt
+  note           String?
+  action         String?       @default("forwarded") // forwarded | approved | rejected
+  remarks        String?
+  forwarded_at   DateTime      @default(now()) @db.Timestamp(6)
+  applied_forms  applied_forms @relation(fields: [form_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  from_user      users         @relation("ForwardFrom", fields: [forwarded_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  to_user        users         @relation("ForwardTo", fields: [forwarded_to], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([form_id], map: "idx_forwards_form")
 }

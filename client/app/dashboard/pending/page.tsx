@@ -21,7 +21,7 @@ function FormIcon({ status }: { status: string }) {
     const ok = status === 'APPROVED';
     const no = status === 'REJECTED';
     const bg = ok ? '#dcfce7' : no ? '#fee2e2' : '#fef3c7';
-    const c  = ok ? '#16a34a' : no ? '#dc2626' : '#d97706';
+    const c = ok ? '#16a34a' : no ? '#dc2626' : '#d97706';
     return (
         <div style={{
             width: 42, height: 42, borderRadius: '10px', flexShrink: 0,
@@ -180,8 +180,7 @@ function PendingWorkContent() {
         const q = searchQuery.toLowerCase();
         list = list.filter(a =>
             a.form_types?.name.toLowerCase().includes(q) ||
-            a.users?.first_name.toLowerCase().includes(q) ||
-            a.users?.last_name.toLowerCase().includes(q)
+            a.users?.name.toLowerCase().includes(q)
         );
     }
     if (filterFormType !== 'all') list = list.filter(a => a.form_types?.name === filterFormType);
@@ -359,8 +358,8 @@ function PendingWorkContent() {
                                             </div>
                                             <span style={{ color: '#cbd5e1' }}>•</span>
                                             <span style={{ color: '#6b7280' }}>
-                                                Submitted by: <span style={{ fontWeight: 600, color: '#374151' }}>
-                                                    {app.users?.first_name} {app.users?.last_name}
+                                                <span className="text-secondary dark:text-gray-400 font-medium ml-1">
+                                                    {app.users?.name}
                                                 </span>
                                             </span>
                                             {app.office_orders?.order_number && (
@@ -389,7 +388,8 @@ function PendingWorkContent() {
                 )}
             </main>
 
-            <style dangerouslySetInnerHTML={{ __html: `
+            <style dangerouslySetInnerHTML={{
+                __html: `
                 @keyframes slideIn {
                     from { transform: translateY(16px); opacity: 0; }
                     to   { transform: translateY(0);    opacity: 1; }

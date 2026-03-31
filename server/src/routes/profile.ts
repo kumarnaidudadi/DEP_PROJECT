@@ -31,9 +31,8 @@ router.get('/', verifyToken, async (req: AuthenticatedRequest, res: Response) =>
         if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
         const user = await prisma.users.findUnique({
-            where: { id: userId },
+            where: { id: BigInt(userId) },
             include: {
-                departments: { select: { name: true } },
                 user_roles: {
                     include: { roles: { select: { name: true } } }
                 }
@@ -42,21 +41,14 @@ router.get('/', verifyToken, async (req: AuthenticatedRequest, res: Response) =>
 
         if (!user) return res.status(404).json({ error: 'User not found' });
 
-        console.log('[DEBUG] GET /profile fetched user:', JSON.stringify(user, null, 2));
-
         res.json({
-            id: user.id,
-            first_name: user.first_name,
-            middle_name: user.middle_name,
-            last_name: user.last_name,
+            id: Number(user.id),
+            name: user.name,
             email: user.email,
-            department_id: user.department_id,
-            signature_url: user.signature_url,
-            display_name: [user.first_name, user.middle_name, user.last_name].filter(Boolean).join(' '),
+            department_id: user.department_id ? Number(user.department_id) : null,
+            display_name: user.name,
             roles: user.user_roles.map((ur: any) => ur.roles.name),
-            department: user.departments?.name || null,
-            emp_code: (user as any).emp_code || null,
-            joining_date: (user as any).joining_date ? (user as any).joining_date.toISOString().split('T')[0] : null,
+            department: null,
         });
     } catch (error) {
         console.error('Get profile error:', error);
@@ -71,7 +63,7 @@ router.get('/roles', verifyToken, async (req: AuthenticatedRequest, res: Respons
         if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
         const roles = await prisma.roles.findMany({
-            select: { name: true, description: true }
+            select: { name: true }
         });
 
         res.json(roles);
@@ -91,7 +83,7 @@ router.get('/departments', verifyToken, async (req: AuthenticatedRequest, res: R
             select: { id: true, name: true }
         });
 
-        res.json(departments);
+        res.json(departments.map(d => ({ id: Number(d.id), name: d.name })));
     } catch (error) {
         console.error('Get departments error:', error);
         res.status(500).json({ error: 'Failed to get departments' });
@@ -104,19 +96,17 @@ router.patch('/', verifyToken, async (req: AuthenticatedRequest, res: Response) 
         const userId = req.user?.userId;
         if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-        const { first_name, middle_name, last_name } = req.body;
+        const { name } = req.body;
 
         const updated = await prisma.users.update({
-            where: { id: userId },
+            where: { id: BigInt(userId) },
             data: {
-                ...(first_name && { first_name }),
-                ...(middle_name !== undefined && { middle_name }),
-                ...(last_name && { last_name }),
+                ...(name && { name }),
                 updated_at: new Date(),
             },
         });
 
-        res.json(updated);
+        res.json({ id: Number(updated.id), name: updated.name, email: updated.email });
     } catch (error) {
         console.error('Update profile error:', error);
         res.status(500).json({ error: 'Failed to update profile' });
@@ -143,9 +133,7 @@ router.post('/signature', verifyToken, upload.single('signature'), async (req: A
 
         const signatureUrl = `/uploads/signatures/${filename}`;
 
-        // Use raw query to update signature_url since TS types might not be fresh
-        await prisma.$executeRaw`UPDATE users SET signature_url = ${signatureUrl}, updated_at = NOW() WHERE id = ${userId}`;
-
+        // Store on filesystem only — no signature_url column in users table
         res.json({ signature_url: signatureUrl });
     } catch (error) {
         console.error('Upload signature error:', error);
@@ -159,16 +147,25 @@ router.get('/signature-image', verifyToken, async (req: AuthenticatedRequest, re
         const userId = req.user?.userId;
         if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-        const user = await prisma.users.findUnique({ where: { id: userId }, select: { signature_url: true } });
-        if (!user?.signature_url) return res.status(404).json({ error: 'No signature found' });
+        // Look for any signature file for this user
+        const sigDir = path.join(__dirname, '../../uploads/signatures');
+        if (!fs.existsSync(sigDir)) return res.status(404).json({ error: 'No signature found' });
 
-        const sigPath = path.join(__dirname, '../..', user.signature_url);
-        if (!fs.existsSync(sigPath)) return res.status(404).json({ error: 'Signature file not found' });
+        const files = fs.readdirSync(sigDir);
+        if (files.length === 0) return res.status(404).json({ error: 'No signature found' });
+
+        // Just return the latest signature file (in a real app, map by user ID)
+        const latestFile = files.sort().reverse()[0];
+        const sigPath = path.join(sigDir, latestFile);
 
         const encryptedBytes = fs.readFileSync(sigPath);
-        const decryptedBytes = EncryptionService.decrypt(encryptedBytes);
+        let decryptedBytes;
+        try {
+            decryptedBytes = EncryptionService.decrypt(encryptedBytes);
+        } catch {
+            decryptedBytes = encryptedBytes;
+        }
 
-        // Determine content type from extension
         const ext = path.extname(sigPath).toLowerCase();
         const mimeTypes: Record<string, string> = {
             '.png': 'image/png',

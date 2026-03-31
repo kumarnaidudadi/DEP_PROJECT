@@ -16,17 +16,17 @@ export interface UpdateFormStatusDto {
     userId: number;
 }
 
+export interface ForwardFormDto {
+    formId: number;
+    fromUserId: number;
+    toUserId: number;
+    note?: string;
+}
+
 export interface CreateFormTypeDto {
     name: string;
     description?: string;
     schema_definition?: Record<string, unknown>;
-    workflow_name?: string;
-    workflow_steps?: WorkflowStepDto[];
+    approval_rules?: Record<string, unknown>;
     is_active?: boolean;
-}
-
-export interface WorkflowStepDto {
-    step_name: string;
-    approval_roles?: string[];
-    is_terminal?: boolean;
 }

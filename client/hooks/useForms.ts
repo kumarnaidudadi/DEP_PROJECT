@@ -1,10 +1,10 @@
 // ─── useForms ──────────────────────────────────────────────────────────────────
-// Manages form types, applications state + fetch / submit / decision helpers.
+// Manages form types, applications state + fetch / submit / decision / forward helpers.
 
 'use client';
 
 import { useState, useCallback } from 'react';
-import { FormType, Application } from '@/types';
+import { FormType, Application, UserSearchResult } from '@/types';
 import * as formSvc from '@/services/formService';
 
 export function useForms() {
@@ -65,6 +65,22 @@ export function useForms() {
         return result;
     }, []);
 
+    const forwardForm = useCallback(async (
+        formId: number,
+        toUserId: number,
+        note?: string
+    ): Promise<Application> => {
+        const result = await formSvc.forwardForm(formId, toUserId, note);
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('applications-updated'));
+        }
+        return result;
+    }, []);
+
+    const searchUsers = useCallback(async (query: string): Promise<UserSearchResult[]> => {
+        return formSvc.searchUsers(query);
+    }, []);
+
     const triggerDownloadPdf = useCallback(async (formId: number, fileName: string) => {
         const url = await formSvc.downloadPdf(formId);
         const link = document.createElement('a');
@@ -90,6 +106,8 @@ export function useForms() {
         submitForm,
         saveDraft,
         makeDecision,
+        forwardForm,
+        searchUsers,
         triggerDownloadPdf,
         deleteApplication,
     };

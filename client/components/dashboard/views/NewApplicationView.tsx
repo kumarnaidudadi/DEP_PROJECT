@@ -7,7 +7,7 @@ import { ChevronRight, FileText, Plus, Send, Loader2, Upload, Trash2, ToggleLeft
 import { FormType, Profile, getSchemaFields, buildAutoFillData, isFieldVisible } from '@/types';
 import ListItem from '../ListItem';
 import StatusBadge from '../StatusBadge';
-import WorkflowProgress from '../WorkflowProgress';
+
 import FieldRenderer from '../../ui/FieldRenderer';
 import Panel from '../Panel';
 
@@ -296,15 +296,20 @@ export default function NewApplicationView({
                 </div>
             )}
 
-            {/* Workflow preview */}
-            {selectedFormType.workflow && selectedFormType.workflow.steps.length > 0 && (
+            {/* Approval rules preview */}
+            {selectedFormType.approval_rules && (selectedFormType.approval_rules as any)?.required_roles?.length > 0 && (
                 <div style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #f0f9ff 50%, #ecfeff 100%)', borderRadius: '12px', padding: '16px 20px', marginBottom: '20px', border: '1px solid #bfdbfe' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
                         <div style={{ width: '4px', height: '14px', borderRadius: '2px', background: 'linear-gradient(180deg, #3b82f6, #2563eb)' }} />
-                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Approval Workflow</span>
-                        <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500, marginLeft: 'auto' }}>{selectedFormType.workflow.steps.length} steps</span>
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.8px' }}>Required Approvals</span>
                     </div>
-                    <WorkflowProgress steps={selectedFormType.workflow.steps} />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {((selectedFormType.approval_rules as any)?.required_roles || []).map((role: string) => (
+                            <span key={role} style={{ fontSize: '11px', fontWeight: 600, background: '#dbeafe', color: '#1e40af', padding: '3px 10px', borderRadius: '6px', border: '1px solid #93c5fd' }}>
+                                {role}
+                            </span>
+                        ))}
+                    </div>
                 </div>
             )}
 

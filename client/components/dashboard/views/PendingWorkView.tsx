@@ -25,8 +25,7 @@ export default function PendingWorkView({
         const q = searchQuery.toLowerCase();
         list = list.filter(a =>
             a.form_types?.name.toLowerCase().includes(q) ||
-            a.users?.first_name.toLowerCase().includes(q) ||
-            a.users?.last_name.toLowerCase().includes(q)
+            a.users?.name.toLowerCase().includes(q)
         );
     }
 
@@ -46,7 +45,7 @@ export default function PendingWorkView({
                 <ListItem key={a.id} sel={selectedApp?.id === a.id} onClick={() => onSelect(a)}>
                     <div>
                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#1f2937' }}>
-                            {a.users ? `${a.users.first_name} ${a.users.last_name}` : 'Unknown'}
+                            {a.users ? `${a.users.name}` : 'Unknown'}
                         </div>
                         <div style={{ fontSize: '11px', color: '#6b7280' }}>{a.form_types?.name || 'Application'}</div>
                         <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '2px' }}>

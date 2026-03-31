@@ -204,9 +204,9 @@ export default function FieldRenderer({
         const values = Array.isArray(value) ? value : [];
 
         return (
-            <div style={{ 
-                lineHeight: '1.8', 
-                fontSize: '15px', 
+            <div style={{
+                lineHeight: '1.8',
+                fontSize: '15px',
                 color: '#374151',
                 padding: '0', // Full width, no extra padding inside container
                 whiteSpace: 'pre-wrap',
@@ -217,7 +217,7 @@ export default function FieldRenderer({
                     <React.Fragment key={idx}>
                         <span style={{ verticalAlign: 'baseline' }}>{segment}</span>
                         {idx < segments.length - 1 && (
-                            <span 
+                            <span
                                 contentEditable
                                 suppressContentEditableWarning
                                 onFocus={(e) => e.currentTarget.style.background = '#f1f5f9'}
@@ -244,7 +244,7 @@ export default function FieldRenderer({
                                     verticalAlign: 'baseline',
                                     wordBreak: 'break-word',
                                     transition: 'background 0.2s',
-                                    minWidth: '60px',   
+                                    minWidth: '60px',
                                 }}
                             >
                                 {values[idx] || '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0'}

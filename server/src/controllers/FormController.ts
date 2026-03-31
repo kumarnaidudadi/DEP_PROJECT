@@ -29,7 +29,7 @@ export class FormController {
     };
 
     createFormType = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-        const { name, description, schema_definition, workflow_name, workflow_steps } = req.body;
+        const { name, description, schema_definition, approval_rules } = req.body;
 
         if (!name) {
             res.status(400).json({ error: 'Form type name is required' });
@@ -38,7 +38,7 @@ export class FormController {
 
         try {
             const result = await this.formService.createFormType({
-                name, description, schema_definition, workflow_name, workflow_steps
+                name, description, schema_definition, approval_rules
             });
             res.status(201).json(result);
         } catch (e: any) {
@@ -50,14 +50,14 @@ export class FormController {
 
     updateFormType = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         const id = Number(req.params.id);
-        const { name, description, schema_definition, workflow_steps, is_active } = req.body;
+        const { name, description, schema_definition, approval_rules, is_active } = req.body;
 
         if (!name) { res.status(400).json({ error: 'Form type name is required' }); return; }
         if (isNaN(id)) { res.status(400).json({ error: 'Invalid form type id' }); return; }
 
         try {
             const result = await this.formService.updateFormType(id, {
-                name, description, schema_definition, workflow_steps, is_active
+                name, description, schema_definition, approval_rules, is_active
             });
             res.json(result);
         } catch (e: any) {
@@ -173,6 +173,7 @@ export class FormController {
             console.error('[FormController] updateFormStatus:', e.message);
             if (e.message === 'FORM_NOT_FOUND') res.status(404).json({ error: 'Form not found' });
             else if (e.message === 'NO_PENDING_APPROVAL') res.status(400).json({ error: 'No pending approval stage found for this form.' });
+            else if (e.message === 'UNAUTHORIZED_ROLE') res.status(403).json({ error: 'You do not have an authorized role to approve this form.' });
             else res.status(500).json({ error: e.message || 'Failed to update status' });
         }
     };
@@ -191,6 +192,66 @@ export class FormController {
             else res.status(500).json({ error: 'Failed to delete form' });
         }
     }
+
+    // ── Forward Form ──────────────────────────────────────────────────────
+
+    forwardForm = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        const formId = Number(req.params.id);
+        const userId = req.user?.userId;
+        const { toUserId, note } = req.body;
+
+        if (!userId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+        if (!toUserId) { res.status(400).json({ error: 'toUserId is required' }); return; }
+
+        try {
+            const result = await this.formService.forwardForm({
+                formId,
+                fromUserId: userId,
+                toUserId: Number(toUserId),
+                note: note || '',
+            });
+            res.json(result);
+        } catch (e: any) {
+            console.error('[FormController] forwardForm:', e.message);
+            if (e.message === 'FORM_NOT_FOUND') res.status(404).json({ error: 'Form not found' });
+            else if (e.message === 'TARGET_USER_NOT_FOUND') res.status(404).json({ error: 'Target user not found' });
+            else if (e.message === 'FORM_ALREADY_FINALIZED') res.status(400).json({ error: 'Cannot forward a finalized form' });
+            else res.status(500).json({ error: 'Failed to forward form' });
+        }
+    };
+
+    // ── Search Users ──────────────────────────────────────────────────────
+
+    searchUsers = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        const query = (req.query.q as string) || '';
+        if (!query || query.length < 2) {
+            res.json([]);
+            return;
+        }
+
+        try {
+            const users = await this.formService.searchUsers(query);
+            res.json(users);
+        } catch (e: any) {
+            console.error('[FormController] searchUsers:', e.message);
+            res.status(500).json({ error: 'Failed to search users' });
+        }
+    };
+
+    // ── Form History ──────────────────────────────────────────────────────
+
+    getFormHistory = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        const formId = Number(req.params.id);
+
+        try {
+            const history = await this.formService.getFormHistory(formId);
+            res.json(history);
+        } catch (e: any) {
+            console.error('[FormController] getFormHistory:', e.message);
+            if (e.message === 'FORM_NOT_FOUND') res.status(404).json({ error: 'Form not found' });
+            else res.status(500).json({ error: 'Failed to get form history' });
+        }
+    };
 
     // ── PDF Download ───────────────────────────────────────────────────────
 

@@ -17,7 +17,7 @@ export default function PendingWorkDetailPage() {
     const tab = searchParams.get('tab') || 'needs-review';
 
     const { user, userRoles } = useAuth();
-    const { applications, loading, fetchApplications, makeDecision, triggerDownloadPdf } = useForms();
+    const { applications, loading, fetchApplications, makeDecision, forwardForm, searchUsers, triggerDownloadPdf } = useForms();
     const { profile, sigUploading, fetchProfile, handleSigUpload } = useProfile();
 
     const [remarks, setRemarks] = useState('');
@@ -51,6 +51,19 @@ export default function PendingWorkDetailPage() {
             router.push(`/dashboard/pending?tab=${tab}`);
         } catch {
             alert('Failed to update');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleForward = async (toUserId: number, note: string) => {
+        if (!selectedApp) return;
+        setActionLoading(true);
+        try {
+            await forwardForm(selectedApp.id, toUserId, note);
+            fetchApplications();
+        } catch (err) {
+            alert('Failed to forward');
         } finally {
             setActionLoading(false);
         }
@@ -137,6 +150,8 @@ export default function PendingWorkDetailPage() {
                         onDecision={handleDecision}
                         onDownloadPdf={handleDownloadPdf}
                         onSigUpload={handleSigUpload}
+                        onForward={handleForward}
+                        onSearchUsers={searchUsers}
                     />
                 </div>
             </div>

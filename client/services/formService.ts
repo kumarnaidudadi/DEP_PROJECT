@@ -2,7 +2,7 @@
 // Pure API functions for forms and applications.
 
 import api from '@/lib/api';
-import { FormType, Application } from '@/types';
+import { FormType, Application, UserSearchResult } from '@/types';
 
 export async function getFormTypes(): Promise<FormType[]> {
     const res = await api.get('/forms/types');
@@ -40,6 +40,28 @@ export async function updateFormStatus(
     approvalData: Record<string, any>
 ): Promise<Application> {
     const res = await api.patch(`/forms/${formId}/status`, { decision, remarks, approvalData });
+    return res.data;
+}
+
+/** Forward a form to another user for approval */
+export async function forwardForm(
+    formId: number,
+    toUserId: number,
+    note?: string
+): Promise<Application> {
+    const res = await api.post(`/forms/${formId}/forward`, { toUserId, note });
+    return res.data;
+}
+
+/** Search users by name/email for the forwarding typeahead */
+export async function searchUsers(query: string): Promise<UserSearchResult[]> {
+    const res = await api.get('/forms/users/search', { params: { q: query } });
+    return res.data;
+}
+
+/** Get forwarding and approval history for a form */
+export async function getFormHistory(formId: number): Promise<any> {
+    const res = await api.get(`/forms/${formId}/history`);
     return res.data;
 }
 

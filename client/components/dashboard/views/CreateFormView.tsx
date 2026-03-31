@@ -257,7 +257,7 @@ export default function CreateFormView({
                 <div onClick={() => setLeftOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 45, backdropFilter: 'blur(2px)' }} />
             )}
 
-            {/* ── LEFT SIDEBAR: Workflow Map + Actions ────────────────────────── */}
+            {/* ── LEFT SIDEBAR: Step Map + Actions ──────────────────────────── */}
             <aside style={leftAsideStyle}>
                 {isMobile && (
                     <button type="button" onClick={() => setLeftOpen(false)} style={{ marginBottom: '16px', background: 'none', border: 'none', fontSize: '13px', fontWeight: 600, color: '#4b5563', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -307,7 +307,7 @@ export default function CreateFormView({
                             {isEdit ? 'Edit Form Type' : 'Create New Form Type'}
                         </h1>
                         <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>
-                            Define stages, fields, and approval roles for your workflow.
+                            Define stages, fields, and approval roles for your form.
                         </p>
                     </div>
                     {/* Preview toggle — Eye icon on the right */}

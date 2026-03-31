@@ -1,29 +1,26 @@
 // ─── Shared TypeScript types for the DEP client ───────────────────────────────
 // Single source of truth for all interfaces. Import from '@/types' everywhere.
 
-// ─── Workflow ──────────────────────────────────────────────────────────────────
-export interface WorkflowStep {
-    id: number;
-    step_order: number;
-    step_name: string;
-    approval_roles: string[];
-    is_terminal: boolean;
-}
-
-export interface Workflow {
-    id: number;
-    name: string;
-    steps: WorkflowStep[];
-}
-
 // ─── Form Types ────────────────────────────────────────────────────────────────
 export interface FormType {
     id: number;
     name: string;
     description: string;
     schema_definition: any;
-    workflow?: Workflow | null;
+    approval_rules?: { required_roles?: string[] } | null;
     is_active?: boolean;
+}
+
+// ─── Form Forward ──────────────────────────────────────────────────────────────
+export interface FormForward {
+    id: number;
+    form_id: number;
+    forwarded_by: number;
+    forwarded_to: number;
+    note?: string;
+    forwarded_at: string;
+    from_user?: { id: number; name: string;  email: string };
+    to_user?: { id: number; name: string;  email: string };
 }
 
 // ─── Application ───────────────────────────────────────────────────────────────
@@ -36,17 +33,30 @@ export interface Application {
     updated_at: string;
     form_data: any;
     form_types?: FormType;
-    users?: { first_name: string; last_name: string; email: string };
+    users?: { id?: number; name: string;  email: string };
     form_approvals?: any[];
+    form_forwards?: FormForward[];
     office_orders?: { order_number: string; pdf_url?: string } | null;
+    form_status_history?: any[];
+}
+
+// ─── User Search Result ────────────────────────────────────────────────────────
+export interface UserSearchResult {
+    id: number;
+    name: string;
+    
+    
+    email: string;
+    department?: string | null;
+    roles: string[];
 }
 
 // ─── Profile ───────────────────────────────────────────────────────────────────
 export interface Profile {
     id: number;
-    first_name: string;
-    middle_name?: string;
-    last_name: string;
+    name: string;
+    
+    
     email: string;
     display_name: string;
     roles: string[];
@@ -209,8 +219,8 @@ export function suggestFieldTypeFromName(fieldName: string): string | null {
 
 export function formatTitleCase(name: string) {
     return name.replace(/_/g, ' ')
-               .replace(/\b\w/g, (char: string) => char.toUpperCase())
-               .replace(/\(S\)/g, '(s)');
+        .replace(/\b\w/g, (char: string) => char.toUpperCase())
+        .replace(/\(S\)/g, '(s)');
 }
 
 function formatFieldName(name: string) {
@@ -308,7 +318,7 @@ export function buildAutoFillData(
     const autoFilledKeys = new Set<string>();
 
     const fullName = profile
-        ? [profile.first_name, profile.middle_name, profile.last_name].filter(Boolean).join(' ')
+        ? profile.name
         : '';
 
     for (const f of fields) {
@@ -339,7 +349,7 @@ export function buildAutoFillData(
                 const tomorrow = new Date(today);
                 tomorrow.setDate(today.getDate() + 1);
                 data[`${f.key}_from`] = today.toISOString().split('T')[0];
-                data[`${f.key}_to`]   = tomorrow.toISOString().split('T')[0];
+                data[`${f.key}_to`] = tomorrow.toISOString().split('T')[0];
                 autoFilledKeys.add(`${f.key}_from`);
                 autoFilledKeys.add(`${f.key}_to`);
                 break;
@@ -395,12 +405,32 @@ export function getSchemaFields(schema: any): FieldDef[] {
     });
 }
 
+/** Get fields for a specific schema step key */
 export function getApprovalFields(schema: any, steps: any[], currentStatus: string): FieldDef[] {
     if (!schema || typeof schema !== 'object') return [];
-    const currentStep = steps.find((s: any) => s.step_name === currentStatus);
-    if (!currentStep) return [];
-
-    const stepOrder = String(currentStep.step_order);
-    const stepConfig = schema[stepOrder];
-    return parseStepFields(stepConfig);
+    
+    // In the new system without workflow steps, look for step configs in schema numerically
+    // Try to find fields for the current status or the next step
+    const keys = Object.keys(schema).sort((a, b) => Number(a) - Number(b));
+    
+    // If steps exist (from old snapshots), try to match by step_name  
+    if (steps && steps.length > 0) {
+        const currentStep = steps.find((s: any) => s.step_name === currentStatus);
+        if (currentStep) {
+            const stepOrder = String(currentStep.step_order);
+            const stepConfig = schema[stepOrder];
+            return parseStepFields(stepConfig);
+        }
+    }
+    
+    // For the new dynamic system, look for schema keys beyond '1' (applicant step)
+    for (const key of keys) {
+        if (key === '1') continue; // Skip applicant step
+        const stepConfig = schema[key];
+        if (Array.isArray(stepConfig) && stepConfig.length > 1) {
+            return parseStepFields(stepConfig);
+        }
+    }
+    
+    return [];
 }

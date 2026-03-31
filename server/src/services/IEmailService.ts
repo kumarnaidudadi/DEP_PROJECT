@@ -9,5 +9,5 @@ export interface EmailMetadata {
 }
 
 export interface IEmailService {
-    sendEmailNotification(eventType: 'REQUEST_ASSIGNED' | 'REQUEST_COMPLETED', recipient: string, metadata: EmailMetadata): Promise<void>;
+    sendEmailNotification(eventType: 'REQUEST_ASSIGNED' | 'REQUEST_COMPLETED' | 'REQUEST_REJECTED', recipient: string, metadata: EmailMetadata): Promise<void>;
 }

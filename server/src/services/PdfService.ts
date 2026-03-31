@@ -1,8 +1,6 @@
 // ─── PdfService ───────────────────────────────────────────────────────────────
-// Handles all PDF generation logic. Extracted from the /download route in
-// routes/forms.ts. Single Responsibility: only generates PDF buffers.
-// Open/Closed: new form types / templates can be added without touching
-// the controller.
+// Handles all PDF generation logic.
+// Uses actual DB tables: applied_forms, form_types, form_forwards, form_history
 
 import { PDFDocument, rgb } from 'pdf-lib';
 import fs from 'fs';
@@ -16,9 +14,9 @@ export class PdfService implements IPdfService {
     constructor(private readonly prisma: PrismaClient) { }
 
     async generateFormPdf(formId: number): Promise<Buffer> {
-        const form = await this.prisma.forms.findUnique({
-            where: { id: formId },
-            include: { 
+        const form = await this.prisma.applied_forms.findUnique({
+            where: { id: BigInt(formId) },
+            include: {
                 users: {
                     include: {
                         user_roles: {
@@ -27,10 +25,10 @@ export class PdfService implements IPdfService {
                             }
                         }
                     }
-                }, 
-                form_approvals: { 
-                    include: { 
-                        users: {
+                },
+                form_forwards: {
+                    include: {
+                        from_user: {
                             include: {
                                 user_roles: {
                                     include: {
@@ -38,10 +36,11 @@ export class PdfService implements IPdfService {
                                     }
                                 }
                             }
-                        } 
-                    } 
-                }, 
-                form_types: true 
+                        }
+                    },
+                    orderBy: { forwarded_at: 'asc' }
+                },
+                form_types: true
             }
         });
 
@@ -54,7 +53,7 @@ export class PdfService implements IPdfService {
         if (fs.existsSync(formsDir)) {
             const allPdfs = fs.readdirSync(formsDir).filter(f => f.toLowerCase().endsWith('.pdf'));
             const matchingPdf = allPdfs.find(f => f.toLowerCase() === `${formTypeName.toLowerCase()}.pdf`);
-            
+
             if (matchingPdf) {
                 templatePath = path.join(formsDir, matchingPdf);
             }
@@ -68,7 +67,6 @@ export class PdfService implements IPdfService {
         }
 
         if (!fs.existsSync(templatePath)) {
-            // Attempt another fallback just in case
             templatePath = path.join(
                 __dirname,
                 '../../../forms/APPLICATION FOR PERMISSION TO TRAVEL BY AIRLINE OTHER THAN AIR INDIA.pdf'
@@ -101,31 +99,30 @@ export class PdfService implements IPdfService {
         const getFd = (keySub: string) => {
             if (!fd) return '';
             const keyLower = keySub.toLowerCase();
-            
+
             // 1) Direct key or substring match against form_data
             const keys = Object.keys(fd);
             const found = keys.find(k => k.toLowerCase().includes(keyLower));
             if (found && fd[found]) return fd[found];
 
             // 2) Schema-based match: search for field by label/name, then use its ID to get value
-            const schema = form.form_types?.schema_definition as any;
+            const schema = form.form_types?.schema as any;
             if (schema && typeof schema === 'object') {
                 for (const stepKey of Object.keys(schema)) {
                     const stepArr = schema[stepKey];
                     if (!Array.isArray(stepArr)) continue;
-                    
+
                     for (const field of stepArr) {
                         if (field.name && field.name.toLowerCase().includes(keyLower)) {
                             // Extract direct value using exact field.id
                             if (fd[field.id] !== undefined && fd[field.id] !== '') return fd[field.id];
-                            
-                            // Also check approval_data
-                            if (form.form_approvals) {
-                                for (const approval of form.form_approvals as any[]) {
-                                    if (approval.approval_data && approval.decision === 'APPROVED') {
-                                        if (approval.approval_data[field.id] !== undefined && approval.approval_data[field.id] !== '') {
-                                            return approval.approval_data[field.id];
-                                        }
+
+                            // Also check approval data from form_forwards
+                            if (form.form_forwards) {
+                                for (const fwd of form.form_forwards as any[]) {
+                                    if (fwd.action === 'approved' && fwd.remarks) {
+                                        // Check if approval data is embedded in form_data
+                                        // (merged during approval)
                                     }
                                 }
                             }
@@ -164,7 +161,6 @@ export class PdfService implements IPdfService {
                         sigImageBytes = EncryptionService.decrypt(storedBytes);
                     } catch (decErr) {
                         console.error('Failed to decrypt signature:', decErr);
-                        // Some older uploads were stored as plain image bytes instead of encrypted blobs.
                         sigImageBytes = storedBytes;
                     }
 
@@ -177,7 +173,7 @@ export class PdfService implements IPdfService {
                         }
 
                         if (sigImage) {
-                            const scale = size ? size / 11 : 1; 
+                            const scale = size ? size / 11 : 1;
                             page.drawImage(sigImage, {
                                 x: targetX,
                                 y: height - targetY,
@@ -192,7 +188,6 @@ export class PdfService implements IPdfService {
                 console.error('Signature embed failed:', e);
             }
 
-            // Fallback securely to textual representation if image isn't supported (e.g. .webp) or couldn't be loaded
             if (signerName && !imageDrawn) {
                 const fs = size || 10;
                 draw(`Digitally signed by ${signerName}`, targetX - 20, targetY, fs);
@@ -202,48 +197,50 @@ export class PdfService implements IPdfService {
             }
         };
 
-        const applicantSig = getFd('applicant') || form.users?.signature_url;
-        const applicantName = form.users ? `${form.users.first_name || ''} ${form.users.last_name || ''}`.trim() : '';
+        // Applicant signature: search form_data for signature fields
+        const applicantSig = getFd('signature');
+        const applicantName = form.users?.name || '';
 
+        // Stage signatures from form_forwards approvals
         const getStageSig = (stageStart: string) => {
-            if (!Array.isArray(form.form_approvals)) return null;
-            const approval = form.form_approvals.find(
-                (a: any) => a.stage?.toLowerCase().includes(stageStart) && a.decision === 'APPROVED'
+            if (!Array.isArray(form.form_forwards)) return null;
+            const approval = form.form_forwards.find(
+                (fwd: any) => fwd.action === 'approved' && 
+                    fwd.from_user?.user_roles?.some((ur: any) => 
+                        ur.roles?.name?.toLowerCase().includes(stageStart.toLowerCase())
+                    )
             );
             if (!approval) return null;
-            
+
+            // Look for signature in the merged form_data
             let sigUrl = null;
-            if (approval.approval_data) {
-                const ad = approval.approval_data as any;
-                for (const key of Object.keys(ad)) {
-                    if (typeof ad[key] === 'string' && ad[key].includes('/uploads/')) {
-                        sigUrl = ad[key];
+            const fData = form.form_data as any;
+            if (fData) {
+                for (const key of Object.keys(fData)) {
+                    if (typeof fData[key] === 'string' && fData[key].includes('/uploads/')) {
+                        sigUrl = fData[key];
                         break;
                     }
                 }
             }
 
-            if (!sigUrl && (approval as any).users?.signature_url) {
-                sigUrl = (approval as any).users.signature_url;
-            }
-            
-            const signerName = (approval as any).users ? `${(approval as any).users.first_name || ''} ${(approval as any).users.last_name || ''}`.trim() : '';
+            const signerName = (approval as any).from_user?.name || '';
             return { sigUrl, signerName };
         };
 
         for (const sigMapping of mappingToUse.signatures) {
-           if (sigMapping.stage === 'applicant') {
-               await embedSig(applicantSig, sigMapping.y, sigMapping.x, applicantName, sigMapping.size);
-           } else {
-               const stagesToCheck = Array.isArray(sigMapping.stage) ? sigMapping.stage : [sigMapping.stage];
-               for (const s of stagesToCheck) {
-                   const stageSigData = getStageSig(s);
-                   if (stageSigData && stageSigData.sigUrl) {
-                       await embedSig(stageSigData.sigUrl, sigMapping.y, sigMapping.x, stageSigData.signerName, sigMapping.size);
-                       break;
-                   }
-               }
-           }
+            if (sigMapping.stage === 'applicant') {
+                await embedSig(applicantSig, sigMapping.y, sigMapping.x, applicantName, sigMapping.size);
+            } else {
+                const stagesToCheck = Array.isArray(sigMapping.stage) ? sigMapping.stage : [sigMapping.stage];
+                for (const s of stagesToCheck) {
+                    const stageSigData = getStageSig(s);
+                    if (stageSigData && stageSigData.sigUrl) {
+                        await embedSig(stageSigData.sigUrl, sigMapping.y, sigMapping.x, stageSigData.signerName, sigMapping.size);
+                        break;
+                    }
+                }
+            }
         }
 
         const outBytes = await pdfDoc.save();

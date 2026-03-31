@@ -58,7 +58,7 @@ function InfoCard({
 
 export default function ProfileView({ user, profile, sigUploading, onSigUpload, decryptedSigUrl }: Props) {
     const displayName = profile?.display_name || user?.name || '—';
-    const initials    = getInitials(displayName);
+    const initials = getInitials(displayName);
     const primaryRole = profile?.roles?.[0] || null;
 
     return (
@@ -117,9 +117,9 @@ export default function ProfileView({ user, profile, sigUploading, onSigUpload, 
                 Identity
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
-                <InfoCard icon={<User size={16} />}       label="Full Name"      value={displayName} accent />
-                <InfoCard icon={<Mail size={16} />}       label="Email"          value={profile?.email || user?.email || '—'} />
-                <InfoCard icon={<Hash size={16} />}       label="Employee Code"  value={profile?.emp_code || '—'} />
+                <InfoCard icon={<User size={16} />} label="Full Name" value={displayName} accent />
+                <InfoCard icon={<Mail size={16} />} label="Email" value={profile?.email || user?.email || '—'} />
+                <InfoCard icon={<Hash size={16} />} label="Employee Code" value={profile?.emp_code || '—'} />
                 <InfoCard icon={<CalendarDays size={16} />} label="Joining Date" value={profile?.joining_date
                     ? new Date(profile.joining_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
                     : '—'} />
@@ -130,8 +130,8 @@ export default function ProfileView({ user, profile, sigUploading, onSigUpload, 
                 Organisation
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
-                <InfoCard icon={<Building2 size={16} />}  label="Department"    value={profile?.department || '—'} />
-                <InfoCard icon={<Briefcase size={16} />}  label="Designation"   value={primaryRole || '—'} />
+                <InfoCard icon={<Building2 size={16} />} label="Department" value={profile?.department || '—'} />
+                <InfoCard icon={<Briefcase size={16} />} label="Designation" value={primaryRole || '—'} />
             </div>
 
             {/* ── Signature section ────────────────────────────────────────── */}
