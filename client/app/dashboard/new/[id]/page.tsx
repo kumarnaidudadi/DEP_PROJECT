@@ -66,9 +66,9 @@ function NewApplicationFormContent() {
     const allRoles = [...new Set([...liveRoles, ...storedRoles])];
     const isAdmin = allRoles.includes('ADMIN');
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (toUserId: number, note: string) => {
         if (!selectedFormType) return;
-        const schemaFields = getSchemaFields(selectedFormType.schema_definition);
+        const schemaFields = getSchemaFields((selectedFormType as any).schema_definition ?? (selectedFormType as any).schema ?? {});
         const missing = schemaFields.filter(f => {
             if (!f.required) return false;
             if (f.type === 'date_from_to') return !formData[`${f.key}_from`] || !formData[`${f.key}_to`];
@@ -78,7 +78,7 @@ function NewApplicationFormContent() {
 
         setSubmitting(true);
         try {
-            await submitForm(selectedFormType.id, formData, currentDraftId || undefined);
+            await submitForm(selectedFormType.id, formData, currentDraftId || undefined, toUserId, note);
             setSubmitSuccess(true);
             setFormData({});
             setCurrentDraftId(null);
@@ -88,6 +88,8 @@ function NewApplicationFormContent() {
         } catch { alert('Failed to submit'); }
         finally { setSubmitting(false); }
     };
+
+    const { searchUsers } = useForms();
 
     const handleSaveDraft = async () => {
         if (!selectedFormType) return;
@@ -131,9 +133,8 @@ function NewApplicationFormContent() {
             await formTypeSvc.updateFormType(ft.id, {
                 name: ft.name,
                 description: ft.description,
-                schema_definition: ft.schema_definition,
-                approval_rules: (ft.approval_rules as any) || { required_roles: [] },
-                is_active: newActive
+                schema: (ft as any).schema || (ft as any).schema_definition || {},
+                approval_rules: (ft.approval_rules as any) || { required_roles: [] }
             });
             
             setToast({ message: `Form type "${ft.name}" ${newActive ? 'activated' : 'deactivated'} successfully.`, type: 'success' });
@@ -205,7 +206,7 @@ function NewApplicationFormContent() {
                     availableDepartments={availableDepartments} availableRoles={availableRoles}
                     liveRoles={liveRoles}
                     onSelectFormType={() => {}} onFormDataChange={setFormData}
-                    onSubmit={handleSubmit} onSaveDraft={handleSaveDraft}
+                    onSubmit={handleSubmit} onSearchUsers={searchUsers} onSaveDraft={handleSaveDraft}
                     onCancel={handleCancel}
                     onEditFormType={handleEditFormType}
                     onToggleActive={handleToggleFormType}

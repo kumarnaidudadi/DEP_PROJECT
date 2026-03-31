@@ -129,7 +129,7 @@ export default function FormBuilderPreview({
                                             <section key={`${step.status}-${stepIndex}`} style={{ background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', padding: '12px' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '8px', borderBottom: '1px solid #e5e7eb' }}>
                                                     <div>
-                                                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Step {stepIndex + 1}</div>
+                                                        {steps.length > 1 && <div style={{ fontSize: '10px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Step {stepIndex + 1}</div>}
                                                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#1f2937', marginTop: '2px' }}>{step.status || `Step ${stepIndex + 1}`}</div>
                                                     </div>
                                                     {step.approval_roles.length > 0 && (

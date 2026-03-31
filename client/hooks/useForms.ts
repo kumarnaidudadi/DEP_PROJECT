@@ -36,8 +36,14 @@ export function useForms() {
         }
     }, []);
 
-    const submitForm = useCallback(async (formTypeId: number, formData: Record<string, any>, id?: number): Promise<Application> => {
-        const result = await formSvc.createForm(formTypeId, formData, id);
+    const submitForm = useCallback(async (
+        formTypeId: number,
+        formData: Record<string, any>,
+        id?: number,
+        toUserId?: number,
+        note?: string
+    ): Promise<Application> => {
+        const result = await formSvc.createForm(formTypeId, formData, id, toUserId, note);
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new Event('applications-updated'));
         }

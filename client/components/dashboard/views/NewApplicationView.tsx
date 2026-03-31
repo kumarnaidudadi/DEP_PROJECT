@@ -4,9 +4,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronRight, FileText, Plus, Send, Loader2, Upload, Trash2, ToggleLeft, ToggleRight, Clock } from 'lucide-react';
-import { FormType, Profile, getSchemaFields, buildAutoFillData, isFieldVisible } from '@/types';
+import { FormType, Profile, getSchemaFields, buildAutoFillData, isFieldVisible, UserSearchResult } from '@/types';
 import ListItem from '../ListItem';
 import StatusBadge from '../StatusBadge';
+import { Search, User } from 'lucide-react';
 
 import FieldRenderer from '../../ui/FieldRenderer';
 import Panel from '../Panel';
@@ -113,7 +114,8 @@ interface Props {
     liveRoles: string[];
     onSelectFormType: (ft: FormType) => void;
     onFormDataChange: (data: Record<string, any>) => void;
-    onSubmit: () => void;
+    onSubmit: (toUserId: number, note: string) => void;
+    onSearchUsers: (query: string) => Promise<UserSearchResult[]>;
     onSaveDraft?: () => void;
     onCancel: () => void;
     isSavingDraft?: boolean;
@@ -128,7 +130,7 @@ interface Props {
 export default function NewApplicationView({
     formTypes, searchQuery, selectedFormType, activeFormTypeId, formData, submitting, submitSuccess,
     isAdmin, profile, sigUploading, availableDepartments, availableRoles, liveRoles,
-    onSelectFormType, onFormDataChange, onSubmit, onSaveDraft, onCancel, isSavingDraft, onEditFormType,
+    onSelectFormType, onFormDataChange, onSubmit, onSearchUsers, onSaveDraft, onCancel, isSavingDraft, onEditFormType,
     onToggleActive, adminTab = 'active', onAdminTabChange, onCreateFormType, onSigUpload,
 }: Props) {
     // activeFormTypeId is used for highlighting in list mode when selectedFormType is null
@@ -138,6 +140,86 @@ export default function NewApplicationView({
     const [autoFilledKeys, setAutoFilledKeys] = useState<Set<string>>(new Set());
 
     const autoFillProcessed = useRef<number | null>(null);
+    const [showApprovalStep, setShowApprovalStep] = useState(false);
+
+    // ── Recipient selection state ──
+    const [recipientQuery, setRecipientQuery] = useState('');
+    const [foundUsers, setFoundUsers] = useState<UserSearchResult[]>([]);
+    const [selectedRecipient, setSelectedRecipient] = useState<UserSearchResult | null>(null);
+    const [submissionNote, setSubmissionNote] = useState('');
+    const [searchingUsers, setSearchingUsers] = useState(false);
+    const [showDropdown, setShowDropdown] = useState(false);
+    const searchRef = useRef<HTMLDivElement>(null);
+    const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    useEffect(() => {
+        setShowApprovalStep(false);
+        setRecipientQuery('');
+        setFoundUsers([]);
+        setSelectedRecipient(null);
+        setSubmissionNote('');
+        setShowDropdown(false);
+    }, [selectedFormType?.id]);
+
+    const handleUserSearch = (query: string) => {
+        setRecipientQuery(query);
+        setSelectedRecipient(null);
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        if (query.length < 2) { setFoundUsers([]); setShowDropdown(false); return; }
+
+        debounceRef.current = setTimeout(async () => {
+            setSearchingUsers(true);
+            try {
+                const results = await onSearchUsers(query);
+                setFoundUsers(results); setShowDropdown(true);
+            } finally { setSearchingUsers(false); }
+        }, 300);
+    };
+
+    const handleSelectRecipient = (u: UserSearchResult) => {
+        setSelectedRecipient(u);
+        setRecipientQuery(u.name);
+        setShowDropdown(false);
+    };
+
+    const validateFormFields = (fieldsToValidate: ReturnType<typeof getSchemaFields>) => {
+        const missing = fieldsToValidate.filter(f => {
+            if (!isFieldVisible(f, formData) || !f.required) return false;
+            if (f.type === 'date_from_to') return !formData[`${f.key}_from`] || !formData[`${f.key}_to`];
+            return !formData[f.key];
+        }).map(f => f.label);
+
+        if (missing.length > 0) {
+            alert(`Please fill in:\n- ${missing.join('\n- ')}`);
+            return false;
+        }
+
+        return true;
+    };
+
+    const handleFinalSubmit = (fieldsToValidate: ReturnType<typeof getSchemaFields>) => {
+        if (!showApprovalStep) {
+            if (!validateFormFields(fieldsToValidate)) return;
+            setShowApprovalStep(true);
+            return;
+        }
+
+        if (!selectedRecipient) {
+            alert('Please select who you want to send this form to for approval.');
+            return;
+        }
+        onSubmit(selectedRecipient.id, submissionNote);
+    };
 
     // Dynamically auto-fill fields once the form is selected and the profile is available
     useEffect(() => {
@@ -145,7 +227,7 @@ export default function NewApplicationView({
             // Only autofill if we haven't processed this exact form's ID yet.
             // This prevents an infinite loop triggering when formData is cleared.
             if (autoFillProcessed.current !== selectedFormType.id) {
-                const fields = getSchemaFields(selectedFormType.schema_definition);
+                const fields = getSchemaFields((selectedFormType as any).schema_definition ?? (selectedFormType as any).schema ?? {});
                 const { data, autoFilledKeys: filled } = buildAutoFillData(fields, profile, liveRoles);
                 
                 setAutoFilledKeys(filled);
@@ -253,7 +335,7 @@ export default function NewApplicationView({
     // ── Right panel: form fill ─────────────────────────────────────────────────
     if (!selectedFormType) return <>{middlePanel}</>;
 
-    const fields = getSchemaFields(selectedFormType.schema_definition);
+    const fields = getSchemaFields((selectedFormType as any).schema_definition ?? (selectedFormType as any).schema ?? {});
 
     const rightPanel = submitSuccess ? <SuccessMsg /> : (
         <div style={{ padding: '32px 40px', maxWidth: '1000px', margin: '0 auto' }}>
@@ -297,7 +379,7 @@ export default function NewApplicationView({
             )}
 
             {/* Approval rules preview */}
-            {selectedFormType.approval_rules && (selectedFormType.approval_rules as any)?.required_roles?.length > 0 && (
+            {showApprovalStep && selectedFormType.approval_rules && (selectedFormType.approval_rules as any)?.required_roles?.length > 0 && (
                 <div style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #f0f9ff 50%, #ecfeff 100%)', borderRadius: '12px', padding: '16px 20px', marginBottom: '20px', border: '1px solid #bfdbfe' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
                         <div style={{ width: '4px', height: '14px', borderRadius: '2px', background: 'linear-gradient(180deg, #3b82f6, #2563eb)' }} />
@@ -356,6 +438,90 @@ export default function NewApplicationView({
                         );
                     })}
                 </div>
+                {/* ── Recipient Selector ── */}
+                {showApprovalStep && (
+                <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '2px dashed #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                        <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
+                            <Send size={16} />
+                        </div>
+                        <h4 style={{ fontSize: '15px', fontWeight: 700, color: '#1f2937', margin: 0 }}>Forward for Approval</h4>
+                    </div>
+
+                    <div ref={searchRef} style={{ position: 'relative', marginBottom: '12px' }}>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
+                            Search Approver (Name or Email) <span style={{ color: '#ef4444' }}>*</span>
+                        </label>
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            border: '1px solid #d1d5db', borderRadius: '8px',
+                            padding: '10px 14px', background: '#fff',
+                            transition: 'border-color 0.2s',
+                        }}>
+                            <Search size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
+                            <input
+                                value={recipientQuery}
+                                onChange={e => handleUserSearch(e.target.value)}
+                                placeholder="Start typing name or email..."
+                                style={{ flex: 1, border: 'none', outline: 'none', fontSize: '13px', color: '#374151', background: 'transparent' }}
+                            />
+                            {searchingUsers && <Loader2 size={14} className="animate-spin" style={{ color: '#9ca3af' }} />}
+                        </div>
+
+                        {showDropdown && foundUsers.length > 0 && (
+                            <div style={{
+                                position: 'absolute', bottom: '100%', left: 0, right: 0, marginBottom: '8px',
+                                zIndex: 999, background: '#fff', border: '1px solid #e2e8f0',
+                                borderRadius: '10px', maxHeight: '200px', overflowY: 'auto',
+                                boxShadow: '0 -8px 24px rgba(0,0,0,0.12)',
+                            }}>
+                                {foundUsers.map(u => (
+                                    <div key={u.id} onClick={() => handleSelectRecipient(u)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', cursor: 'pointer', transition: 'background 0.1s', borderBottom: '1px solid #f3f4f6' }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
+                                        onMouseLeave={e => (e.currentTarget.style.background = '#fff')}>
+                                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '11px', fontWeight: 700 }}>{u.name.charAt(0)}</div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#1f2937' }}>{u.name}</div>
+                                            <div style={{ fontSize: '11px', color: '#6b7280' }}>{u.email}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Selected recipient preview */}
+                    {selectedRecipient && (
+                        <div style={{
+                            padding: '12px 16px', background: '#f0f9ff', border: '1px solid #bae6fd',
+                            borderRadius: '12px', marginBottom: '16px',
+                            display: 'flex', alignItems: 'center', gap: '12px',
+                            animation: 'fadeIn 0.2s ease-out'
+                        }}>
+                            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                                <User size={18} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '13px', fontWeight: 700, color: '#0369a1' }}>Sending to: {selectedRecipient.name}</div>
+                                <div style={{ fontSize: '11px', color: '#0ea5e9', fontWeight: 500 }}>{selectedRecipient.email} · {selectedRecipient.roles.join(', ')}</div>
+                            </div>
+                            <button type="button" onClick={() => { setSelectedRecipient(null); setRecipientQuery(''); }} style={{ background: 'none', border: 'none', color: '#0ea5e9', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>Change</button>
+                        </div>
+                    )}
+
+                    <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>Add a Note (Optional)</label>
+                        <textarea
+                            placeholder="Reason for submission or additional context..."
+                            value={submissionNote}
+                            onChange={e => setSubmissionNote(e.target.value)}
+                            rows={2}
+                            style={{ ...inputStyle, minHeight: '60px', resize: 'vertical' }}
+                        />
+                    </div>
+                </div>
+                )}
+
                 <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                     <BtnSecondary onClick={onCancel}>Cancel</BtnSecondary>
                     {onSaveDraft && (
@@ -380,8 +546,12 @@ export default function NewApplicationView({
                             Save as Draft
                         </button>
                     )}
-                    <BtnPrimary onClick={onSubmit} disabled={submitting}>
-                        {submitting ? <><Loader2 size={14} className="animate-spin" /> Submitting...</> : <><Send size={14} /> Submit Application</>}
+                    <BtnPrimary onClick={() => handleFinalSubmit(fields)} disabled={submitting || (showApprovalStep && !selectedRecipient)}>
+                        {submitting
+                            ? <><Loader2 size={14} className="animate-spin" /> Submitting...</>
+                            : showApprovalStep
+                                ? <><Send size={14} /> Confirm Submission</>
+                                : <><Send size={14} /> Submit Application</>}
                     </BtnPrimary>
                 </div>
             </div>

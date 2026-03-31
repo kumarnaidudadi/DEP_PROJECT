@@ -6,7 +6,7 @@ import { Loader2, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useForms } from '@/hooks/useForms';
 import { useProfile } from '@/hooks/useProfile';
-import { Application } from '@/types';
+import { Application, getApplicationStatus, getLatestForward } from '@/types';
 import ApplicationDetail from '@/components/dashboard/views/ApplicationDetail';
 
 export default function PendingWorkDetailPage() {
@@ -35,8 +35,12 @@ export default function PendingWorkDetailPage() {
     const isApprovalRole = storedRoles.length > 0 && !storedRoles.every(r => NON_APPROVER.includes(r));
     
     // Check if the current pending approval is for this user's role
-    const hasPendingApprovalForThisUser = selectedApp && selectedApp.form_approvals?.some((appr: any) => 
-        appr.decision === 'PENDING' && Number(appr.approved_by) === Number(user?.id)
+    const latestForward = selectedApp ? getLatestForward(selectedApp) : null;
+    const hasPendingApprovalForThisUser = Boolean(
+        selectedApp &&
+        latestForward?.action === 'forwarded' &&
+        Number(latestForward.forwarded_to) === Number(user?.id) &&
+        !['APPROVED', 'REJECTED'].includes(getApplicationStatus(selectedApp))
     );
     const canApprove = Boolean(isApprovalRole && hasPendingApprovalForThisUser);
 

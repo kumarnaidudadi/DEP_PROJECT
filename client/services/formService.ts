@@ -4,33 +4,58 @@
 import api from '@/lib/api';
 import { FormType, Application, UserSearchResult } from '@/types';
 
+function normalizeApplication(item: any): Application {
+    return {
+        ...item,
+        current_status: (item.current_status ?? item.status ?? '').toUpperCase(),
+        submitted_by: Number(item.submitted_by ?? item.applicant_id ?? 0),
+    };
+}
+
 export async function getFormTypes(): Promise<FormType[]> {
     const res = await api.get('/forms/types');
     const data = res.data;
     if (Array.isArray(data)) {
-        return data.sort((a, b) => a.name.localeCompare(b.name));
+        return data
+            .map((item: any) => ({
+                ...item,
+                schema_definition: item.schema_definition ?? item.schema ?? {},
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name));
     }
     return data;
 }
 
 export async function getForms(): Promise<Application[]> {
     const res = await api.get('/forms');
-    return res.data;
+    return Array.isArray(res.data) ? res.data.map(normalizeApplication) : res.data;
 }
 
 export async function getFormById(id: number): Promise<Application> {
     const res = await api.get(`/forms/${id}`);
-    return res.data;
+    return normalizeApplication(res.data);
 }
 
-export async function createForm(formTypeId: number, formData: Record<string, any>, id?: number): Promise<Application> {
-    const res = await api.post('/forms', { form_type_id: formTypeId, form_data: formData, id });
-    return res.data;
+export async function createForm(
+    formTypeId: number,
+    formData: Record<string, any>,
+    id?: number,
+    toUserId?: number,
+    note?: string
+): Promise<Application> {
+    const res = await api.post('/forms', {
+        form_type_id: formTypeId,
+        form_data: formData,
+        id,
+        toUserId,
+        note
+    });
+    return normalizeApplication(res.data);
 }
 
 export async function saveDraft(formTypeId: number, formData: Record<string, any>, id?: number): Promise<Application> {
     const res = await api.post('/forms/draft', { form_type_id: formTypeId, form_data: formData, id });
-    return res.data;
+    return normalizeApplication(res.data);
 }
 
 export async function updateFormStatus(
@@ -40,7 +65,7 @@ export async function updateFormStatus(
     approvalData: Record<string, any>
 ): Promise<Application> {
     const res = await api.patch(`/forms/${formId}/status`, { decision, remarks, approvalData });
-    return res.data;
+    return normalizeApplication(res.data);
 }
 
 /** Forward a form to another user for approval */
@@ -50,7 +75,7 @@ export async function forwardForm(
     note?: string
 ): Promise<Application> {
     const res = await api.post(`/forms/${formId}/forward`, { toUserId, note });
-    return res.data;
+    return normalizeApplication(res.data);
 }
 
 /** Search users by name/email for the forwarding typeahead */

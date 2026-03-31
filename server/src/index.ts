@@ -13,6 +13,11 @@ import formRoutes from './routes/forms';
 import profileRoutes from './routes/profile';
 import path from 'path';
 
+// Fix BigInt serialization: Express res.json() will use this to convert BigInts to numbers/strings!
+(BigInt.prototype as any).toJSON = function() {
+    return Number(this);
+};
+
 const app = express();
 const port = process.env.PORT || 4000;
 

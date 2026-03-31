@@ -7,6 +7,7 @@ import Sidebar from '@/components/dashboard/Sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useForms } from '@/hooks/useForms';
 import { useEffect } from 'react';
+import { getApplicationStatus, getApplicationSubmitterId, getLatestForward } from '@/types';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { user, userRoles, logout } = useAuth();
@@ -29,8 +30,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const canApprove = storedRoles.length > 0 && !storedRoles.every(r => NON_APPROVER_ROLES.includes(r));
 
     const pendingApps = applications.filter(a => {
-        if (Number(a.submitted_by) === Number(user?.id) || ['APPROVED', 'REJECTED'].includes(a.current_status)) return false;
-        return a.form_approvals?.some((appr: any) => appr.decision === 'PENDING' && Number(appr.approved_by) === Number(user?.id));
+        const status = getApplicationStatus(a);
+        const latestForward = getLatestForward(a);
+        if (getApplicationSubmitterId(a) === Number(user?.id) || ['APPROVED', 'REJECTED'].includes(status)) return false;
+        return latestForward?.action === 'forwarded' && Number(latestForward.forwarded_to) === Number(user?.id);
     });
 
     return (

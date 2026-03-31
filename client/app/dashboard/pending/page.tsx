@@ -11,7 +11,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useForms } from '@/hooks/useForms';
 import { useProfile } from '@/hooks/useProfile';
-import { Application, AppTab } from '@/types';
+import { Application, AppTab, getApplicationStatus, getApplicationSubmitterId, getLatestForward } from '@/types';
 import StatusBadge from '@/components/dashboard/StatusBadge';
 
 const isTerminal = (s: string) => ['APPROVED', 'REJECTED'].includes(s);
@@ -165,13 +165,21 @@ function PendingWorkContent() {
 
     // ── Filtering & sorting ────────────────────────────────────────────────────
     const pendingApps = applications.filter(a => {
-        if (Number(a.submitted_by) === Number(user?.id) || isTerminal(a.current_status)) return false;
-        return a.form_approvals?.some((appr: any) => appr.decision === 'PENDING' && Number(appr.approved_by) === Number(user?.id));
+        const status = getApplicationStatus(a);
+        const latestForward = getLatestForward(a);
+        if (getApplicationSubmitterId(a) === Number(user?.id) || isTerminal(status)) return false;
+        return latestForward?.action === 'forwarded' && Number(latestForward.forwarded_to) === Number(user?.id);
     });
     const processedApps = applications.filter(a => {
-        if (Number(a.submitted_by) === Number(user?.id)) return false;
-        // Show forms where user has made a decision (approved/rejected) OR forms that are ongoing (non-terminal) and user is involved
-        return a.form_approvals?.some((appr: any) => Number(appr.approved_by) === Number(user?.id) && appr.decision !== 'PENDING');
+        const status = getApplicationStatus(a);
+        if (getApplicationSubmitterId(a) === Number(user?.id)) return false;
+        return (a.form_forwards || []).some((fwd: any) =>
+            Number(fwd.forwarded_by) === Number(user?.id) &&
+            ['approved', 'rejected'].includes(String(fwd.action || '').toLowerCase())
+        ) || ((a.form_forwards || []).some((fwd: any) =>
+            Number(fwd.forwarded_by) === Number(user?.id) &&
+            String(fwd.action || '').toLowerCase() === 'forwarded'
+        ) && !isTerminal(status));
     });
 
     let list = appTab === 'ongoing' ? pendingApps : processedApps;
@@ -184,7 +192,7 @@ function PendingWorkContent() {
         );
     }
     if (filterFormType !== 'all') list = list.filter(a => a.form_types?.name === filterFormType);
-    if (filterStatus !== 'all') list = list.filter(a => a.current_status === filterStatus);
+    if (filterStatus !== 'all') list = list.filter(a => getApplicationStatus(a) === filterStatus);
 
     list.sort((a, b) => {
         const tA = new Date(a.submitted_at).getTime();
@@ -194,7 +202,7 @@ function PendingWorkContent() {
 
     const allPendingViewApps = [...pendingApps, ...processedApps];
     const uniqueFormTypes = Array.from(new Set(allPendingViewApps.map(a => a.form_types?.name).filter(Boolean))) as string[];
-    const uniqueStatuses = Array.from(new Set(allPendingViewApps.map(a => a.current_status).filter(Boolean))) as string[];
+    const uniqueStatuses = Array.from(new Set(allPendingViewApps.map(a => getApplicationStatus(a)).filter(Boolean))) as string[];
 
     const formTypeOptions = [
         { value: 'all', label: 'All Form Types' },
@@ -341,7 +349,7 @@ function PendingWorkContent() {
                                         transition: 'background 0.15s',
                                     }}
                                 >
-                                    <FormIcon status={app.current_status} />
+                                    <FormIcon status={getApplicationStatus(app)} />
 
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{
@@ -371,7 +379,7 @@ function PendingWorkContent() {
                                         </div>
                                     </div>
 
-                                    <StatusBadge status={app.current_status} />
+                                    <StatusBadge status={getApplicationStatus(app)} />
 
                                     <ChevronRight
                                         size={16}

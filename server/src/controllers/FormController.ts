@@ -29,7 +29,7 @@ export class FormController {
     };
 
     createFormType = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-        const { name, description, schema_definition, approval_rules } = req.body;
+        const { name, description, schema, approval_rules } = req.body;
 
         if (!name) {
             res.status(400).json({ error: 'Form type name is required' });
@@ -38,7 +38,7 @@ export class FormController {
 
         try {
             const result = await this.formService.createFormType({
-                name, description, schema_definition, approval_rules
+                name, description, schema, approval_rules
             });
             res.status(201).json(result);
         } catch (e: any) {
@@ -50,14 +50,14 @@ export class FormController {
 
     updateFormType = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         const id = Number(req.params.id);
-        const { name, description, schema_definition, approval_rules, is_active } = req.body;
+        const { name, description, schema, approval_rules } = req.body;
 
         if (!name) { res.status(400).json({ error: 'Form type name is required' }); return; }
         if (isNaN(id)) { res.status(400).json({ error: 'Invalid form type id' }); return; }
 
         try {
             const result = await this.formService.updateFormType(id, {
-                name, description, schema_definition, approval_rules, is_active
+                name, description, schema, approval_rules
             });
             res.json(result);
         } catch (e: any) {
@@ -115,7 +115,7 @@ export class FormController {
         if (!userId) { res.status(401).json({ error: 'Unauthorized' }); return; }
 
         const form_type_id = req.body.form_type_id || req.params.type_id;
-        const { form_data, id } = req.body;
+        const { form_data, id, toUserId, note } = req.body;
         if (!form_type_id) { res.status(400).json({ error: 'form_type_id is required' }); return; }
 
         try {
@@ -123,6 +123,8 @@ export class FormController {
                 form_type_id: Number(form_type_id),
                 form_data: form_data || {},
                 userId,
+                toUserId: toUserId ? Number(toUserId) : undefined,
+                note: note || '',
             }, id ? Number(id) : undefined);
             res.status(201).json(form);
         } catch (e: any) {

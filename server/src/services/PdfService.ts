@@ -108,23 +108,21 @@ export class PdfService implements IPdfService {
             // 2) Schema-based match: search for field by label/name, then use its ID to get value
             const schema = form.form_types?.schema as any;
             if (schema && typeof schema === 'object') {
-                for (const stepKey of Object.keys(schema)) {
-                    const stepArr = schema[stepKey];
-                    if (!Array.isArray(stepArr)) continue;
-
-                    for (const field of stepArr) {
+                const fieldsArr = schema.data || schema.fields || [];
+                if (Array.isArray(fieldsArr)) {
+                    for (const field of fieldsArr) {
                         if (field.name && field.name.toLowerCase().includes(keyLower)) {
-                            // Extract direct value using exact field.id
                             if (fd[field.id] !== undefined && fd[field.id] !== '') return fd[field.id];
-
-                            // Also check approval data from form_forwards
-                            if (form.form_forwards) {
-                                for (const fwd of form.form_forwards as any[]) {
-                                    if (fwd.action === 'approved' && fwd.remarks) {
-                                        // Check if approval data is embedded in form_data
-                                        // (merged during approval)
-                                    }
-                                }
+                        }
+                    }
+                } else {
+                    // Legacy fallback
+                    for (const stepKey of Object.keys(schema)) {
+                        const stepArr = schema[stepKey];
+                        if (!Array.isArray(stepArr)) continue;
+                        for (const field of stepArr) {
+                            if (field.name && field.name.toLowerCase().includes(keyLower)) {
+                                if (fd[field.id] !== undefined && fd[field.id] !== '') return fd[field.id];
                             }
                         }
                     }

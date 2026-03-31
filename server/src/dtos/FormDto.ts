@@ -6,6 +6,8 @@ export interface CreateFormDto {
     form_type_id: number;
     form_data: Record<string, unknown>;
     userId: number;
+    toUserId?: number;
+    note?: string;
 }
 
 export interface UpdateFormStatusDto {
@@ -26,7 +28,6 @@ export interface ForwardFormDto {
 export interface CreateFormTypeDto {
     name: string;
     description?: string;
-    schema_definition?: Record<string, unknown>;
+    schema?: Record<string, unknown>;
     approval_rules?: Record<string, unknown>;
-    is_active?: boolean;
 }

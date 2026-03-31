@@ -18,6 +18,8 @@ export interface FormForward {
     forwarded_by: number;
     forwarded_to: number;
     note?: string;
+    action?: string;
+    remarks?: string;
     forwarded_at: string;
     from_user?: { id: number; name: string;  email: string };
     to_user?: { id: number; name: string;  email: string };
@@ -38,6 +40,23 @@ export interface Application {
     form_forwards?: FormForward[];
     office_orders?: { order_number: string; pdf_url?: string } | null;
     form_status_history?: any[];
+}
+
+export function getApplicationStatus(app: Partial<Application> & { status?: string | null }) {
+    return String(app.current_status ?? app.status ?? '').toUpperCase();
+}
+
+export function getApplicationSubmitterId(app: Partial<Application> & { applicant_id?: number | string | bigint | null }) {
+    return Number(app.submitted_by ?? app.applicant_id ?? 0);
+}
+
+export function getLatestForward(app: Partial<Application>) {
+    const forwards = Array.isArray(app.form_forwards) ? app.form_forwards : [];
+    if (forwards.length === 0) return null;
+
+    return [...forwards].sort((a, b) =>
+        new Date(b.forwarded_at).getTime() - new Date(a.forwarded_at).getTime()
+    )[0] || null;
 }
 
 // ─── User Search Result ────────────────────────────────────────────────────────
@@ -227,19 +246,19 @@ function formatFieldName(name: string) {
     return formatTitleCase(name);
 }
 
-function parseStepFields(stepConfig: any): FieldDef[] {
-    if (!Array.isArray(stepConfig)) return [];
+function normalizeArrayFields(rawFields: any[]): FieldDef[] {
+    if (!Array.isArray(rawFields)) return [];
 
     const fields: FieldDef[] = [];
     let fieldCounter = 0;
 
-    stepConfig.forEach((item: any) => {
+    rawFields.forEach((item: any) => {
         if (!item?.name) return;
 
         if (item.type === 'heading') {
             fields.push({
-                key: item.id || `${item.name.replace(/\s+/g, '_')}_heading`,
-                label: formatFieldName(item.name),
+                key: item.key || item.id || `${item.name.replace(/\s+/g, '_')}_heading`,
+                label: item.label || formatFieldName(item.name),
                 type: 'heading',
                 required: false,
                 helpText: item.helpText,
@@ -248,10 +267,10 @@ function parseStepFields(stepConfig: any): FieldDef[] {
             return;
         }
 
-        fieldCounter++;
+        fieldCounter += 1;
         fields.push({
-            key: item.id || `${item.name.replace(/\s+/g, '_')}_${fieldCounter}`,
-            label: `${fieldCounter}. ${formatFieldName(item.name)}`,
+            key: item.key || item.id || `${item.name.replace(/\s+/g, '_')}_${fieldCounter}`,
+            label: item.label || `${fieldCounter}. ${formatFieldName(item.name)}`,
             type: item.type || 'text',
             required: item.required === true || item.required === 'true',
             options: item.options,
@@ -261,8 +280,8 @@ function parseStepFields(stepConfig: any): FieldDef[] {
             conditionalLogic: item.conditionalLogic || null,
             subFields: Array.isArray(item.subFields)
                 ? item.subFields.map((sf: any, sIdx: number) => ({
-                    key: sf.id || `${sf.name.replace(/\s+/g, '_')}_${sIdx + 1}`,
-                    label: `${sIdx + 1}. ${formatFieldName(sf.name)}`,
+                    key: sf.key || sf.id || `${sf.name.replace(/\s+/g, '_')}_${sIdx + 1}`,
+                    label: sf.label || `${sIdx + 1}. ${formatFieldName(sf.name)}`,
                     type: sf.type || 'text',
                     required: sf.required === true || sf.required === 'true',
                     options: sf.options,
@@ -274,6 +293,10 @@ function parseStepFields(stepConfig: any): FieldDef[] {
     });
 
     return fields;
+}
+
+function parseStepFields(stepConfig: any): FieldDef[] {
+    return normalizeArrayFields(stepConfig);
 }
 
 function normalizeVisibilityValue(value: any): string {
@@ -374,21 +397,15 @@ export function buildAutoFillData(
 
 // ─── Schema helpers ────────────────────────────────────────────────────────────
 export function getSchemaFields(schema: any): FieldDef[] {
-    if (schema?.fields && Array.isArray(schema.fields)) return schema.fields;
+    if (schema?.data && Array.isArray(schema.data)) return normalizeArrayFields(schema.data);
+    if (schema?.fields && Array.isArray(schema.fields)) return normalizeArrayFields(schema.fields);
 
     if (schema && typeof schema === 'object' && Array.isArray(schema['1'])) {
         return parseStepFields(schema['1']);
     }
 
     if (!schema || typeof schema !== 'object' || Object.keys(schema).length === 0) {
-        return [
-            { key: 'name', label: '1. Full Name', type: 'text', required: true },
-            { key: 'department', label: '2. Department', type: 'department', required: true },
-            { key: 'leave_type', label: '3. Leave Type', type: 'select', required: true, options: ['Casual Leave', 'Earned Leave', 'Sick Leave'] },
-            { key: 'start_date', label: '4. Start Date', type: 'date', required: true },
-            { key: 'end_date', label: '5. End Date', type: 'date', required: true },
-            { key: 'reason', label: '6. Reason', type: 'textarea', required: true },
-        ];
+        return [];
     }
 
     return Object.entries(schema).map(([k, v]: [string, any], idx: number) => {
@@ -408,6 +425,10 @@ export function getSchemaFields(schema: any): FieldDef[] {
 /** Get fields for a specific schema step key */
 export function getApprovalFields(schema: any, steps: any[], currentStatus: string): FieldDef[] {
     if (!schema || typeof schema !== 'object') return [];
+
+    // Builder-style schemas store applicant fields in `data` / `fields`.
+    // These should not be treated as approval-stage fields.
+    if (Array.isArray(schema.data) || Array.isArray(schema.fields)) return [];
     
     // In the new system without workflow steps, look for step configs in schema numerically
     // Try to find fields for the current status or the next step

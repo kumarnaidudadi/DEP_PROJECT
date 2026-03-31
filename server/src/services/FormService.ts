@@ -44,7 +44,7 @@ export class FormService implements IFormService {
         return this.formRepo.createFormType({
             name: dto.name,
             description: dto.description || '',
-            schema: dto.schema_definition || {},
+            schema: dto.schema || {},
             approval_rules: dto.approval_rules || {},
         });
     }
@@ -56,7 +56,7 @@ export class FormService implements IFormService {
         const updateData: any = {
             name: dto.name,
             description: dto.description || '',
-            schema: dto.schema_definition || {},
+            schema: dto.schema || {},
             updated_at: new Date(),
         };
         if (dto.approval_rules !== undefined) {
@@ -124,6 +124,16 @@ export class FormService implements IFormService {
             changed_by: BigInt(dto.userId),
             new_data: { status: 'submitted' },
         });
+
+        // ── Initial Forwarding ──
+        if (dto.toUserId) {
+            await this.forwardForm({
+                formId: Number(form.id),
+                fromUserId: dto.userId,
+                toUserId: dto.toUserId,
+                note: dto.note || 'Initial submission'
+            });
+        }
 
         return this.formRepo.findById(Number(form.id));
     }
@@ -204,10 +214,26 @@ export class FormService implements IFormService {
         const form = await this.formRepo.findById(dto.formId);
         if (!form) throw new Error('FORM_NOT_FOUND');
 
-        // Validate user role against approval_rules
         const userRoles = await this.formRepo.getUserRoles(dto.userId);
-        const approvalRules = form.form_types?.approval_rules as any;
-        const requiredRoles: string[] = approvalRules?.required_roles || [];
+        const rawSchema = (form.form_types?.schema as any) || {};
+        const approvalRules = (form.form_types?.approval_rules as any) || {};
+        
+        let requiredRoles: string[] = [];
+        
+        // Try schema.approval_roles first
+        if (Array.isArray(rawSchema.approval_roles)) {
+            requiredRoles = rawSchema.approval_roles;
+        } else if (rawSchema.approval_roles && typeof rawSchema.approval_roles === 'object') {
+            // Handle { "ROLE_NAME": true } format
+            requiredRoles = Object.entries(rawSchema.approval_roles)
+                .filter(([_, v]) => v === true)
+                .map(([k, _]) => k);
+        }
+        
+        // Fallback to approval_rules if empty
+        if (requiredRoles.length === 0 && Array.isArray(approvalRules.required_roles)) {
+            requiredRoles = approvalRules.required_roles;
+        }
 
         // Check if user has at least one required role (skip check if no rules defined)
         if (requiredRoles.length > 0) {
