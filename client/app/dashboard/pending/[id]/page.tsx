@@ -44,11 +44,21 @@ export default function PendingWorkDetailPage() {
     );
     const canApprove = Boolean(isApprovalRole && hasPendingApprovalForThisUser);
 
-    const handleDecision = async (decision: 'APPROVED' | 'REJECTED') => {
+    const handleDecision = async (decision: 'APPROVED' | 'REJECTED', nextApproverId?: number, nextApproverNote?: string) => {
         if (!selectedApp) return;
         setActionLoading(true);
         try {
             await makeDecision(selectedApp.id, decision, remarks, approvalData);
+            if (decision === 'APPROVED' && nextApproverId) {
+                try {
+                    await forwardForm(selectedApp.id, nextApproverId, nextApproverNote);
+                } catch (err: any) {
+                    const message = err?.response?.data?.error || '';
+                    if (!message.includes('finalized')) {
+                        throw err;
+                    }
+                }
+            }
             setRemarks('');
             setApprovalData({});
             fetchApplications();

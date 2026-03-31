@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { FileText, CheckCircle, XCircle, Upload, ShieldCheck, Loader2, Send, Search, User } from 'lucide-react';
-import { Application, Profile, UserSearchResult, getApprovalFields, isFieldVisible, formatTitleCase } from '@/types';
+import { Application, Profile, UserSearchResult, getApprovalFields, getSchemaFields, isFieldVisible, formatTitleCase } from '@/types';
 import Panel from '../Panel';
 import StatusBadge from '../StatusBadge';
 import ApprovalTimeline from '../WorkflowProgress';
@@ -22,7 +22,7 @@ interface Props {
     actionLoading: boolean;
     onRemarks: (v: string) => void;
     onApprovalData: (data: Record<string, any>) => void;
-    onDecision: (d: 'APPROVED' | 'REJECTED') => void;
+    onDecision: (d: 'APPROVED' | 'REJECTED', nextApproverId?: number, nextApproverNote?: string) => Promise<void>;
     onDownloadPdf: (id: number, name: string) => void;
     onSigUpload: (file: File) => void;
     onForward?: (toUserId: number, note: string) => Promise<void>;
@@ -314,15 +314,138 @@ export default function ApplicationDetail({
 }: Props) {
     const isApproved = app.current_status === 'APPROVED';
     const isRejected = app.current_status === 'REJECTED';
+    const [showApproveFlow, setShowApproveFlow] = useState(false);
+    const [nextApproverQuery, setNextApproverQuery] = useState('');
+    const [nextApproverUsers, setNextApproverUsers] = useState<UserSearchResult[]>([]);
+    const [nextApproverUser, setNextApproverUser] = useState<UserSearchResult | null>(null);
+    const [nextApproverNote, setNextApproverNote] = useState('');
+    const [searchingNextApprover, setSearchingNextApprover] = useState(false);
+    const [showNextApproverDropdown, setShowNextApproverDropdown] = useState(false);
+    const nextApproverRef = useRef<HTMLDivElement>(null);
+    const nextApproverDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
     // Get schema and extract applicant fields (step "1")
     const formMeta = app.form_data?.__form_meta;
-    const schema = formMeta?.schema_definition || app.form_types?.schema_definition || {};
-    const applicantStepConfig = Array.isArray(schema['1']) ? schema['1'] : [];
+    const schema = formMeta?.schema_definition || app.form_types?.schema_definition || (app.form_types as any)?.schema || {};
+    const applicantFields = getSchemaFields(schema);
 
     // Build form data display (excluding meta)
     const formData = { ...(app.form_data || {}) };
     delete formData.__form_meta;
+
+    useEffect(() => {
+        setShowApproveFlow(false);
+        setNextApproverQuery('');
+        setNextApproverUsers([]);
+        setNextApproverUser(null);
+        setNextApproverNote('');
+        setShowNextApproverDropdown(false);
+    }, [app.id]);
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (nextApproverRef.current && !nextApproverRef.current.contains(e.target as Node)) {
+                setShowNextApproverDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const handleSearchNextApprover = (query: string) => {
+        setNextApproverQuery(query);
+        setNextApproverUser(null);
+
+        if (nextApproverDebounceRef.current) clearTimeout(nextApproverDebounceRef.current);
+
+        if (query.length < 2 || !onSearchUsers) {
+            setNextApproverUsers([]);
+            setShowNextApproverDropdown(false);
+            return;
+        }
+
+        nextApproverDebounceRef.current = setTimeout(async () => {
+            setSearchingNextApprover(true);
+            try {
+                const results = await onSearchUsers(query);
+                setNextApproverUsers(results);
+                setShowNextApproverDropdown(true);
+            } catch {
+                setNextApproverUsers([]);
+            } finally {
+                setSearchingNextApprover(false);
+            }
+        }, 300);
+    };
+
+    const renderFieldValue = (field: any) => {
+        if (field.type === 'date_from_to') {
+            const from = formData[`${field.key}_from`];
+            const to = formData[`${field.key}_to`];
+            return from || to ? `${from || '—'} to ${to || '—'}` : '—';
+        }
+
+        const value = formData[field.key];
+
+        if (typeof value === 'string' && value.includes('/uploads/signatures')) {
+            return (
+                <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    padding: '4px 10px', background: '#ecfdf5', color: '#059669',
+                    borderRadius: '6px', fontSize: '11px', fontWeight: 600,
+                    border: '1px solid #d1fae5'
+                }}>
+                    <ShieldCheck size={12} /> Digitally Signed
+                </div>
+            );
+        }
+
+        if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
+            return (
+                <div style={{ marginTop: '6px', overflowX: 'auto', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                        <thead style={{ background: '#f9fafb' }}>
+                            <tr>
+                                {Object.keys(value[0]).map(col => (
+                                    <th key={col} style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontWeight: 600 }}>
+                                        {formatTitleCase(col)}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {value.map((row: any, rIdx: number) => (
+                                <tr key={rIdx} style={{ borderBottom: rIdx === value.length - 1 ? 'none' : '1px solid #f3f4f6' }}>
+                                    {Object.values(row).map((cell: any, cIdx: number) => (
+                                        <td key={cIdx} style={{ padding: '6px 8px', color: '#1f2937' }}>{String(cell || '—')}</td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
+        if (typeof value === 'object' && value !== null) {
+            return Object.entries(value)
+                .filter(([_, val]) => val !== '' && val !== null)
+                .map(([sk, sv]) => `${formatTitleCase(sk)}: ${sv}`)
+                .join(' | ') || '—';
+        }
+
+        return value === undefined || value === null || value === '' ? '—' : String(value);
+    };
+
+    const fallbackReviewFields = applicantFields.filter(field => {
+        if (field.type === 'heading') return false;
+
+        if (field.type === 'date_from_to') {
+            return !formData[`${field.key}_from`] || !formData[`${field.key}_to`];
+        }
+
+        return formData[field.key] === undefined || formData[field.key] === null || formData[field.key] === '';
+    });
 
     return (
         <div style={{ padding: '32px 40px', maxWidth: '1000px', margin: '0 auto' }}>
@@ -371,73 +494,55 @@ export default function ApplicationDetail({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '20px', marginTop: '20px' }}>
                 {/* Applicant data panel */}
                 {(() => {
-                    const entries = Object.entries(formData).filter(([k]) => !k.startsWith('__'));
-                    if (entries.length === 0) return null;
+                    const extraEntries = Object.entries(formData).filter(([k]) =>
+                        !k.startsWith('__') &&
+                        !applicantFields.some(field =>
+                            field.key === k ||
+                            `${field.key}_from` === k ||
+                            `${field.key}_to` === k
+                        )
+                    );
+                    if (applicantFields.length === 0 && extraEntries.length === 0) return null;
 
                     return (
                         <Panel title="Application Details">
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                                {entries.map(([k, v], idx) => {
-                                    const isWide = Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('/uploads/signatures')) || k.length > 50;
-
-                                    const parts = k.split('_');
-                                    const lastPart = parts[parts.length - 1];
-                                    const idxInKey = parseInt(lastPart);
-                                    let baseName = k.replace(/_/g, ' ');
-                                    if (!isNaN(idxInKey)) {
-                                        baseName = parts.slice(0, -1).join(' ');
+                                {applicantFields.map((field, idx) => {
+                                    if (field.type === 'heading') {
+                                        return (
+                                            <div key={field.key} style={{ gridColumn: 'span 2', marginTop: idx === 0 ? 0 : '8px', borderBottom: '1px solid #e5e7eb', paddingBottom: '4px' }}>
+                                                <div style={{ fontSize: '14px', fontWeight: 700, color: '#374151' }}>{field.label}</div>
+                                                {field.helpText && <p style={{ marginTop: '6px', fontSize: '12px', color: '#6b7280', lineHeight: 1.5 }}>{field.helpText}</p>}
+                                            </div>
+                                        );
                                     }
-                                    const label = `${idx + 1}. ${formatTitleCase(baseName)}`;
+
+                                    const rawValue = field.type === 'date_from_to'
+                                        ? `${formData[`${field.key}_from`] || ''}${formData[`${field.key}_to`] || ''}`
+                                        : formData[field.key];
+                                    const isWide = Array.isArray(rawValue) || (typeof rawValue === 'string' && rawValue.length > 50 && !rawValue.startsWith('/uploads/signatures')) || ['textarea', 'tuple', 'list', 'signature', 'date_from_to', 'paragraph_blanks'].includes(field.type);
 
                                     return (
-                                        <div key={k} style={{ gridColumn: isWide ? 'span 2' : 'auto' }}>
+                                        <div key={field.key} style={{ gridColumn: isWide ? 'span 2' : 'auto' }}>
                                             <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                                                {label}
+                                                {field.label}
                                             </div>
-                                            {typeof v === 'string' && v.includes('/uploads/signatures') ? (
-                                                <div style={{
-                                                    display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                                    padding: '4px 10px', background: '#ecfdf5', color: '#059669',
-                                                    borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-                                                    border: '1px solid #d1fae5'
-                                                }}>
-                                                    <ShieldCheck size={12} /> Digitally Signed
-                                                    {app.users ? ` by ${app.users.name}` : ''}
-                                                </div>
-                                            ) : Array.isArray(v) && v.length > 0 && typeof v[0] === 'object' ? (
-                                                <div style={{ marginTop: '6px', overflowX: 'auto', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
-                                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-                                                        <thead style={{ background: '#f9fafb' }}>
-                                                            <tr>
-                                                                {Object.keys(v[0]).map(col => (
-                                                                    <th key={col} style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontWeight: 600, textTransform: 'capitalize' }}>
-                                                                        {formatTitleCase(col)}
-                                                                    </th>
-                                                                ))}
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {v.map((row: any, rIdx: number) => (
-                                                                <tr key={rIdx} style={{ borderBottom: rIdx === v.length - 1 ? 'none' : '1px solid #f3f4f6' }}>
-                                                                    {Object.values(row).map((cell: any, cIdx: number) => <td key={cIdx} style={{ padding: '6px 8px', color: '#1f2937' }}>{String(cell || '—')}</td>)}
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            ) : (
-                                                <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>
-                                                    {typeof v === 'object' && v !== null ? (
-                                                        Object.entries(v)
-                                                            .filter(([_, val]) => val !== '' && val !== null)
-                                                            .map(([sk, sv]) => `${formatTitleCase(sk)}: ${sv}`)
-                                                            .join(' | ') || '—'
-                                                    ) : (v === undefined || v === null || v === '' ? '—' : String(v))}
-                                                </div>
-                                            )}
+                                            {typeof renderFieldValue(field) === 'string'
+                                                ? <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>{renderFieldValue(field)}</div>
+                                                : renderFieldValue(field)}
                                         </div>
                                     );
                                 })}
+                                {extraEntries.map(([k, v]) => (
+                                    <div key={k} style={{ gridColumn: 'span 2' }}>
+                                        <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                            {formatTitleCase(k.replace(/_/g, ' '))}
+                                        </div>
+                                        <div style={{ fontSize: '14px', color: '#1f2937', fontWeight: 500 }}>
+                                            {typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v || '—')}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </Panel>
                     );
@@ -488,26 +593,16 @@ export default function ApplicationDetail({
                     })}
             </div>
 
-            {/* Forward Panel — show when form is not finalized and user can interact */}
-            {!isTerminal(app.current_status) && isInPendingView && onForward && onSearchUsers && (
-                <div style={{ marginBottom: '20px' }}>
-                    <ForwardPanel
-                        onForward={onForward}
-                        onSearchUsers={onSearchUsers}
-                        loading={actionLoading}
-                    />
-                </div>
-            )}
-
             {/* Approve / Reject panel */}
             {canApprove && isInPendingView && !isTerminal(app.current_status) && (
                 <Panel title="Take Action">
                     {(() => {
-                        const approvalFields = getApprovalFields(
+                        const explicitApprovalFields = getApprovalFields(
                             schema,
                             [],
                             app.current_status
                         );
+                        const approvalFields = explicitApprovalFields.length > 0 ? explicitApprovalFields : fallbackReviewFields;
                         if (approvalFields.length > 0) {
                             return (
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
@@ -550,16 +645,68 @@ export default function ApplicationDetail({
                         return null;
                     })()}
                     <textarea placeholder="Remarks (optional)..." value={remarks} onChange={e => onRemarks(e.target.value)} rows={2} style={{ ...inputStyle, marginBottom: '14px' }} />
+                    {showApproveFlow && onSearchUsers && (
+                        <div style={{ marginBottom: '14px', padding: '14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Next Approval
+                            </div>
+                            <div ref={nextApproverRef} style={{ position: 'relative', marginBottom: '12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #d1d5db', borderRadius: '8px', padding: '8px 12px', background: '#fff' }}>
+                                    <Search size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
+                                    <input
+                                        value={nextApproverQuery}
+                                        onChange={e => handleSearchNextApprover(e.target.value)}
+                                        placeholder="Search next approver by name or email..."
+                                        style={{ flex: 1, border: 'none', outline: 'none', fontSize: '13px', color: '#374151', background: 'transparent' }}
+                                    />
+                                    {searchingNextApprover && <Loader2 size={14} className="animate-spin" style={{ color: '#9ca3af' }} />}
+                                </div>
+                                {showNextApproverDropdown && nextApproverUsers.length > 0 && (
+                                    <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 999, background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', maxHeight: '220px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
+                                        {nextApproverUsers.map(u => (
+                                            <div key={u.id} onClick={() => { setNextApproverUser(u); setNextApproverQuery(u.name); setShowNextApproverDropdown(false); }} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}>
+                                                <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '12px', fontWeight: 700 }}>{u.name.charAt(0)}</div>
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#1f2937' }}>{u.name}</div>
+                                                    <div style={{ fontSize: '11px', color: '#6b7280' }}>{u.email}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            {nextApproverUser && (
+                                <div style={{ padding: '10px 12px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', marginBottom: '12px', fontSize: '12px', color: '#1d4ed8', fontWeight: 600 }}>
+                                    Next approver: {nextApproverUser.name} ({nextApproverUser.email})
+                                </div>
+                            )}
+                            <textarea
+                                placeholder="Note for next approver (optional)..."
+                                value={nextApproverNote}
+                                onChange={e => setNextApproverNote(e.target.value)}
+                                rows={2}
+                                style={inputStyle}
+                            />
+                        </div>
+                    )}
                     <div style={{ display: 'flex', gap: '10px' }}>
                         <button onClick={() => onDecision('REJECTED')} disabled={actionLoading}
                             style={{ flex: 1, padding: '10px', border: '1px solid #fca5a5', background: '#fff', color: '#dc2626', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: actionLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', opacity: actionLoading ? 0.7 : 1 }}>
                             {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
                             {actionLoading ? 'Processing...' : 'Reject'}
                         </button>
-                        <button onClick={() => onDecision('APPROVED')} disabled={actionLoading}
+                        <button
+                            onClick={async () => {
+                                if (!showApproveFlow) {
+                                    setShowApproveFlow(true);
+                                    return;
+                                }
+                                await onDecision('APPROVED', nextApproverUser?.id, nextApproverNote);
+                            }}
+                            disabled={actionLoading}
                             style={{ flex: 1, padding: '10px', border: 'none', background: 'linear-gradient(135deg,#16a34a,#15803d)', color: '#fff', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: actionLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(22,163,74,0.3)', opacity: actionLoading ? 0.7 : 1 }}>
                             {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-                            {actionLoading ? 'Approving...' : 'Approve'}
+                            {actionLoading ? 'Approving...' : showApproveFlow ? 'Confirm Approve' : 'Approve'}
                         </button>
                     </div>
                 </Panel>
