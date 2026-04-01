@@ -10,18 +10,30 @@ import { BuilderField, createBuilderField, createBuilderFieldId } from '@/types'
 import CreateFormView from '@/components/dashboard/views/CreateFormView';
 import * as formTypeSvc from '@/services/formTypeService';
 
-type PersistedBuilderField = {
-    id?: string;
-    name?: string;
-    type?: string;
-    required?: boolean;
-    options?: string[];
-    min?: number;
-    max?: number;
-    helpText?: string;
-    conditionalLogic?: BuilderField['conditionalLogic'];
-    subFields?: BuilderField['subFields'];
-};
+function serializeBuilderState(
+    newFormName: string,
+    newFormDesc: string,
+    formFields: BuilderField[],
+    approvalRoles: string[],
+) {
+    return JSON.stringify({
+        name: newFormName.trim(),
+        description: newFormDesc.trim(),
+        approvalRoles: [...approvalRoles].sort(),
+        fields: formFields.map(field => ({
+            id: field.id,
+            name: field.name,
+            type: field.type,
+            required: field.required,
+            options: field.options || [],
+            min: field.min ?? null,
+            max: field.max ?? null,
+            helpText: field.helpText || '',
+            conditionalLogic: field.conditionalLogic || null,
+            subFields: field.subFields || [],
+        })),
+    });
+}
 
 function CreateFormInner() {
     const router = useRouter();
@@ -37,11 +49,30 @@ function CreateFormInner() {
     const [approvalRoles, setApprovalRoles] = useState<string[]>([]);
     const [creating, setCreating] = useState(false);
     const [createSuccess, setCreateSuccess] = useState(false);
+    const [initialSnapshot, setInitialSnapshot] = useState(() =>
+        serializeBuilderState('', '', [createBuilderField()], [])
+    );
+
+    const currentSnapshot = serializeBuilderState(newFormName, newFormDesc, formFields, approvalRoles);
+    const isDirty = currentSnapshot !== initialSnapshot;
+    const allowNavigationRef = React.useRef(false);
+    const popGuardActiveRef = React.useRef(false);
+    const isDirtyRef = React.useRef(isDirty);
+    const attemptLeaveRef = React.useRef<() => Promise<boolean>>(async () => true);
+
+    useEffect(() => {
+        isDirtyRef.current = isDirty;
+    }, [isDirty]);
 
     useEffect(() => {
         fetchRoles();
         if (editId) fetchFormTypes();
     }, [fetchRoles, fetchFormTypes, editId]);
+
+    useEffect(() => {
+        if (editId) return;
+        setInitialSnapshot(serializeBuilderState('', '', [createBuilderField()], []));
+    }, [editId]);
 
     // Pre-fill when editing
     useEffect(() => {
@@ -98,10 +129,12 @@ function CreateFormInner() {
 
         const rolesFromSchema = rawSchema.approval_roles || [];
         const rolesFromRules = (ft.approval_rules as any)?.required_roles || [];
-        setApprovalRoles(rolesFromSchema.length ? rolesFromSchema : rolesFromRules);
+        const nextApprovalRoles = rolesFromSchema.length ? rolesFromSchema : rolesFromRules;
+        setApprovalRoles(nextApprovalRoles);
+        setInitialSnapshot(serializeBuilderState(ft.name, ft.description || '', loadedFields.length ? loadedFields : [createBuilderField()], nextApprovalRoles));
     }, [editId, formTypes]);
 
-    const handleSave = async () => {
+    const handleSave = React.useCallback(async ({ redirectAfterSave = true }: { redirectAfterSave?: boolean } = {}) => {
         if (!newFormName.trim()) { alert('Form name is required'); return; }
         setCreating(true); setCreateSuccess(false);
         try {
@@ -131,18 +164,93 @@ function CreateFormInner() {
             if (editId) { await formTypeSvc.updateFormType(Number(editId), payload); }
             else { await formTypeSvc.createFormType(payload); }
             
+            const resetFields = [createBuilderField()];
+            const resetRoles: string[] = [];
             setCreateSuccess(true);
             setNewFormName(''); setNewFormDesc('');
-            setFormFields([createBuilderField()]);
-            setApprovalRoles([]);
-            setTimeout(() => { setCreateSuccess(false); router.push('/dashboard/new'); }, 2000);
+            setFormFields(resetFields);
+            setApprovalRoles(resetRoles);
+            setInitialSnapshot(serializeBuilderState('', '', resetFields, resetRoles));
+            if (redirectAfterSave) {
+                setTimeout(() => { setCreateSuccess(false); router.push('/dashboard/new'); }, 2000);
+            }
+            return true;
         } catch (error: unknown) {
             const message = typeof error === 'object' && error !== null && 'response' in error
                 ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
                 : null;
             alert(message || 'Failed to save the form type');
+            return false;
         } finally { setCreating(false); }
-    };
+    }, [approvalRoles, editId, formFields, newFormDesc, newFormName, router]);
+
+    const handleAttemptLeave = React.useCallback(async () => {
+        if (!isDirty || allowNavigationRef.current) return true;
+
+        const wantsSave = window.confirm('You have unsaved changes. Do you want to save this form before leaving?');
+        if (wantsSave) {
+            const saved = await handleSave({ redirectAfterSave: false });
+            if (saved) allowNavigationRef.current = true;
+            return Boolean(saved);
+        }
+
+        const discard = window.confirm('Discard your unsaved changes and leave this page?');
+        if (discard) {
+            allowNavigationRef.current = true;
+            return true;
+        }
+
+        return false;
+    }, [handleSave, isDirty]);
+
+    useEffect(() => {
+        attemptLeaveRef.current = handleAttemptLeave;
+    }, [handleAttemptLeave]);
+
+    useEffect(() => {
+        const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+            if (!isDirty || allowNavigationRef.current) return;
+            event.preventDefault();
+            event.returnValue = '';
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [isDirty]);
+
+    useEffect(() => {
+        if (popGuardActiveRef.current) return;
+
+        window.history.pushState({ createFormGuard: true }, '', window.location.href);
+        popGuardActiveRef.current = true;
+
+        const handlePopState = async () => {
+            if (allowNavigationRef.current || !isDirtyRef.current) {
+                allowNavigationRef.current = false;
+                return;
+            }
+
+            window.history.pushState({ createFormGuard: true }, '', window.location.href);
+            const canLeave = await attemptLeaveRef.current();
+            if (!canLeave) return;
+
+            setTimeout(() => {
+                window.history.back();
+            }, 0);
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+            popGuardActiveRef.current = false;
+        };
+    }, []);
+
+    const handleCancel = React.useCallback(async () => {
+        const canLeave = await handleAttemptLeave();
+        if (!canLeave) return;
+        router.back();
+    }, [handleAttemptLeave, router]);
 
     return (
         <main style={{ flex: 1, overflowY: 'auto', background: '#f8fafc' }}>
@@ -157,7 +265,7 @@ function CreateFormInner() {
                 onFieldsChange={setFormFields}
                 onApprovalRolesChange={setApprovalRoles}
                 onSave={handleSave}
-                onCancel={() => router.back()}
+                onCancel={handleCancel}
             />
         </main>
     );

@@ -5,7 +5,6 @@
 
 import React from 'react';
 import { Upload, ShieldCheck } from 'lucide-react';
-import SignaturePad from './SignaturePad';
 import ListField from './ListField';
 import TupleField from './TupleField';
 import { FieldDef } from '@/types';
@@ -18,8 +17,8 @@ const inputStyle: React.CSSProperties = {
 
 interface FieldRendererProps {
     field: FieldDef;
-    value: any;
-    onChange: (key: string, value: any) => void;
+    value: unknown;
+    onChange: (key: string, value: unknown) => void;
     /** For date_from_to — companion "from" or "to" value */
     fromValue?: string;
     toValue?: string;
@@ -29,10 +28,8 @@ interface FieldRendererProps {
     onSignatureUpload?: (file: File) => void;
     sigUploading?: boolean;
     /** For department/role drop-downs */
-    availableDepartments?: any[];
+    availableDepartments?: { id: string | number; name: string }[];
     availableRoles?: string[];
-    /** Backend base URL for rendering saved signatures */
-    apiBaseUrl?: string;
     /** Whether this field was auto-filled from the user's profile */
     isAutoFilled?: boolean;
 }
@@ -48,10 +45,12 @@ export default function FieldRenderer({
     sigUploading,
     availableDepartments = [],
     availableRoles = [],
-    apiBaseUrl = 'http://localhost:4000',
     isAutoFilled = false,
 }: FieldRendererProps) {
     const { key, type, options } = field;
+    const numericMin = typeof field.min === 'number' ? field.min : undefined;
+    const numericMax = typeof field.max === 'number' ? field.max : undefined;
+    const stringValue = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
 
     const currentInputStyle = {
         ...inputStyle,
@@ -61,13 +60,13 @@ export default function FieldRenderer({
 
     if (type === 'textarea') {
         return (
-            <textarea value={value || ''} onChange={e => onChange(key, e.target.value)} rows={3} style={inputStyle} />
+            <textarea value={stringValue} onChange={e => onChange(key, e.target.value)} rows={3} style={inputStyle} />
         );
     }
 
     if (type === 'select') {
         return (
-            <select value={value || ''} onChange={e => onChange(key, e.target.value)} style={{ ...inputStyle, background: '#fff' }}>
+            <select value={stringValue} onChange={e => onChange(key, e.target.value)} style={{ ...inputStyle, background: '#fff' }}>
                 <option value="">Select...</option>
                 {(options || []).map(o => <option key={o} value={o}>{o}</option>)}
             </select>
@@ -76,27 +75,30 @@ export default function FieldRenderer({
 
     if (type === 'bool') {
         return (
-            <div style={{ display: 'flex', alignItems: 'center', height: '100%', padding: '0 8px' }}>
-                <input type="checkbox" checked={value === true || value === 'true'} onChange={e => onChange(key, e.target.checked)}
-                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#2563eb' }} />
-            </div>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '10px', minHeight: '40px', padding: '0 4px', cursor: 'pointer' }}>
+                <input
+                    type="checkbox"
+                    checked={value === true || value === 'true'}
+                    onChange={e => onChange(key, e.target.checked)}
+                    style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#2563eb' }}
+                />
+                <span style={{ fontSize: '13px', color: '#374151' }}>{value === true || value === 'true' ? 'Yes' : 'No'}</span>
+            </label>
         );
     }
 
-    if (type === 'department') {
-        return (
-            <select value={value || ''} onChange={e => onChange(key, e.target.value)} style={currentInputStyle}>
-                <option value="">Select Department...</option>
-                {availableDepartments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-            </select>
-        );
-    }
+    if (type === 'department' || type === 'role') {
+        const optionList = type === 'department'
+            ? availableDepartments.map(d => d.name)
+            : availableRoles;
+        const placeholder = type === 'department' ? 'Select Department...' : 'Select Role...';
+        const currentValue = typeof value === 'string' ? value : '';
+        const normalizedOptions = Array.from(new Set([currentValue, ...optionList].filter(Boolean)));
 
-    if (type === 'role') {
         return (
-            <select value={value || ''} onChange={e => onChange(key, e.target.value)} style={currentInputStyle}>
-                <option value="">Select Role...</option>
-                {availableRoles.map(o => <option key={o} value={o}>{o}</option>)}
+            <select value={currentValue} onChange={e => onChange(key, e.target.value)} style={currentInputStyle}>
+                <option value="">{placeholder}</option>
+                {normalizedOptions.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
         );
     }
@@ -174,81 +176,86 @@ export default function FieldRenderer({
         );
     }
 
-    if (type === 'name' || type === 'designation' || type === 'employee_code' || type === 'date_today') {
+    if (type === 'date_today') {
+        return (
+            <input
+                type="date"
+                value={typeof value === 'string' ? value : ''}
+                onChange={e => onChange(key, e.target.value)}
+                readOnly
+                style={{
+                    ...currentInputStyle,
+                    background: '#f3f4f6',
+                    cursor: 'not-allowed',
+                    color: '#6b7280',
+                }}
+            />
+        );
+    }
+
+    if (type === 'name' || type === 'designation' || type === 'employee_code') {
         const placeholders: Record<string, string> = {
             name: 'Enter full name',
             designation: 'Enter designation',
             employee_code: 'Enter employee code',
-            date_today: 'Today\'s date',
         };
         return (
             <input
                 type="text"
-                value={value || ''}
+                value={stringValue}
                 onChange={e => onChange(key, e.target.value)}
-                readOnly={type === 'date_today'}
                 placeholder={placeholders[type]}
-                style={{
-                    ...currentInputStyle,
-                    background: type === 'date_today' ? '#f3f4f6' : (currentInputStyle.background || '#ffffff'),
-                    cursor: type === 'date_today' ? 'not-allowed' : 'text',
-                    color: type === 'date_today' ? '#6b7280' : (currentInputStyle.color || '#1f2937'),
-                }}
+                style={currentInputStyle}
             />
         );
     }
 
     if (type === 'paragraph_blanks') {
         const template = options?.[0] || '';
-        const segments = template.split('[____]');
+        const blankTokenPattern = /\[_{2,}\]/g;
+        const segments = template.split(blankTokenPattern);
+        const blankCount = (template.match(blankTokenPattern) || []).length;
         const values = Array.isArray(value) ? value : [];
 
         return (
             <div style={{
-                lineHeight: '1.8',
+                lineHeight: '2',
                 fontSize: '15px',
                 color: '#374151',
-                padding: '0', // Full width, no extra padding inside container
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
-                fontFamily: 'inherit',
             }}>
                 {segments.map((segment, idx) => (
                     <React.Fragment key={idx}>
-                        <span style={{ verticalAlign: 'baseline' }}>{segment}</span>
-                        {idx < segments.length - 1 && (
-                            <span
-                                contentEditable
-                                suppressContentEditableWarning
-                                onFocus={(e) => e.currentTarget.style.background = '#f1f5f9'}
-                                onBlur={(e) => {
-                                    e.currentTarget.style.background = 'transparent';
-                                    const nextValue = e.currentTarget.innerText;
+                        {segment && <span>{segment}</span>}
+                        {idx < blankCount && (
+                            <input
+                                type="text"
+                                value={typeof values[idx] === 'string' ? values[idx] : ''}
+                                onChange={e => {
                                     const next = [...values];
-                                    next[idx] = nextValue;
+                                    next[idx] = e.target.value;
                                     onChange(key, next);
                                 }}
-                                onKeyDown={e => {
-                                    if (e.key === 'Enter') e.preventDefault();
-                                }}
+                                placeholder=" "
                                 style={{
-                                    display: 'inline',
+                                    display: 'inline-block',
+                                    width: `${Math.max((values[idx] || '').length + 2, 10)}ch`,
+                                    minWidth: '90px',
+                                    margin: '0 4px',
+                                    padding: '2px 4px',
+                                    border: 'none',
                                     borderBottom: '1px solid #94a3b8',
-                                    background: 'transparent',
-                                    padding: '0 2px',
-                                    margin: '0 1px',
+                                    borderRadius: 0,
                                     outline: 'none',
-                                    fontWeight: 400,
+                                    fontSize: 'inherit',
+                                    fontFamily: 'inherit',
+                                    lineHeight: 'inherit',
                                     color: 'inherit',
-                                    cursor: 'text',
+                                    background: 'transparent',
                                     verticalAlign: 'baseline',
-                                    wordBreak: 'break-word',
-                                    transition: 'background 0.2s',
-                                    minWidth: '60px',
                                 }}
-                            >
-                                {values[idx] || '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0'}
-                            </span>
+                            />
                         )}
                     </React.Fragment>
                 ))}
@@ -256,9 +263,14 @@ export default function FieldRenderer({
         );
     }
 
-    // Default: text, number, date, tuple
     return (
-        <input type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
-            value={value || ''} onChange={e => onChange(key, e.target.value)} style={inputStyle} />
+        <input
+            type={type === 'number' ? 'number' : type === 'date' ? 'date' : 'text'}
+            value={type === 'number' ? (typeof value === 'number' || typeof value === 'string' ? value : '') : stringValue}
+            min={type === 'number' ? numericMin : undefined}
+            max={type === 'number' ? numericMax : undefined}
+            onChange={e => onChange(key, type === 'number' ? (e.target.value === '' ? '' : Number(e.target.value)) : e.target.value)}
+            style={inputStyle}
+        />
     );
 }

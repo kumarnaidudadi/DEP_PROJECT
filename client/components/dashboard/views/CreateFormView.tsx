@@ -75,6 +75,12 @@ function cloneField(field: BuilderField): BuilderField {
     };
 }
 
+function getDefaultFieldOptions(type: string) {
+    if (type === 'select') return ['Option 1', 'Option 2'];
+    if (type === 'paragraph_blanks') return ['I confirm that [____].'];
+    return undefined;
+}
+
 /* ─── Props ────────────────────────────────────────────────────────────────── */
 
 interface Props {
@@ -109,6 +115,7 @@ export default function CreateFormView({
     const [previewData, setPreviewData] = React.useState<Record<string, unknown>>({});
     const [expandedCondIdx, setExpandedCondIdx] = React.useState<number | null>(null);
     const [expandedHelpKeys, setExpandedHelpKeys] = React.useState<Record<number, boolean>>({});
+    const paragraphTemplateRefs = React.useRef<Record<string, HTMLTextAreaElement | null>>({});
 
     const [isMobile, setIsMobile] = React.useState(false);
     const [leftOpen, setLeftOpen] = React.useState(false);
@@ -142,10 +149,14 @@ export default function CreateFormView({
 
     const applyFieldType = React.useCallback((fi: number, nextType: string) => {
         updateField(fi, field => {
+            const typeChanged = field.type !== nextType;
             const f: BuilderField = { ...field, type: nextType, required: nextType === 'heading' ? false : field.required };
-            if (nextType === 'select' && (!f.options || f.options.length === 0)) f.options = ['Option 1', 'Option 2'];
-            if (nextType !== 'select' && nextType !== 'paragraph_blanks') f.options = undefined;
-            if (nextType === 'paragraph_blanks' && (!f.options || f.options.length === 0)) f.options = ['I confirm that [____].'];
+            if (nextType === 'select' || nextType === 'paragraph_blanks') {
+                const sanitized = (field.options || []).map(opt => opt.trim()).filter(Boolean);
+                f.options = typeChanged ? getDefaultFieldOptions(nextType) : (sanitized.length > 0 ? sanitized : getDefaultFieldOptions(nextType));
+            } else {
+                f.options = undefined;
+            }
             if ((nextType === 'tuple' || nextType === 'list') && (!f.subFields || f.subFields.length === 0)) f.subFields = [{ name: '', type: 'text' }];
             if (nextType !== 'tuple' && nextType !== 'list') f.subFields = undefined;
             if (nextType !== 'number') { f.min = undefined; f.max = undefined; }
@@ -153,6 +164,31 @@ export default function CreateFormView({
         });
         touchRecent(nextType);
     }, [touchRecent, updateField]);
+
+    const insertParagraphBlank = React.useCallback((fieldId: string, fi: number) => {
+        const textarea = paragraphTemplateRefs.current[fieldId];
+        const blankToken = '[____]';
+        const currentValue = formFields[fi]?.options?.[0] || '';
+
+        if (!textarea) {
+            updateField(fi, f => ({ ...f, options: [`${currentValue}${blankToken}`] }));
+            return;
+        }
+
+        const start = textarea.selectionStart ?? currentValue.length;
+        const end = textarea.selectionEnd ?? start;
+        const nextValue = `${currentValue.slice(0, start)}${blankToken}${currentValue.slice(end)}`;
+
+        updateField(fi, f => ({ ...f, options: [nextValue] }));
+
+        requestAnimationFrame(() => {
+            const nextTextarea = paragraphTemplateRefs.current[fieldId];
+            if (!nextTextarea) return;
+            const cursor = start + blankToken.length;
+            nextTextarea.focus();
+            nextTextarea.setSelectionRange(cursor, cursor);
+        });
+    }, [formFields, updateField]);
 
     /* ── Drag & Drop ─────────────────────────────────────────────────────── */
 
@@ -470,6 +506,31 @@ export default function CreateFormView({
                                                             <button type="button" onClick={() => updateField(fi, f => { const o = [...(f.options || [])]; o.splice(oi, 1); return { ...f, options: o }; })} style={{ ...btnSmall, color: '#ef4444', borderColor: '#fecaca' }}><Trash2 size={11} /></button>
                                                         </div>
                                                     ))}
+                                                </div>
+                                            )}
+                                            {field.type === 'paragraph_blanks' && (
+                                                <div style={{ marginTop: '10px', padding: '10px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                        <label style={{ ...labelStyle, marginBottom: 0 }}>Paragraph Template</label>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => insertParagraphBlank(field.id, fi)}
+                                                            style={{ ...btnSmall, color: '#2563eb' }}
+                                                        >
+                                                            <Plus size={11} /> Add Blank
+                                                        </button>
+                                                    </div>
+                                                    <textarea
+                                                        ref={node => { paragraphTemplateRefs.current[field.id] = node; }}
+                                                        value={field.options?.[0] || ''}
+                                                        onChange={e => updateField(fi, f => ({ ...f, options: [e.target.value] }))}
+                                                        rows={3}
+                                                        placeholder="Example: I confirm that [____] joined on [____]."
+                                                        style={{ ...inputStyleSm, resize: 'vertical', minHeight: '88px' }}
+                                                    />
+                                                    <div style={{ marginTop: '6px', fontSize: '11px', color: '#6b7280', lineHeight: 1.5 }}>
+                                                        Use <code>[____]</code> anywhere you want a fill-in-the-blank input to appear in the sentence.
+                                                    </div>
                                                 </div>
                                             )}
                                             {field.type === 'number' && (

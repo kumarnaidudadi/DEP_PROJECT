@@ -20,6 +20,32 @@ function asOptionalString(value: unknown) {
     return typeof value === 'string' ? value : undefined;
 }
 
+function getPreviewValue(field: FieldDef, previewData: Record<string, unknown>, availableRoles: string[]) {
+    const explicitValue = previewData[field.key];
+    if (explicitValue !== undefined) return explicitValue;
+
+    switch (field.type) {
+        case 'name':
+            return 'Alex Johnson';
+        case 'designation':
+            return availableRoles[0] || 'Assistant Professor';
+        case 'employee_code':
+            return 'EMP-1024';
+        case 'department':
+            return 'Administration';
+        case 'role':
+            return availableRoles[0] || '';
+        case 'date_today':
+            return new Date().toISOString().split('T')[0];
+        default:
+            return explicitValue;
+    }
+}
+
+function isPreviewAutoFilled(fieldType: string) {
+    return ['name', 'designation', 'employee_code', 'department', 'role', 'date_today'].includes(fieldType);
+}
+
 interface FormBuilderPreviewProps {
     formName: string;
     formDescription: string;
@@ -158,12 +184,13 @@ export default function FormBuilderPreview({
                                                                 {field.helpText && <p style={{ fontSize: '11px', color: '#6b7280', marginBottom: '5px', lineHeight: '1.4' }}>{field.helpText}</p>}
                                                                 <FieldRenderer
                                                                     field={field}
-                                                                    value={field.type === 'date_from_to' ? undefined : previewData[field.key]}
+                                                                    value={field.type === 'date_from_to' ? undefined : getPreviewValue(field, previewData, availableRoles)}
                                                                     fromValue={asOptionalString(previewData[`${field.key}_from`])}
                                                                     toValue={asOptionalString(previewData[`${field.key}_to`])}
                                                                     onChange={handleFieldChange}
                                                                     availableDepartments={previewDepartments}
                                                                     availableRoles={availableRoles}
+                                                                    isAutoFilled={isPreviewAutoFilled(field.type)}
                                                                 />
                                                             </div>
                                                         );

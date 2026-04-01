@@ -199,7 +199,14 @@ export function createBuilderField(type = 'text'): BuilderField {
         name: '',
         type,
         required: type !== 'heading',
-        options: type === 'select' ? ['Option 1'] : undefined,
+        options: type === 'select'
+            ? ['Option 1', 'Option 2']
+            : type === 'paragraph_blanks'
+                ? ['I confirm that [____].']
+                : undefined,
+        subFields: type === 'tuple' || type === 'list'
+            ? [{ name: '', type: 'text' }]
+            : undefined,
     };
 }
 
