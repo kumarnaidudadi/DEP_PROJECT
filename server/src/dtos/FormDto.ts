@@ -30,4 +30,5 @@ export interface CreateFormTypeDto {
     description?: string;
     schema?: Record<string, unknown>;
     approval_rules?: Record<string, unknown>;
+    is_active?: boolean;
 }

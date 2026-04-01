@@ -134,7 +134,8 @@ function NewApplicationFormContent() {
                 name: ft.name,
                 description: ft.description,
                 schema: (ft as any).schema || (ft as any).schema_definition || {},
-                approval_rules: (ft.approval_rules as any) || { required_roles: [] }
+                approval_rules: (ft.approval_rules as any) || { required_roles: [] },
+                is_active: newActive
             });
             
             setToast({ message: `Form type "${ft.name}" ${newActive ? 'activated' : 'deactivated'} successfully.`, type: 'success' });

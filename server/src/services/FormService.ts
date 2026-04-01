@@ -36,8 +36,16 @@ export class FormService implements IFormService {
     // ── Form Types ─────────────────────────────────────────────────────────
 
     async getFormTypes(roles: string[] = []): Promise<any[]> {
-        // No is_active column on form_types — return all
-        return this.formRepo.findAllFormTypes({});
+        // Admin users see all forms; regular users see only active forms
+        const isAdmin = roles.includes('ADMIN');
+        const allForms = await this.formRepo.findAllFormTypes({});
+        
+        if (isAdmin) {
+            return allForms;
+        }
+        
+        // Filter to show only active forms to non-admin users
+        return allForms.filter((form: any) => form.is_active !== false);
     }
 
     async createFormType(dto: CreateFormTypeDto): Promise<any> {
@@ -61,6 +69,9 @@ export class FormService implements IFormService {
         };
         if (dto.approval_rules !== undefined) {
             updateData.approval_rules = dto.approval_rules;
+        }
+        if (dto.is_active !== undefined) {
+            updateData.is_active = dto.is_active;
         }
 
         return this.formRepo.updateFormType(id, updateData);
