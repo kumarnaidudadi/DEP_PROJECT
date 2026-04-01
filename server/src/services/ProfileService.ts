@@ -19,6 +19,16 @@ export class ProfileService implements IProfileService {
 
         if (!user) throw new Error('User not found');
 
+        // Fetch department name separately
+        let departmentName = null;
+        if (user.department_id) {
+            const dept = await this.prisma.departments.findUnique({
+                where: { id: user.department_id },
+                select: { name: true }
+            });
+            departmentName = dept?.name || null;
+        }
+
         return {
             id: Number(user.id),
             name: user.name,
@@ -26,7 +36,7 @@ export class ProfileService implements IProfileService {
             department_id: user.department_id ? Number(user.department_id) : null,
             display_name: user.name,
             roles: user.user_roles.map((ur: any) => ur.roles.name),
-            department: null,
+            department: departmentName,
         };
     }
 

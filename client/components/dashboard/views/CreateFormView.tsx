@@ -478,6 +478,37 @@ export default function CreateFormView({
                                                     <div><label style={labelStyle}>Max</label><input type="number" value={field.max ?? ''} onChange={e => updateField(fi, f => ({ ...f, max: e.target.value === '' ? undefined : Number(e.target.value) }))} style={inputStyleSm} /></div>
                                                 </div>
                                             )}
+                                            {(field.type === 'tuple' || field.type === 'list') && (
+                                                <div style={{ marginTop: '10px', padding: '10px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                        <label style={labelStyle}>{field.type === 'tuple' ? 'Columns' : 'Rows'}</label>
+                                                        <button type="button" onClick={() => updateField(fi, f => ({ ...f, subFields: [...(f.subFields || []), { name: '', type: 'text' }] }))} style={{ ...btnSmall, color: '#2563eb' }}><Plus size={11} /> Add</button>
+                                                    </div>
+                                                    {(field.subFields || []).map((sf, si) => (
+                                                        <div key={`${field.id}-subfield-${si}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '8px', alignItems: 'flex-end' }}>
+                                                            <div>
+                                                                <label style={{ ...labelStyle, marginBottom: '2px' }}>Column Name</label>
+                                                                <input value={sf.name} onChange={e => updateField(fi, f => { const sfs = [...(f.subFields || [])]; sfs[si] = { ...sfs[si], name: e.target.value }; return { ...f, subFields: sfs }; })} placeholder="e.g. Date" style={inputStyleSm} />
+                                                            </div>
+                                                            <div>
+                                                                <label style={{ ...labelStyle, marginBottom: '2px' }}>Type</label>
+                                                                <select value={sf.type} onChange={e => updateField(fi, f => { const sfs = [...(f.subFields || [])]; sfs[si] = { ...sfs[si], type: e.target.value }; return { ...f, subFields: sfs }; })} style={inputStyleSm}>
+                                                                    <option value="text">Text</option>
+                                                                    <option value="number">Number</option>
+                                                                    <option value="date">Date</option>
+                                                                    <option value="date_from_to">Date Range</option>
+                                                                    <option value="select">Select</option>
+                                                                    <option value="bool">Checkbox</option>
+                                                                </select>
+                                                            </div>
+                                                            <button type="button" onClick={() => updateField(fi, f => { const sfs = [...(f.subFields || [])]; sfs.splice(si, 1); return { ...f, subFields: sfs }; })} style={{ ...btnSmall, color: '#ef4444', borderColor: '#fecaca' }}><Trash2 size={11} /></button>
+                                                        </div>
+                                                    ))}
+                                                    {(field.subFields || []).length === 0 && (
+                                                        <div style={{ fontSize: '12px', color: '#9ca3af', padding: '8px 0' }}>No columns defined. Add one to get started.</div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
