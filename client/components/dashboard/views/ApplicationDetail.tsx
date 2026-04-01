@@ -400,13 +400,18 @@ export default function ApplicationDetail({
             );
         }
 
-        if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
+        const objectRows = Array.isArray(value)
+            ? value.filter((row): row is Record<string, unknown> => Boolean(row) && typeof row === 'object' && !Array.isArray(row))
+            : [];
+
+        if (objectRows.length > 0) {
+            const columns = Array.from(new Set(objectRows.flatMap(row => Object.keys(row))));
             return (
                 <div style={{ marginTop: '6px', overflowX: 'auto', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
                         <thead style={{ background: '#f9fafb' }}>
                             <tr>
-                                {Object.keys(value[0]).map(col => (
+                                {columns.map(col => (
                                     <th key={col} style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontWeight: 600 }}>
                                         {formatTitleCase(col)}
                                     </th>
@@ -414,10 +419,12 @@ export default function ApplicationDetail({
                             </tr>
                         </thead>
                         <tbody>
-                            {value.map((row: any, rIdx: number) => (
-                                <tr key={rIdx} style={{ borderBottom: rIdx === value.length - 1 ? 'none' : '1px solid #f3f4f6' }}>
-                                    {Object.values(row).map((cell: any, cIdx: number) => (
-                                        <td key={cIdx} style={{ padding: '6px 8px', color: '#1f2937' }}>{String(cell || '—')}</td>
+                            {objectRows.map((row, rIdx) => (
+                                <tr key={rIdx} style={{ borderBottom: rIdx === objectRows.length - 1 ? 'none' : '1px solid #f3f4f6' }}>
+                                    {columns.map(col => (
+                                        <td key={col} style={{ padding: '6px 8px', color: '#1f2937' }}>
+                                            {row[col] === undefined || row[col] === null || row[col] === '' ? '—' : String(row[col])}
+                                        </td>
                                     ))}
                                 </tr>
                             ))}
