@@ -382,7 +382,11 @@ export default function ApplicationDetail({
         if (field.type === 'date_from_to') {
             const from = formData[`${field.key}_from`];
             const to = formData[`${field.key}_to`];
-            return from || to ? `${from || '—'} to ${to || '—'}` : '—';
+            const format = (d: string) => {
+                if (!d) return '—';
+                try { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) } catch { return d; }
+            };
+            return from || to ? `${format(from)} to ${format(to)}` : '—';
         }
 
         const value = formData[field.key];
@@ -413,7 +417,7 @@ export default function ApplicationDetail({
                             <tr>
                                 {columns.map(col => (
                                     <th key={col} style={{ padding: '6px 8px', textAlign: 'left', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontWeight: 600 }}>
-                                        {formatTitleCase(col)}
+                                        {getSubFieldLabel(col, field.subFields, formatTitleCase)}
                                     </th>
                                 ))}
                             </tr>
@@ -437,7 +441,7 @@ export default function ApplicationDetail({
         if (typeof value === 'object' && value !== null) {
             return Object.entries(value)
                 .filter(([_, val]) => val !== '' && val !== null)
-                .map(([sk, sv]) => `${formatTitleCase(sk)}: ${sv}`)
+                .map(([sk, sv]) => `${getSubFieldLabel(sk, field.subFields, formatTitleCase)}: ${sv}`)
                 .join(' | ') || '—';
         }
 
@@ -637,7 +641,9 @@ export default function ApplicationDetail({
                                                 )}
                                                 <FieldRenderer
                                                     field={f}
-                                                    value={approvalData[f.key]}
+                                                    value={f.type === 'date_from_to' ? undefined : approvalData[f.key]}
+                                                    fromValue={approvalData[`${f.key}_from`]}
+                                                    toValue={approvalData[`${f.key}_to`]}
                                                     onChange={(key, val) => onApprovalData({ ...approvalData, [key]: val })}
                                                     profileSignatureUrl={profile?.signature_url}
                                                     onSignatureUpload={onSigUpload}

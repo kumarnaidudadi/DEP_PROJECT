@@ -187,6 +187,12 @@ export default function FieldTypePicker({
                             ref={searchRef}
                             value={query}
                             onChange={event => setQuery(event.target.value)}
+                            onKeyDown={event => {
+                                if (event.key === 'Enter' && filteredOptions.length > 0) {
+                                    event.preventDefault();
+                                    handleSelect(filteredOptions[0].type);
+                                }
+                            }}
                             placeholder="Search..."
                             style={{ width: '100%', height: '32px', paddingLeft: '30px', paddingRight: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', outline: 'none', color: '#1f2937' }}
                         />

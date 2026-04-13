@@ -546,23 +546,39 @@ export default function CreateFormView({
                                                         <button type="button" onClick={() => updateField(fi, f => ({ ...f, subFields: [...(f.subFields || []), { name: '', type: 'text' }] }))} style={{ ...btnSmall, color: '#2563eb' }}><Plus size={11} /> Add</button>
                                                     </div>
                                                     {(field.subFields || []).map((sf, si) => (
-                                                        <div key={`${field.id}-subfield-${si}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '8px', alignItems: 'flex-end' }}>
-                                                            <div>
-                                                                <label style={{ ...labelStyle, marginBottom: '2px' }}>Column Name</label>
-                                                                <input value={sf.name} onChange={e => updateField(fi, f => { const sfs = [...(f.subFields || [])]; sfs[si] = { ...sfs[si], name: e.target.value }; return { ...f, subFields: sfs }; })} placeholder="e.g. Date" style={inputStyleSm} />
+                                                        <div key={`${field.id}-subfield-${si}`} style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #f3f4f6' }}>
+                                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', alignItems: 'flex-end' }}>
+                                                                <div>
+                                                                    <label style={{ ...labelStyle, marginBottom: '2px' }}>Column Name</label>
+                                                                    <input value={sf.name} onChange={e => updateField(fi, f => { const sfs = [...(f.subFields || [])]; sfs[si] = { ...sfs[si], name: e.target.value }; return { ...f, subFields: sfs }; })} placeholder="e.g. Date" style={inputStyleSm} />
+                                                                </div>
+                                                                <div>
+                                                                    <label style={{ ...labelStyle, marginBottom: '2px' }}>Type</label>
+                                                                    <select value={sf.type} onChange={e => updateField(fi, f => { const sfs = [...(f.subFields || [])]; const newType = e.target.value; sfs[si] = { ...sfs[si], type: newType, options: newType === 'select' ? ['Option 1', 'Option 2'] : undefined }; return { ...f, subFields: sfs }; })} style={inputStyleSm}>
+                                                                        <option value="text">Text</option>
+                                                                        <option value="number">Number</option>
+                                                                        <option value="date">Date</option>
+                                                                        <option value="date_from_to">Date Range</option>
+                                                                        <option value="select">Select</option>
+                                                                        <option value="bool">Checkbox</option>
+                                                                    </select>
+                                                                </div>
+                                                                <button type="button" onClick={() => updateField(fi, f => { const sfs = [...(f.subFields || [])]; sfs.splice(si, 1); return { ...f, subFields: sfs }; })} style={{ ...btnSmall, color: '#ef4444', borderColor: '#fecaca' }}><Trash2 size={11} /></button>
                                                             </div>
-                                                            <div>
-                                                                <label style={{ ...labelStyle, marginBottom: '2px' }}>Type</label>
-                                                                <select value={sf.type} onChange={e => updateField(fi, f => { const sfs = [...(f.subFields || [])]; sfs[si] = { ...sfs[si], type: e.target.value }; return { ...f, subFields: sfs }; })} style={inputStyleSm}>
-                                                                    <option value="text">Text</option>
-                                                                    <option value="number">Number</option>
-                                                                    <option value="date">Date</option>
-                                                                    <option value="date_from_to">Date Range</option>
-                                                                    <option value="select">Select</option>
-                                                                    <option value="bool">Checkbox</option>
-                                                                </select>
-                                                            </div>
-                                                            <button type="button" onClick={() => updateField(fi, f => { const sfs = [...(f.subFields || [])]; sfs.splice(si, 1); return { ...f, subFields: sfs }; })} style={{ ...btnSmall, color: '#ef4444', borderColor: '#fecaca' }}><Trash2 size={11} /></button>
+                                                            {sf.type === 'select' && (
+                                                                <div style={{ marginTop: '8px', padding: '10px', background: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                                        <label style={labelStyle}>Dropdown Options</label>
+                                                                        <button type="button" onClick={() => updateField(fi, f => { const sfs = [...(f.subFields || [])]; sfs[si] = { ...sfs[si], options: [...(sfs[si].options || []), `Option ${(sfs[si].options?.length || 0) + 1}`] }; return { ...f, subFields: sfs }; })} style={{ ...btnSmall, color: '#2563eb' }}><Plus size={11} /> Add</button>
+                                                                    </div>
+                                                                    {(sf.options || []).map((opt, oi) => (
+                                                                        <div key={`${field.id}-subopt-${si}-${oi}`} style={{ display: 'flex', gap: '6px', marginBottom: '5px' }}>
+                                                                            <input value={opt} onChange={e => updateField(fi, f => { const sfs = [...(f.subFields || [])]; const newOpts = [...(sfs[si].options || [])]; newOpts[oi] = e.target.value; sfs[si] = { ...sfs[si], options: newOpts }; return { ...f, subFields: sfs }; })} style={{ ...inputStyleSm, flex: 1 }} />
+                                                                            <button type="button" onClick={() => updateField(fi, f => { const sfs = [...(f.subFields || [])]; const newOpts = [...(sfs[si].options || [])]; newOpts.splice(oi, 1); sfs[si] = { ...sfs[si], options: newOpts }; return { ...f, subFields: sfs }; })} style={{ ...btnSmall, color: '#ef4444', borderColor: '#fecaca' }}><Trash2 size={11} /></button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ))}
                                                     {(field.subFields || []).length === 0 && (
