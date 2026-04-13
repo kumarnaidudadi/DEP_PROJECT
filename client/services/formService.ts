@@ -4,11 +4,42 @@
 import api from '@/lib/api';
 import { FormType, Application, UserSearchResult } from '@/types';
 
+/** Compose a display name from whatever shape the API returns */
+function composeName(user: any): string {
+    if (!user) return '';
+    if (user.name) return user.name;
+    const parts = [user.first_name, user.last_name].filter(Boolean);
+    return parts.join(' ') || user.email || '';
+}
+
+/** Normalize a user object to always have a .name field */
+function normalizeUser(user: any): any {
+    if (!user) return user;
+    return { ...user, name: composeName(user) };
+}
+
 function normalizeApplication(item: any): Application {
     return {
         ...item,
         current_status: (item.current_status ?? item.status ?? '').toUpperCase(),
         submitted_by: Number(item.submitted_by ?? item.applicant_id ?? 0),
+        // Normalize the applicant user object
+        users: normalizeUser(item.users),
+        // Normalize from_user and to_user inside each form_forward
+        form_forwards: Array.isArray(item.form_forwards)
+            ? item.form_forwards.map((fwd: any) => ({
+                ...fwd,
+                from_user: normalizeUser(fwd.from_user),
+                to_user: normalizeUser(fwd.to_user),
+            }))
+            : item.form_forwards,
+        // Normalize approver user objects inside form_approvals
+        form_approvals: Array.isArray(item.form_approvals)
+            ? item.form_approvals.map((appr: any) => ({
+                ...appr,
+                users: normalizeUser(appr.users),
+            }))
+            : item.form_approvals,
     };
 }
 
