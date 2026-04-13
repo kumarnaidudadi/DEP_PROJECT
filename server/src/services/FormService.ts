@@ -200,7 +200,7 @@ export class FormService implements IFormService {
         // Notify the target user
         if (toUser.email) {
             try {
-                const applicantName = form.users?.name || 'Unknown';
+                const applicantName = [form.users?.first_name, form.users?.last_name].filter(Boolean).join(' ') || 'Unknown';
                 const metadata: EmailMetadata = {
                     requestId: Number(form.id),
                     applicantName,
@@ -372,7 +372,7 @@ export class FormService implements IFormService {
             try {
                 const metadata: EmailMetadata = {
                     requestId: Number(form.id),
-                    applicantName: applicant.name || 'Unknown',
+                    applicantName: [applicant.first_name, applicant.last_name].filter(Boolean).join(' ') || 'Unknown',
                     formType: form.form_types?.name || 'Unknown',
                     status,
                     actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard/all/${form.id}`,
@@ -392,7 +392,7 @@ export class FormService implements IFormService {
         const users = await this.formRepo.searchUsers(query);
         return users.map((u: any) => ({
             id: Number(u.id),
-            name: u.name,
+            name: [u.first_name, u.last_name].filter(Boolean).join(' ') || '',
             email: u.email,
             department: null,
             roles: u.user_roles?.map((ur: any) => ur.roles?.name).filter(Boolean) || [],

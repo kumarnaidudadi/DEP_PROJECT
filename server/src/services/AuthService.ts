@@ -46,15 +46,17 @@ export class AuthService implements IAuthService {
 
         const passwordHash = await bcrypt.hash(dto.password, 10);
         const user = await this.userRepo.create({
-            name: `${dto.first_name} ${dto.last_name}`.trim(),
+            first_name: dto.first_name,
+            last_name: dto.last_name,
             email: dto.email,
             password: passwordHash,
         });
 
         const token = this.generateToken(user.id, user.email);
+        const name = `${user.first_name || ''} ${user.last_name || ''}`.trim();
         return {
             token,
-            user: { id: Number(user.id), email: user.email, name: user.name, roles: [] }
+            user: { id: Number(user.id), email: user.email, name, roles: [] }
         };
     }
 
@@ -68,9 +70,10 @@ export class AuthService implements IAuthService {
 
         const roles = await this.ensureUserHasRole(user);
         const token = this.generateToken(user.id, user.email, roles);
+        const name = `${user.first_name || ''} ${user.last_name || ''}`.trim();
         return {
             token,
-            user: { id: Number(user.id), email: user.email, name: user.name, roles }
+            user: { id: Number(user.id), email: user.email, name, roles }
         };
     }
 
@@ -92,9 +95,10 @@ export class AuthService implements IAuthService {
 
         const roles = await this.ensureUserHasRole(user);
         const token = this.generateToken(user.id, user.email, roles);
+        const name = `${user.first_name || ''} ${user.last_name || ''}`.trim();
         return {
             token,
-            user: { id: Number(user.id), email: user.email, name: user.name, roles }
+            user: { id: Number(user.id), email: user.email, name, roles }
         };
     }
 
@@ -141,17 +145,19 @@ export class AuthService implements IAuthService {
         const user = await this.userRepo.findByEmail(email);
         if (!user) throw new Error('USER_NOT_FOUND');
 
-        // OTP verification is a no-op if the DB doesn't have OTP columns.
-        // In production, add otp_code/otp_expiry columns or use a separate OTP store.
+        if (!user.otp_code) throw new Error('NO_OTP_REQUESTED');
+        if (user.otp_expiry && new Date() > new Date(user.otp_expiry)) throw new Error('OTP_EXPIRED');
+        if (user.otp_code !== otp) throw new Error('INVALID_OTP');
 
         // Clear OTP after successful verification
         await this.userRepo.updateOtp(email, null, null);
 
         const roles = await this.ensureUserHasRole(user);
         const token = this.generateToken(user.id, user.email, roles);
+        const name = `${user.first_name || ''} ${user.last_name || ''}`.trim();
         return {
             token,
-            user: { id: Number(user.id), email: user.email, name: user.name, roles }
+            user: { id: Number(user.id), email: user.email, name, roles }
         };
     }
 }

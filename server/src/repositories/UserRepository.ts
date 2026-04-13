@@ -28,9 +28,10 @@ export class UserRepository implements IUserRepository {
     }
 
     async updateOtp(email: string, otp: string | null, expiry: Date | null): Promise<void> {
-        // No otp columns in actual DB — this is a no-op placeholder
-        // OTP support requires adding otp_code/otp_expiry columns to the users table
-        console.warn('[UserRepository] updateOtp called but DB has no OTP columns');
+        await this.prisma.users.update({
+            where: { email },
+            data: { otp_code: otp, otp_expiry: expiry },
+        });
     }
 
     async findDefaultRole(): Promise<any | null> {

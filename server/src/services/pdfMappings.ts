@@ -19,7 +19,7 @@ export interface PdfMappingConfig {
 
 export const airIndiaMapping: PdfMappingConfig = {
   fields: [
-    { getter: (form, getFd) => form.form_data?.Name || form.users?.name || '', x: 310, y: 172 },
+    { getter: (form, getFd) => form.form_data?.Name || [form.users?.first_name, form.users?.last_name].filter(Boolean).join(' ') || '', x: 310, y: 172 },
     { getter: (form, getFd) => getFd('Designation'), x: 310, y: 198 },
     { getter: (form, getFd) => getFd('Department'), x: 310, y: 218 },
     { getter: (form, getFd) => getFd('from'), x: 320, y: 262, size: 10 },
@@ -47,7 +47,7 @@ export const airIndiaMapping: PdfMappingConfig = {
 export const stationLeaveMapping: PdfMappingConfig = {
   fields: [
     // 1. Name
-    { getter: (form, getFd) => form.form_data?.Name || form.users?.name || '', x: 350, y: 229 },
+    { getter: (form, getFd) => form.form_data?.Name || [form.users?.first_name, form.users?.last_name].filter(Boolean).join(' ') || '', x: 350, y: 229 },
 
     // 2. Designation
     { getter: (form, getFd) => getFd('Designation'), x: 350, y: 262 },

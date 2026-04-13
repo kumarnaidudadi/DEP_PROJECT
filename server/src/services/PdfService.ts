@@ -197,7 +197,7 @@ export class PdfService implements IPdfService {
 
         // Applicant signature: search form_data for signature fields
         const applicantSig = getFd('signature');
-        const applicantName = form.users?.name || '';
+        const applicantName = [form.users?.first_name, form.users?.last_name].filter(Boolean).join(' ') || '';
 
         // Stage signatures from form_forwards approvals
         const getStageSig = (stageStart: string) => {
@@ -222,7 +222,7 @@ export class PdfService implements IPdfService {
                 }
             }
 
-            const signerName = (approval as any).from_user?.name || '';
+            const signerName = [(approval as any).from_user?.first_name, (approval as any).from_user?.last_name].filter(Boolean).join(' ') || '';
             return { sigUrl, signerName };
         };
 

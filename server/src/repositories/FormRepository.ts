@@ -17,16 +17,16 @@ export class FormRepository implements IFormRepository {
             where: { id: BigInt(id) },
             include: {
                 form_types: true,
-                users: { select: { id: true, name: true, email: true, department_id: true } },
+                users: { select: { id: true, first_name: true, last_name: true, email: true, department_id: true } },
                 form_forwards: {
                     include: {
-                        from_user: { select: { id: true, name: true, email: true } },
-                        to_user: { select: { id: true, name: true, email: true } }
+                        from_user: { select: { id: true, first_name: true, last_name: true, email: true } },
+                        to_user: { select: { id: true, first_name: true, last_name: true, email: true } }
                     },
                     orderBy: { forwarded_at: 'asc' }
                 },
                 form_history: {
-                    include: { users: { select: { id: true, name: true, email: true } } },
+                    include: { users: { select: { id: true, first_name: true, last_name: true, email: true } } },
                     orderBy: { created_at: 'desc' }
                 },
                 office_orders: true
@@ -40,19 +40,19 @@ export class FormRepository implements IFormRepository {
             include: {
                 form_types: true,
                 users: {
-                    select: { id: true, name: true, email: true, department_id: true }
+                    select: { id: true, first_name: true, last_name: true, email: true, department_id: true }
                 },
                 form_forwards: {
                     orderBy: { forwarded_at: 'desc' },
                     take: 1,
                     include: {
-                        to_user: { select: { id: true, name: true } }
+                        to_user: { select: { id: true, first_name: true, last_name: true } }
                     }
                 },
                 form_history: {
                     orderBy: { created_at: 'desc' },
                     take: 3,
-                    include: { users: { select: { id: true, name: true } } }
+                    include: { users: { select: { id: true, first_name: true, last_name: true } } }
                 },
                 office_orders: true
             },
@@ -120,8 +120,8 @@ export class FormRepository implements IFormRepository {
         return this.prisma.form_forwards.findMany({
             where: { form_id: BigInt(formId) },
             include: {
-                from_user: { select: { id: true, name: true, email: true } },
-                to_user: { select: { id: true, name: true, email: true } }
+                from_user: { select: { id: true, first_name: true, last_name: true, email: true } },
+                to_user: { select: { id: true, first_name: true, last_name: true, email: true } }
             },
             orderBy: { forwarded_at: 'asc' },
         });
@@ -131,8 +131,8 @@ export class FormRepository implements IFormRepository {
         return this.prisma.form_forwards.findFirst({
             where: { form_id: BigInt(formId) },
             include: {
-                from_user: { select: { id: true, name: true } },
-                to_user: { select: { id: true, name: true } }
+                from_user: { select: { id: true, first_name: true, last_name: true } },
+                to_user: { select: { id: true, first_name: true, last_name: true } }
             },
             orderBy: { forwarded_at: 'desc' },
         });
@@ -187,13 +187,15 @@ export class FormRepository implements IFormRepository {
         return this.prisma.users.findMany({
             where: {
                 OR: [
-                    { name: { contains: query, mode: 'insensitive' } },
+                    { first_name: { contains: query, mode: 'insensitive' } },
+                    { last_name: { contains: query, mode: 'insensitive' } },
                     { email: { contains: query, mode: 'insensitive' } },
                 ]
             },
             select: {
                 id: true,
-                name: true,
+                first_name: true,
+                last_name: true,
                 email: true,
                 department_id: true,
                 user_roles: {
@@ -201,7 +203,7 @@ export class FormRepository implements IFormRepository {
                 }
             },
             take: limit,
-            orderBy: { name: 'asc' },
+            orderBy: { first_name: 'asc' },
         });
     }
 
@@ -210,7 +212,8 @@ export class FormRepository implements IFormRepository {
             where: { id: BigInt(id) },
             select: {
                 id: true,
-                name: true,
+                first_name: true,
+                last_name: true,
                 email: true,
                 department_id: true,
                 user_roles: {

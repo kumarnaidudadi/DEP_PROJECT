@@ -31,10 +31,10 @@ export class ProfileService implements IProfileService {
 
         return {
             id: Number(user.id),
-            name: user.name,
+            name: [user.first_name, user.last_name].filter(Boolean).join(' ') || '',
             email: user.email,
             department_id: user.department_id ? Number(user.department_id) : null,
-            display_name: user.name,
+            display_name: [user.first_name, user.last_name].filter(Boolean).join(' ') || '',
             roles: user.user_roles.map((ur: any) => ur.roles.name),
             department: departmentName,
         };
@@ -49,15 +49,22 @@ export class ProfileService implements IProfileService {
         return depts.map(d => ({ id: Number(d.id), name: d.name }));
     }
 
-    async updateProfile(userId: number, data: { name?: string }) {
+    async updateProfile(userId: number, data: { name?: string; first_name?: string; last_name?: string }) {
+        // Support both legacy `name` (split into first/last) and direct first_name/last_name
+        let updateData: any = { updated_at: new Date() };
+        if (data.first_name !== undefined) updateData.first_name = data.first_name;
+        if (data.last_name !== undefined) updateData.last_name = data.last_name;
+        if (data.name && !data.first_name && !data.last_name) {
+            const parts = data.name.trim().split(' ');
+            updateData.first_name = parts[0] || '';
+            updateData.last_name = parts.slice(1).join(' ') || '';
+        }
         const updated = await this.prisma.users.update({
             where: { id: BigInt(userId) },
-            data: {
-                ...(data.name && { name: data.name }),
-                updated_at: new Date(),
-            },
+            data: updateData,
         });
-        return { id: Number(updated.id), name: updated.name, email: updated.email };
+        const fullName = [updated.first_name, updated.last_name].filter(Boolean).join(' ');
+        return { id: Number(updated.id), name: fullName, email: updated.email };
     }
 
     async uploadSignature(userId: number, fileBuffer: Buffer, fileName: string) {
