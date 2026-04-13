@@ -39,6 +39,7 @@ router.post('/:type_id/draft', verifyToken, controller.saveDraft);
 router.get('/:id', verifyToken, controller.getFormById);
 router.patch('/:id/status', verifyToken, controller.updateFormStatus);
 router.post('/:id/forward', verifyToken, controller.forwardForm);
+router.get('/system/logs', verifyToken, controller.getSystemLogs);
 router.get('/:id/history', verifyToken, controller.getFormHistory);
 router.delete('/:id', verifyToken, controller.deleteForm);
 router.get('/:id/download', verifyToken, controller.downloadPdf);

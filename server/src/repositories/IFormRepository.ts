@@ -40,6 +40,7 @@ export interface IFormRepository {
 
     // History
     createStatusHistory(data: object): Promise<any>;
+    getSystemLogs(): Promise<any[]>;
 
     // Transactions
     runTransaction<T>(fn: (tx: any) => Promise<T>): Promise<T>;

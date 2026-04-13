@@ -413,6 +413,13 @@ export class FormService implements IFormService {
         };
     }
 
+    async getSystemLogs(roles: string[]): Promise<any[]> {
+        if (!roles.includes('ADMIN')) {
+            throw new Error('UNAUTHORIZED');
+        }
+        return this.formRepo.getSystemLogs();
+    }
+
     // ── Delete ─────────────────────────────────────────────────────────────
 
     async deleteForm(id: number, roles: string[], userId?: number): Promise<void> {

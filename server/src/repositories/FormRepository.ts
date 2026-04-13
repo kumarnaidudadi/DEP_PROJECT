@@ -237,6 +237,22 @@ export class FormRepository implements IFormRepository {
         return this.prisma.form_history.create({ data: data as any });
     }
 
+    async getSystemLogs(): Promise<any[]> {
+        return this.prisma.form_history.findMany({
+            include: {
+                users: { select: { id: true, first_name: true, last_name: true, email: true } },
+                applied_forms: {
+                    select: {
+                        id: true,
+                        form_types: { select: { name: true } },
+                    }
+                }
+            },
+            orderBy: { created_at: 'desc' },
+            take: 1000 // Limit to last 1000 logs for safety
+        });
+    }
+
     // ── Transactions ───────────────────────────────────────────────────────
 
     async runTransaction<T>(fn: (tx: any) => Promise<T>): Promise<T> {

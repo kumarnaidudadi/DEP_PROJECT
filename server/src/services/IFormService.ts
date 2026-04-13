@@ -26,4 +26,5 @@ export interface IFormService {
 
     // History
     getFormHistory(formId: number): Promise<any>;
+    getSystemLogs(roles: string[]): Promise<any>;
 }

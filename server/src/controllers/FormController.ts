@@ -255,6 +255,20 @@ export class FormController {
         }
     };
 
+    // ── System Logs (Admin only) ──────────────────────────────────────────
+
+    getSystemLogs = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        const roles = req.user?.roles || [];
+        try {
+            const logs = await this.formService.getSystemLogs(roles);
+            res.json(logs);
+        } catch (e: any) {
+            console.error('[FormController] getSystemLogs:', e.message);
+            if (e.message === 'UNAUTHORIZED') res.status(401).json({ error: 'Unauthorized' });
+            else res.status(500).json({ error: 'Failed to get system logs' });
+        }
+    };
+
     // ── PDF Download ───────────────────────────────────────────────────────
 
     downloadPdf = async (req: AuthenticatedRequest, res: Response): Promise<void> => {

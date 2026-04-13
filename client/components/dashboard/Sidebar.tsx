@@ -6,8 +6,9 @@ import React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
     FilePlus, FileText, ClipboardList,
-    User, LogOut, Building2
+    User, LogOut, Building2, Activity
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface SidebarProps {
     canApprove: boolean;
@@ -28,10 +29,14 @@ export default function Sidebar({ canApprove, pendingCount, onLogout }: SidebarP
     const router = useRouter();
     const pathname = usePathname();
 
+    const { userRoles } = useAuth();
+    const isAdmin = userRoles.includes('ADMIN');
+
     const items: SidebarItem[] = [
         { href: '/dashboard/all', icon: <FileText size={20} />, label: 'All Applications' },
         ...(canApprove ? [{ href: '/dashboard/pending', icon: <ClipboardList size={20} />, label: 'Pending Work', badge: pendingCount || undefined }] : []),
         { href: '/dashboard/new', icon: <FilePlus size={20} />, label: 'New Application' },
+        ...(isAdmin ? [{ href: '/dashboard/system-logs', icon: <Activity size={20} />, label: 'System Logs' }] : []),
     ];
 
     const isActive = (href: string) => {
