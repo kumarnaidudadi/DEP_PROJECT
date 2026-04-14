@@ -9,6 +9,8 @@ interface Props {
     onClick: () => void;
 }
 
+// this is Listiteem funtion i have added this and chnanged this
+
 export default function ListItem({ children, sel, onClick }: Props) {
     return (
         <div onClick={onClick} style={{
@@ -18,6 +20,7 @@ export default function ListItem({ children, sel, onClick }: Props) {
             borderLeft: sel ? '3px solid #2563eb' : '3px solid transparent',
             borderBottom: '1px solid #f3f4f6', transition: 'all 0.1s',
         }}
+            
             onMouseEnter={e => { if (!sel) (e.currentTarget as HTMLElement).style.background = '#f9fafb'; }}
             onMouseLeave={e => { if (!sel) (e.currentTarget as HTMLElement).style.background = '#fff'; }}
         >
