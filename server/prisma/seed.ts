@@ -19,7 +19,11 @@ async function main() {
         await prisma.form_types.upsert({
             where: { name },
             update: {},
-            create: { name, description: `${name} Form` }
+            create: { 
+                name, 
+                description: `${name} Form`,
+                schema: {} // Required field
+            }
         });
     }
 

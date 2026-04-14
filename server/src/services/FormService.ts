@@ -94,8 +94,8 @@ export class FormService implements IFormService {
             ? {}
             : {
                 OR: [
-                    { applicant_id: BigInt(userId) },
-                    { form_forwards: { some: { forwarded_to: BigInt(userId) } } }
+                    { applicant_id: Number(userId) },
+                    { form_forwards: { some: { forwarded_to: Number(userId) } } }
                 ]
             };
 
@@ -130,9 +130,9 @@ export class FormService implements IFormService {
 
         // Log history
         await this.formRepo.createStatusHistory({
-            applied_form_id: BigInt(form.id),
+            applied_form_id: Number(form.id),
             action: 'submitted',
-            changed_by: BigInt(dto.userId),
+            changed_by: Number(dto.userId),
             new_data: { status: 'submitted' },
         });
 
@@ -176,9 +176,9 @@ export class FormService implements IFormService {
 
         // Create forward record
         await this.formRepo.createForward({
-            form_id: BigInt(dto.formId),
-            forwarded_by: BigInt(dto.fromUserId),
-            forwarded_to: BigInt(dto.toUserId),
+            form_id: Number(dto.formId),
+            forwarded_by: Number(dto.fromUserId),
+            forwarded_to: Number(dto.toUserId),
             note: dto.note || '',
             action: 'forwarded',
         });
@@ -189,9 +189,9 @@ export class FormService implements IFormService {
 
         // Log history
         await this.formRepo.createStatusHistory({
-            applied_form_id: BigInt(dto.formId),
+            applied_form_id: Number(dto.formId),
             action: 'forwarded',
-            changed_by: BigInt(dto.fromUserId),
+            changed_by: Number(dto.fromUserId),
             old_data: { status: oldStatus },
             new_data: { status: 'forwarded', forwarded_to: dto.toUserId },
             remarks: dto.note || '',
@@ -263,9 +263,9 @@ export class FormService implements IFormService {
         if (dto.decision === 'REJECTED') {
             // Log as a rejection forward
             await this.formRepo.createForward({
-                form_id: BigInt(dto.formId),
-                forwarded_by: BigInt(dto.userId),
-                forwarded_to: BigInt(form.applicant_id || dto.userId),
+                form_id: Number(dto.formId),
+                forwarded_by: Number(dto.userId),
+                forwarded_to: Number(form.applicant_id || dto.userId),
                 action: 'rejected',
                 remarks: dto.remarks || '',
             });
@@ -273,9 +273,9 @@ export class FormService implements IFormService {
             const result = await this.formRepo.updateStatus(dto.formId, 'rejected');
 
             await this.formRepo.createStatusHistory({
-                applied_form_id: BigInt(dto.formId),
+                applied_form_id: Number(dto.formId),
                 action: 'rejected',
-                changed_by: BigInt(dto.userId),
+                changed_by: Number(dto.userId),
                 old_data: { status: oldStatus },
                 new_data: { status: 'rejected' },
                 remarks: dto.remarks || '',
@@ -295,9 +295,9 @@ export class FormService implements IFormService {
 
         // Log approval via form_forwards with action = 'approved'
         await this.formRepo.createForward({
-            form_id: BigInt(dto.formId),
-            forwarded_by: BigInt(dto.userId),
-            forwarded_to: BigInt(form.applicant_id || dto.userId),
+            form_id: Number(dto.formId),
+            forwarded_by: Number(dto.userId),
+            forwarded_to: Number(form.applicant_id || dto.userId),
             action: 'approved',
             remarks: dto.remarks || '',
         });
@@ -322,9 +322,9 @@ export class FormService implements IFormService {
             const result = await this.formRepo.updateStatus(dto.formId, 'approved', { form_data: mergedFormData });
 
             await this.formRepo.createStatusHistory({
-                applied_form_id: BigInt(dto.formId),
+                applied_form_id: Number(dto.formId),
                 action: 'approved',
-                changed_by: BigInt(dto.userId),
+                changed_by: Number(dto.userId),
                 old_data: { status: oldStatus },
                 new_data: { status: 'approved' },
                 remarks: dto.remarks || '',
@@ -337,9 +337,9 @@ export class FormService implements IFormService {
             await this.formRepo.updateStatus(dto.formId, 'partially_approved');
 
             await this.formRepo.createStatusHistory({
-                applied_form_id: BigInt(dto.formId),
+                applied_form_id: Number(dto.formId),
                 action: 'partially_approved',
-                changed_by: BigInt(dto.userId),
+                changed_by: Number(dto.userId),
                 old_data: { status: oldStatus },
                 new_data: { status: 'partially_approved' },
                 remarks: dto.remarks || '',
@@ -357,9 +357,9 @@ export class FormService implements IFormService {
 
         if (!existingOrder) {
             await this.formRepo.createOfficeOrder({
-                applied_form_id: BigInt(form.id),
+                applied_form_id: Number(form.id),
                 order_number: orderNumber,
-                generated_by: BigInt(form.applicant_id || 1),
+                generated_by: Number(form.applicant_id || 1),
             });
         }
 

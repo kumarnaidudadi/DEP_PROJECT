@@ -9,7 +9,7 @@ export class ProfileService implements IProfileService {
 
     async getProfile(userId: number) {
         const user = await this.prisma.users.findUnique({
-            where: { id: BigInt(userId) },
+            where: { id: Number(userId) },
             include: {
                 user_roles: {
                     include: { roles: { select: { name: true } } }
@@ -60,7 +60,7 @@ export class ProfileService implements IProfileService {
             updateData.last_name = parts.slice(1).join(' ') || '';
         }
         const updated = await this.prisma.users.update({
-            where: { id: BigInt(userId) },
+            where: { id: Number(userId) },
             data: updateData,
         });
         const fullName = [updated.first_name, updated.last_name].filter(Boolean).join(' ');

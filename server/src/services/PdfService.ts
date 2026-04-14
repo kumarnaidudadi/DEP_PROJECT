@@ -15,7 +15,7 @@ export class PdfService implements IPdfService {
 
     async generateFormPdf(formId: number): Promise<Buffer> {
         const form = await this.prisma.applied_forms.findUnique({
-            where: { id: BigInt(formId) },
+            where: { id: Number(formId) },
             include: {
                 users: {
                     include: {

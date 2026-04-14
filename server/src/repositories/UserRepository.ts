@@ -18,7 +18,7 @@ export class UserRepository implements IUserRepository {
 
     async findById(id: number): Promise<any | null> {
         return this.prisma.users.findUnique({
-            where: { id: BigInt(id) },
+            where: { id: Number(id) },
             include: { user_roles: { include: { roles: true } } },
         });
     }
@@ -42,7 +42,7 @@ export class UserRepository implements IUserRepository {
 
     async assignRole(userId: number, roleId: number): Promise<void> {
         await this.prisma.user_roles.create({
-            data: { user_id: BigInt(userId), role_id: BigInt(roleId) },
+            data: { user_id: Number(userId), role_id: Number(roleId) },
         });
     }
 }

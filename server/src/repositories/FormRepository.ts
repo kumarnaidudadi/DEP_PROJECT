@@ -14,7 +14,7 @@ export class FormRepository implements IFormRepository {
 
     async findById(id: number): Promise<any | null> {
         return this.prisma.applied_forms.findUnique({
-            where: { id: BigInt(id) },
+            where: { id: Number(id) },
             include: {
                 form_types: true,
                 users: { select: { id: true, first_name: true, last_name: true, email: true, department_id: true } },
@@ -63,8 +63,8 @@ export class FormRepository implements IFormRepository {
     async create(dto: CreateFormDto): Promise<any> {
         return this.prisma.applied_forms.create({
             data: {
-                form_type_id: BigInt(dto.form_type_id),
-                applicant_id: BigInt(dto.userId),
+                form_type_id: Number(dto.form_type_id),
+                applicant_id: Number(dto.userId),
                 form_data: dto.form_data as any,
                 status: 'submitted',
                 submitted_at: new Date(),
@@ -75,7 +75,7 @@ export class FormRepository implements IFormRepository {
     async saveDraft(dto: CreateFormDto, id?: number): Promise<any> {
         if (id) {
             return this.prisma.applied_forms.update({
-                where: { id: BigInt(id) },
+                where: { id: Number(id) },
                 data: {
                     form_data: dto.form_data as any,
                     updated_at: new Date(),
@@ -84,8 +84,8 @@ export class FormRepository implements IFormRepository {
         }
         return this.prisma.applied_forms.create({
             data: {
-                form_type_id: BigInt(dto.form_type_id),
-                applicant_id: BigInt(dto.userId),
+                form_type_id: Number(dto.form_type_id),
+                applicant_id: Number(dto.userId),
                 form_data: dto.form_data as any,
                 status: 'draft',
             },
@@ -93,19 +93,19 @@ export class FormRepository implements IFormRepository {
     }
 
     async delete(id: number): Promise<void> {
-        await this.prisma.applied_forms.delete({ where: { id: BigInt(id) } });
+        await this.prisma.applied_forms.delete({ where: { id: Number(id) } });
     }
 
     async updateStatus(id: number, status: string, extra?: object): Promise<any> {
         return this.prisma.applied_forms.update({
-            where: { id: BigInt(id) },
+            where: { id: Number(id) },
             data: { status, updated_at: new Date(), ...extra },
         });
     }
 
     async updateFormData(id: number, formData: object): Promise<any> {
         return this.prisma.applied_forms.update({
-            where: { id: BigInt(id) },
+            where: { id: Number(id) },
             data: { form_data: formData as any },
         });
     }
@@ -118,7 +118,7 @@ export class FormRepository implements IFormRepository {
 
     async findForwardsByForm(formId: number): Promise<any[]> {
         return this.prisma.form_forwards.findMany({
-            where: { form_id: BigInt(formId) },
+            where: { form_id: Number(formId) },
             include: {
                 from_user: { select: { id: true, first_name: true, last_name: true, email: true } },
                 to_user: { select: { id: true, first_name: true, last_name: true, email: true } }
@@ -129,7 +129,7 @@ export class FormRepository implements IFormRepository {
 
     async findLatestForward(formId: number): Promise<any | null> {
         return this.prisma.form_forwards.findFirst({
-            where: { form_id: BigInt(formId) },
+            where: { form_id: Number(formId) },
             include: {
                 from_user: { select: { id: true, first_name: true, last_name: true } },
                 to_user: { select: { id: true, first_name: true, last_name: true } }
@@ -142,7 +142,7 @@ export class FormRepository implements IFormRepository {
 
     async findFormTypeById(id: number): Promise<any | null> {
         return this.prisma.form_types.findUnique({
-            where: { id: BigInt(id) },
+            where: { id: Number(id) },
         });
     }
 
@@ -158,17 +158,17 @@ export class FormRepository implements IFormRepository {
     }
 
     async updateFormType(id: number, data: object): Promise<any> {
-        return this.prisma.form_types.update({ where: { id: BigInt(id) }, data: data as any });
+        return this.prisma.form_types.update({ where: { id: Number(id) }, data: data as any });
     }
 
     async deleteFormType(id: number): Promise<void> {
-        await this.prisma.form_types.delete({ where: { id: BigInt(id) } });
+        await this.prisma.form_types.delete({ where: { id: Number(id) } });
     }
 
     // ── Office Orders ──────────────────────────────────────────────────────
 
     async findOfficeOrder(formId: number): Promise<any | null> {
-        return this.prisma.office_orders.findFirst({ where: { applied_form_id: BigInt(formId) } });
+        return this.prisma.office_orders.findFirst({ where: { applied_form_id: Number(formId) } });
     }
 
     async createOfficeOrder(data: object): Promise<any> {
@@ -209,7 +209,7 @@ export class FormRepository implements IFormRepository {
 
     async findUserById(id: number): Promise<any | null> {
         return this.prisma.users.findUnique({
-            where: { id: BigInt(id) },
+            where: { id: Number(id) },
             select: {
                 id: true,
                 first_name: true,
@@ -225,7 +225,7 @@ export class FormRepository implements IFormRepository {
 
     async getUserRoles(userId: number): Promise<string[]> {
         const userRoles = await this.prisma.user_roles.findMany({
-            where: { user_id: BigInt(userId) },
+            where: { user_id: Number(userId) },
             include: { roles: { select: { name: true } } }
         });
         return userRoles.map((ur: any) => ur.roles?.name).filter(Boolean);
