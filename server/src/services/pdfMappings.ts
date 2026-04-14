@@ -165,19 +165,29 @@ export const joiningReportMapping: PdfMappingConfig = {
             return Array.isArray(v) ? v[5] : '';
         }, x: 286, y: 548, size: 10 }, // Order Date
 
-        // Footer
-        { getter: (form, getFd) => {
-            const v = getFd('LETTER') || getFd('Report') || getFd('Joining');
-            return Array.isArray(v) ? v[6] : '';
-        }, x: 130, y: 658, size: 10 }, // Dated
-        { getter: (form, getFd) => {
-            const v = getFd('LETTER') || getFd('Report') || getFd('Joining');
-            return Array.isArray(v) ? v[7] : '';
-        }, x: 476, y: 664, size: 10 }, // Name
-        { getter: (form, getFd) => {
-            const v = getFd('LETTER') || getFd('Report') || getFd('Joining');
-            return Array.isArray(v) ? v[8] : '';
-        }, x: 476, y: 682, size: 10 }, // Designation
+                // Dated
+        { 
+            getter: (form, getFd) => {
+                return getFd('e254b679-1abf-4663-90df-6c84a5fe10d8') || '';
+            }, 
+            x: 130, y: 658, size: 10 
+        },
+
+        // Name
+        { 
+            getter: (form, getFd) => {
+                return getFd('9c2c7544-3751-41f8-a425-a57db1986d3a') || '';
+            }, 
+            x: 476, y: 664, size: 10 
+        },
+
+        // Designation
+        { 
+            getter: (form, getFd) => {
+                return getFd('adf15385-0c12-472c-9a6f-6e9ab5b03fe6') || '';
+            }, 
+            x: 476, y: 682, size: 10 
+        },
     ],
     signatures: [
         { stage: 'applicant', x: 500, y: 630, size: 6},
