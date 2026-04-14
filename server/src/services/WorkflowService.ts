@@ -3,9 +3,25 @@
 // top-level helper functions inside routes/forms.ts.
 // Single Responsibility: only advances or finalizes form workflows.
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { IWorkflowService } from './IWorkflowService';
 import { IEmailService, EmailMetadata } from './IEmailService';
+
+// Define a type for the form with its relations for better type safety
+type FormWithRelations = Prisma.formsGetPayload<{
+    include: {
+        form_types: {
+            include: {
+                workflow: {
+                    include: {
+                        steps: true
+                    }
+                }
+            }
+        },
+        users: true
+    }
+}>;
 
 export class WorkflowService implements IWorkflowService {
     constructor(
@@ -15,18 +31,20 @@ export class WorkflowService implements IWorkflowService {
 
     // ─── Finalize: Create Office Order when a form is fully approved ───────
     async finalizeForm(form: any): Promise<void> {
-        const orderNumber = `OO-${form.id}-${Date.now().toString().slice(-6)}`;
+        // Use Number() to ensure we have a compatible type for numeric fields
+        const formId = Number(form.id);
+        const orderNumber = `OO-${formId}-${Date.now().toString().slice(-6)}`;
 
         const existingOrder = await this.prisma.office_orders.findUnique({
-            where: { form_id: form.id }
+            where: { form_id: formId }
         });
 
         if (!existingOrder) {
             await this.prisma.office_orders.create({
                 data: {
-                    form_id: form.id,
+                    form_id: formId,
                     order_number: orderNumber,
-                    issued_by: form.submitted_by || 1,
+                    issued_by: form.submitted_by ? Number(form.submitted_by) : 1,
                 }
             });
         }
@@ -36,11 +54,11 @@ export class WorkflowService implements IWorkflowService {
         if (applicant && applicant.email) {
             try {
                 const metadata: EmailMetadata = {
-                    requestId: form.id,
+                    requestId: formId,
                     applicantName: `${applicant.first_name} ${applicant.last_name}`,
                     formType: form.form_types?.name || 'Unknown',
                     status: 'APPROVED',
-                    actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard/applications/${form.id}`,
+                    actionUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard/applications/${formId}`,
                     timestamp: new Date()
                 };
                 // Fire and forget, don't block
@@ -54,7 +72,7 @@ export class WorkflowService implements IWorkflowService {
     // ─── Advance: Move form to the next workflow step ──────────────────────
     async advanceWorkflow(formId: number, nextStepOrder: number): Promise<void> {
         const form = await this.prisma.forms.findUnique({
-            where: { id: formId },
+            where: { id: Number(formId) },
             include: {
                 form_types: {
                     include: {
@@ -67,12 +85,17 @@ export class WorkflowService implements IWorkflowService {
                 },
                 users: true
             }
-        });
+        }) as FormWithRelations | null;
+
+        // No form found
+        if (!form) return;
+
+        const numericFormId = Number(form.id);
 
         // No workflow defined → auto-approve
-        if (!form || !form.form_types?.workflow) {
+        if (!form.form_types?.workflow) {
             await this.prisma.forms.update({
-                where: { id: formId },
+                where: { id: numericFormId },
                 data: { current_status: 'APPROVED' }
             });
             return;
@@ -80,12 +103,12 @@ export class WorkflowService implements IWorkflowService {
 
         const workflow = form.form_types.workflow;
         const steps = workflow.steps;
-        const step = steps.find((s: any) => s.step_order === nextStepOrder);
+        const step = steps.find((s) => s.step_order === nextStepOrder);
 
         // No more steps → final approval
         if (!step) {
             await this.prisma.forms.update({
-                where: { id: form.id },
+                where: { id: numericFormId },
                 data: { current_status: 'APPROVED' }
             });
             return;
@@ -93,7 +116,7 @@ export class WorkflowService implements IWorkflowService {
 
         // Move to this step's status
         await this.prisma.forms.update({
-            where: { id: form.id },
+            where: { id: numericFormId },
             data: { current_status: step.step_name }
         });
 
@@ -104,11 +127,11 @@ export class WorkflowService implements IWorkflowService {
             if (step.is_terminal) {
                 await this.finalizeForm(form);
                 await this.prisma.forms.update({
-                    where: { id: form.id },
+                    where: { id: numericFormId },
                     data: { current_status: 'APPROVED' }
                 });
             } else {
-                await this.advanceWorkflow(form.id, nextStepOrder + 1);
+                await this.advanceWorkflow(numericFormId, nextStepOrder + 1);
             }
             return;
         }
@@ -126,30 +149,30 @@ export class WorkflowService implements IWorkflowService {
                 if (form.users?.department_id) {
                     const hod = await this.prisma.department_heads.findFirst({
                         where: {
-                            department_id: form.users.department_id,
+                            department_id: Number(form.users.department_id),
                             role_type: { in: ['HEAD_OF_DEPARTMENT', roleIdStr] },
                             is_active: true
                         }
                     });
-                    if (hod) { assignedApproverId = hod.user_id; break; }
+                    if (hod) { assignedApproverId = Number(hod.user_id); break; }
                 }
             } else {
                 const deptHead = await this.prisma.department_heads.findFirst({
                     where: {
                         role_type: { in: [role, roleIdStr] },
                         is_active: true,
-                        ...(form.users?.department_id ? { department_id: form.users.department_id } : {})
+                        ...(form.users?.department_id ? { department_id: Number(form.users.department_id) } : {})
                     }
                 });
 
                 if (deptHead) {
-                    assignedApproverId = deptHead.user_id;
+                    assignedApproverId = Number(deptHead.user_id);
                     break;
                 } else if (roleRecord) {
                     const userRole = await this.prisma.user_roles.findFirst({
-                        where: { role_id: roleRecord.id }
+                        where: { role_id: Number(roleRecord.id) }
                     });
-                    if (userRole) { assignedApproverId = userRole.user_id; break; }
+                    if (userRole) { assignedApproverId = Number(userRole.user_id); break; }
                 }
             }
         }
@@ -157,20 +180,20 @@ export class WorkflowService implements IWorkflowService {
         // Create a pending approval entry for the assigned approver
         await this.prisma.form_approvals.create({
             data: {
-                form_id: form.id,
+                form_id: numericFormId,
                 stage: step.step_name,
                 decision: 'PENDING',
-                approved_by: assignedApproverId
+                approved_by: assignedApproverId ? Number(assignedApproverId) : null
             }
         });
 
         // Notify APPROVER about assignment
         if (assignedApproverId) {
-            const approver = await this.prisma.users.findUnique({ where: { id: assignedApproverId } });
+            const approver = await this.prisma.users.findUnique({ where: { id: Number(assignedApproverId) } });
             if (approver && approver.email) {
                 const applicantName = form.users ? `${form.users.first_name} ${form.users.last_name}` : 'Unknown';
                 const metadata: EmailMetadata = {
-                    requestId: form.id,
+                    requestId: numericFormId,
                     applicantName,
                     formType: form.form_types?.name || 'Unknown',
                     currentStep: step.step_name,
@@ -184,3 +207,4 @@ export class WorkflowService implements IWorkflowService {
         }
     }
 }
+
