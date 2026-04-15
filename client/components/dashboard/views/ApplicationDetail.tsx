@@ -50,24 +50,26 @@ function getSubFieldLabel(colKey: string, subFields: any[] | undefined, formatTi
     let targetSf: any = null;
     if (subFields && Array.isArray(subFields)) {
         targetSf = subFields.find(sf =>
-            sf.id === matchKey ||
-            sf.key === matchKey ||
-            sf.name?.replace(/\s+/g, '_') === matchKey ||
-            `${sf.name?.replace(/\s+/g, '_')}_1` === matchKey
+            sf && (
+                sf.id === matchKey ||
+                sf.key === matchKey ||
+                (sf.name && sf.name.replace(/\s+/g, '_') === matchKey) ||
+                (sf.name && `${sf.name.replace(/\s+/g, '_')}_1` === matchKey)
+            )
         );
     }
 
     let baseLabel = '';
     if (targetSf) {
-        baseLabel = targetSf.name;
+        baseLabel = targetSf.name || targetSf.label || matchKey;
     } else {
         const parts = matchKey.split('_');
         const num = parseInt(parts[parts.length - 1]);
         if (!isNaN(num)) parts.pop();
-        baseLabel = parts.join(' ');
+        baseLabel = parts.join(' ') || matchKey;
     }
 
-    baseLabel = formatTitleCaseFn(baseLabel);
+    baseLabel = formatTitleCaseFn(baseLabel || colKey);
     if (isFrom) baseLabel += ' (From)';
     if (isTo) baseLabel += ' (To)';
 

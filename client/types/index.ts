@@ -244,6 +244,7 @@ export function suggestFieldTypeFromName(fieldName: string): string | null {
 }
 
 export function formatTitleCase(name: string) {
+    if (!name) return '';
     return name.replace(/_/g, ' ')
         .replace(/\b\w/g, (char: string) => char.toUpperCase())
         .replace(/\(S\)/g, '(s)');
