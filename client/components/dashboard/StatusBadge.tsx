@@ -10,10 +10,11 @@ export default function StatusBadge({ status, lg, truncate }: Props) {
     const ok = status === 'APPROVED';
     const no = status === 'REJECTED';
     const dr = status === 'DRAFT';
-    const bg = ok ? '#dcfce7' : no ? '#fee2e2' : dr ? '#f1f5f9' : '#fef3c7';
-    const c = ok ? '#16a34a' : no ? '#dc2626' : dr ? '#64748b' : '#d97706';
-    const Icon = ok ? CheckCircle : no ? XCircle : dr ? Clock : Clock;
-    const label = ok ? 'Approved' : no ? 'Rejected' : dr ? 'Draft' : status.replace(/_/g, ' ');
+    const partial = status === 'PARTIALLY_APPROVED';
+    const bg = ok ? '#dcfce7' : no ? '#fee2e2' : dr ? '#f1f5f9' : partial ? '#fff7ed' : '#fef3c7';
+    const c = ok ? '#16a34a' : no ? '#dc2626' : dr ? '#64748b' : partial ? '#ea580c' : '#d97706';
+    const Icon = ok ? CheckCircle : no ? XCircle : Clock;
+    const label = ok ? 'Approved' : no ? 'Rejected' : dr ? 'Draft' : partial ? 'Partially Approved' : status.replace(/_/g, ' ');
     return (
         <span
             title={label}
