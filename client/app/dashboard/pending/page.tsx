@@ -355,9 +355,14 @@ function PendingWorkContent() {
                                         <div style={{
                                             fontSize: '15px', fontWeight: 600, color: '#0f172a',
                                             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                                            marginBottom: '4px',
+                                            marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px'
                                         }}>
                                             {app.form_types?.name || 'Application'}
+                                            {app.reference_number && (
+                                                <span style={{ padding: '3px 6px', background: '#e0e7ff', color: '#4338ca', borderRadius: '4px', fontSize: '11px', fontWeight: 700 }}>
+                                                    {app.reference_number}
+                                                </span>
+                                            )}
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#94a3b8' }}>

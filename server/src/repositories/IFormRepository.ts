@@ -13,6 +13,7 @@ export interface IFormRepository {
     delete(id: number): Promise<void>;
     updateStatus(id: number, status: string, extra?: object): Promise<any>;
     updateFormData(id: number, formData: object): Promise<any>;
+    getNextReferenceNumber(year: number): Promise<number>;
 
     // Form Forwards
     createForward(data: object): Promise<any>;
@@ -22,6 +23,7 @@ export interface IFormRepository {
     // Form Types
     findFormTypeById(id: number): Promise<any | null>;
     findAllFormTypes(where?: any): Promise<any[]>;
+    findFormTypeByPrefix(prefix: string, excludeId?: number): Promise<any | null>;
     createFormType(data: object): Promise<any>;
     updateFormType(id: number, data: object): Promise<any>;
     deleteFormType(id: number): Promise<void>;
@@ -35,6 +37,7 @@ export interface IFormRepository {
 
     // Users
     searchUsers(query: string, limit?: number): Promise<any[]>;
+    findFirstUserByRole(roleName: string, departmentId?: number): Promise<any | null>;
     findUserById(id: number): Promise<any | null>;
     getUserRoles(userId: number): Promise<string[]>;
 

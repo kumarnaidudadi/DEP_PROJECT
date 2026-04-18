@@ -47,7 +47,14 @@ export default function PendingWorkView({
                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#1f2937' }}>
                             {a.users ? `${a.users.name}` : 'Unknown'}
                         </div>
-                        <div style={{ fontSize: '11px', color: '#6b7280' }}>{a.form_types?.name || 'Application'}</div>
+                        <div style={{ fontSize: '11px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {a.form_types?.name || 'Application'}
+                            {a.reference_number && (
+                                <span style={{ padding: '1px 4px', background: '#e0e7ff', color: '#4338ca', borderRadius: '4px', fontSize: '9px', fontWeight: 700 }}>
+                                    {a.reference_number}
+                                </span>
+                            )}
+                        </div>
                         <div style={{ fontSize: '10px', color: '#9ca3af', marginTop: '2px' }}>
                             {new Date(a.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                         </div>

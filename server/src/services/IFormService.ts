@@ -23,6 +23,7 @@ export interface IFormService {
 
     // Users
     searchUsers(query: string): Promise<any[]>;
+    getRoutingTarget(roleName: string, applicantId: number): Promise<any>;
 
     // History
     getFormHistory(formId: number): Promise<any>;

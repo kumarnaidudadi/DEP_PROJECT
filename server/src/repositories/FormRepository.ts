@@ -110,6 +110,35 @@ export class FormRepository implements IFormRepository {
         });
     }
 
+    async getNextReferenceNumber(year: number): Promise<number> {
+        // Find the max serial already used this year by parsing reference_numbers like XXXX20260000XX
+        const yearStr = String(year);
+        const results = await this.prisma.applied_forms.findMany({
+            where: {
+                reference_number: { not: null },
+                submitted_at: {
+                    gte: new Date(`${year}-01-01T00:00:00.000Z`),
+                    lt: new Date(`${year + 1}-01-01T00:00:00.000Z`),
+                }
+            },
+            select: { reference_number: true },
+        });
+
+        let maxSerial = 0;
+        for (const row of results) {
+            if (!row.reference_number) continue;
+            // Format: PPPP + YYYY + NNNNNN  (4+4+6 = 14 chars)
+            if (row.reference_number.length >= 14) {
+                const yearPart = row.reference_number.slice(4, 8);
+                if (yearPart === yearStr) {
+                    const serial = parseInt(row.reference_number.slice(8), 10);
+                    if (!isNaN(serial) && serial > maxSerial) maxSerial = serial;
+                }
+            }
+        }
+        return maxSerial + 1;
+    }
+
     // ── Form Forwards ──────────────────────────────────────────────────────
 
     async createForward(data: object): Promise<any> {
@@ -161,6 +190,15 @@ export class FormRepository implements IFormRepository {
         return this.prisma.form_types.update({ where: { id: Number(id) }, data: data as any });
     }
 
+    async findFormTypeByPrefix(prefix: string, excludeId?: number): Promise<any | null> {
+        return this.prisma.form_types.findFirst({
+            where: {
+                ref_prefix: prefix,
+                ...(excludeId ? { id: { not: Number(excludeId) } } : {}),
+            },
+        });
+    }
+
     async deleteFormType(id: number): Promise<void> {
         await this.prisma.form_types.delete({ where: { id: Number(id) } });
     }
@@ -204,6 +242,30 @@ export class FormRepository implements IFormRepository {
             },
             take: limit,
             orderBy: { first_name: 'asc' },
+        });
+    }
+
+    async findFirstUserByRole(roleName: string, departmentId?: number): Promise<any | null> {
+        const whereClause: any = {
+            user_roles: {
+                some: { roles: { name: roleName } }
+            }
+        };
+        // Specifically for department-bound roles, we restrict by applicant's department
+        if (departmentId && roleName === 'HEAD_OF_DEPARTMENT') {
+            whereClause.department_id = departmentId;
+        }
+
+        return this.prisma.users.findFirst({
+            where: whereClause,
+            select: {
+                id: true,
+                first_name: true,
+                last_name: true,
+                email: true,
+                department_id: true,
+                user_roles: { include: { roles: { select: { name: true } } } }
+            }
         });
     }
 

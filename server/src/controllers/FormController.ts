@@ -29,7 +29,7 @@ export class FormController {
     };
 
     createFormType = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-        const { name, description, schema, approval_rules } = req.body;
+        const { name, description, schema, approval_rules, ref_prefix } = req.body;
 
         if (!name) {
             res.status(400).json({ error: 'Form type name is required' });
@@ -38,31 +38,33 @@ export class FormController {
 
         try {
             const result = await this.formService.createFormType({
-                name, description, schema, approval_rules
+                name, description, schema, approval_rules, ref_prefix
             });
             res.status(201).json(result);
         } catch (e: any) {
             console.error('[FormController] createFormType:', e.message);
-            if (e.code === 'P2002') res.status(409).json({ error: 'A form type with this name already exists' });
+            if (e.message === 'PREFIX_TAKEN') res.status(409).json({ error: 'A form with this prefix already exists. Please choose a different prefix.' });
+            else if (e.code === 'P2002') res.status(409).json({ error: 'A form type with this name already exists' });
             else res.status(500).json({ error: 'Failed to create form type' });
         }
     };
 
     updateFormType = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         const id = Number(req.params.id);
-        const { name, description, schema, approval_rules, is_active } = req.body;
+        const { name, description, schema, approval_rules, is_active, ref_prefix } = req.body;
 
         if (!name) { res.status(400).json({ error: 'Form type name is required' }); return; }
         if (isNaN(id)) { res.status(400).json({ error: 'Invalid form type id' }); return; }
 
         try {
             const result = await this.formService.updateFormType(id, {
-                name, description, schema, approval_rules, is_active
+                name, description, schema, approval_rules, is_active, ref_prefix
             });
             res.json(result);
         } catch (e: any) {
             console.error('[FormController] updateFormType:', e.message);
             if (e.message === 'FORM_TYPE_NOT_FOUND') res.status(404).json({ error: 'Form type not found' });
+            else if (e.message === 'PREFIX_TAKEN') res.status(409).json({ error: 'A form with this prefix already exists. Please choose a different prefix.' });
             else if (e.code === 'P2002') res.status(409).json({ error: 'A form type with this name already exists' });
             else res.status(500).json({ error: 'Failed to update form type' });
         }
@@ -237,6 +239,21 @@ export class FormController {
         } catch (e: any) {
             console.error('[FormController] searchUsers:', e.message);
             res.status(500).json({ error: 'Failed to search users' });
+        }
+    };
+
+    getRoutingTarget = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        const roleName = req.params.roleName as string;
+        const applicantId = req.user?.userId;
+        if (!applicantId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+
+        try {
+            const targetUser = await this.formService.getRoutingTarget(roleName, applicantId);
+            if (!targetUser) res.status(404).json({ error: 'No user found for this role' });
+            else res.json(targetUser);
+        } catch (e: any) {
+            console.error('[FormController] getRoutingTarget:', e.message);
+            res.status(500).json({ error: 'Failed to resolve routing target' });
         }
     };
 

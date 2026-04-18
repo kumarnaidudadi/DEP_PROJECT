@@ -13,13 +13,17 @@ import * as formTypeSvc from '@/services/formTypeService';
 function serializeBuilderState(
     newFormName: string,
     newFormDesc: string,
+    refPrefix: string,
     formFields: BuilderField[],
     approvalRoles: string[],
+    firstRoutingRole: string | null,
 ) {
     return JSON.stringify({
         name: newFormName.trim(),
         description: newFormDesc.trim(),
+        refPrefix: refPrefix.trim(),
         approvalRoles: [...approvalRoles].sort(),
+        firstRoutingRole,
         fields: formFields.map(field => ({
             id: field.id,
             name: field.name,
@@ -45,15 +49,19 @@ function CreateFormInner() {
 
     const [newFormName, setNewFormName] = useState('');
     const [newFormDesc, setNewFormDesc] = useState('');
+    const [refPrefix, setRefPrefix] = useState('');
     const [formFields, setFormFields] = useState<BuilderField[]>([createBuilderField()]);
     const [approvalRoles, setApprovalRoles] = useState<string[]>([]);
+    const [firstRoutingRole, setFirstRoutingRole] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
     const [createSuccess, setCreateSuccess] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    const [prefixError, setPrefixError] = useState<string | null>(null);
     const [initialSnapshot, setInitialSnapshot] = useState(() =>
-        serializeBuilderState('', '', [createBuilderField()], [])
+        serializeBuilderState('', '', '', [createBuilderField()], [], null)
     );
 
-    const currentSnapshot = serializeBuilderState(newFormName, newFormDesc, formFields, approvalRoles);
+    const currentSnapshot = serializeBuilderState(newFormName, newFormDesc, refPrefix, formFields, approvalRoles, firstRoutingRole);
     const isDirty = currentSnapshot !== initialSnapshot;
     const allowNavigationRef = React.useRef(false);
     const popGuardActiveRef = React.useRef(false);
@@ -71,7 +79,7 @@ function CreateFormInner() {
 
     useEffect(() => {
         if (editId) return;
-        setInitialSnapshot(serializeBuilderState('', '', [createBuilderField()], []));
+        setInitialSnapshot(serializeBuilderState('', '', '', [createBuilderField()], []));
     }, [editId]);
 
     // Pre-fill when editing
@@ -130,13 +138,17 @@ function CreateFormInner() {
         const rolesFromSchema = rawSchema.approval_roles || [];
         const rolesFromRules = (ft.approval_rules as any)?.required_roles || [];
         const nextApprovalRoles = rolesFromSchema.length ? rolesFromSchema : rolesFromRules;
+        const loadedFirstRoutingRole = (ft.approval_rules as any)?.first_routing_role || null;
         setApprovalRoles(nextApprovalRoles);
-        setInitialSnapshot(serializeBuilderState(ft.name, ft.description || '', loadedFields.length ? loadedFields : [createBuilderField()], nextApprovalRoles));
+        setFirstRoutingRole(loadedFirstRoutingRole);
+        const loadedPrefix = ft.ref_prefix || (ft as any).ref_prefix || '';
+        setRefPrefix(loadedPrefix);
+        setInitialSnapshot(serializeBuilderState(ft.name, ft.description || '', loadedPrefix, loadedFields.length ? loadedFields : [createBuilderField()], nextApprovalRoles, loadedFirstRoutingRole));
     }, [editId, formTypes]);
 
     const handleSave = React.useCallback(async ({ redirectAfterSave = true }: { redirectAfterSave?: boolean } = {}) => {
         if (!newFormName.trim()) { alert('Form name is required'); return; }
-        setCreating(true); setCreateSuccess(false);
+        setCreating(true); setCreateSuccess(false); setSaveError(null); setPrefixError(null);
         try {
             const mappedFields = formFields.filter(f => f.name.trim()).map(f => ({
                 id: f.id,
@@ -158,7 +170,8 @@ function CreateFormInner() {
                     data: mappedFields,
                     approval_roles: approvalRoles 
                 },
-                approval_rules: { required_roles: approvalRoles }, // Keeping this for backward compatibility in backend logic
+                approval_rules: { required_roles: approvalRoles, first_routing_role: firstRoutingRole },
+                ref_prefix: refPrefix.trim() || undefined,
             };
             
             if (editId) { await formTypeSvc.updateFormType(Number(editId), payload); }
@@ -167,10 +180,11 @@ function CreateFormInner() {
             const resetFields = [createBuilderField()];
             const resetRoles: string[] = [];
             setCreateSuccess(true);
-            setNewFormName(''); setNewFormDesc('');
+            setNewFormName(''); setNewFormDesc(''); setRefPrefix('');
             setFormFields(resetFields);
             setApprovalRoles(resetRoles);
-            setInitialSnapshot(serializeBuilderState('', '', resetFields, resetRoles));
+            setFirstRoutingRole(null);
+            setInitialSnapshot(serializeBuilderState('', '', '', resetFields, resetRoles, null));
             if (redirectAfterSave) {
                 setTimeout(() => { setCreateSuccess(false); router.push('/dashboard/new'); }, 2000);
             }
@@ -179,10 +193,16 @@ function CreateFormInner() {
             const message = typeof error === 'object' && error !== null && 'response' in error
                 ? (error as { response?: { data?: { error?: string } } }).response?.data?.error
                 : null;
-            alert(message || 'Failed to save the form type');
+            const errMsg = message || 'Failed to save the form type';
+            // Detect prefix conflict and show inline on the field
+            if (errMsg.toLowerCase().includes('prefix')) {
+                setPrefixError(errMsg);
+            } else {
+                setSaveError(errMsg);
+            }
             return false;
         } finally { setCreating(false); }
-    }, [approvalRoles, editId, formFields, newFormDesc, newFormName, router]);
+    }, [approvalRoles, editId, formFields, newFormDesc, newFormName, refPrefix, firstRoutingRole, router]);
 
     const handleAttemptLeave = React.useCallback(async () => {
         if (!isDirty || allowNavigationRef.current) return true;
@@ -257,13 +277,19 @@ function CreateFormInner() {
             <CreateFormView
                 isEdit={!!editId}
                 newFormName={newFormName} newFormDesc={newFormDesc}
+                refPrefix={refPrefix}
                 formFields={formFields}
                 approvalRoles={approvalRoles} 
+                firstRoutingRole={firstRoutingRole}
                 availableRoles={availableRoles}
                 creating={creating} createSuccess={createSuccess}
+                saveError={saveError}
+                prefixError={prefixError}
                 onNameChange={setNewFormName} onDescChange={setNewFormDesc}
+                onRefPrefixChange={(v) => { setRefPrefix(v); setPrefixError(null); }}
                 onFieldsChange={setFormFields}
                 onApprovalRolesChange={setApprovalRoles}
+                onFirstRoutingRoleChange={setFirstRoutingRole}
                 onSave={handleSave}
                 onCancel={handleCancel}
             />

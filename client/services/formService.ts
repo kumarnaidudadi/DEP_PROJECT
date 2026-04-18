@@ -115,6 +115,16 @@ export async function searchUsers(query: string): Promise<UserSearchResult[]> {
     return res.data;
 }
 
+/** Get the first routing target user for a specific role based on applicant's context */
+export async function getRoutingTarget(roleName: string): Promise<UserSearchResult | null> {
+    try {
+        const res = await api.get(`/forms/routing-target/${roleName}`);
+        return res.data;
+    } catch {
+        return null;
+    }
+}
+
 /** Get forwarding and approval history for a form */
 export async function getFormHistory(formId: number): Promise<any> {
     const res = await api.get(`/forms/${formId}/history`);

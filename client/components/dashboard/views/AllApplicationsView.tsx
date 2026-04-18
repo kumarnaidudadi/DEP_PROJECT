@@ -48,7 +48,14 @@ export default function AllApplicationsView({
             {list.map(a => (
                 <ListItem key={a.id} sel={selectedApp?.id === a.id} onClick={() => onSelect(a)}>
                     <div>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1f2937' }}>{a.form_types?.name || 'Application'}</div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1f2937', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {a.form_types?.name || 'Application'}
+                            {a.reference_number && (
+                                <span style={{ padding: '1px 5px', background: '#e0e7ff', color: '#4338ca', borderRadius: '4px', fontSize: '9px', fontWeight: 800 }}>
+                                    {a.reference_number}
+                                </span>
+                            )}
+                        </div>
                         <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
                             {new Date(a.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </div>

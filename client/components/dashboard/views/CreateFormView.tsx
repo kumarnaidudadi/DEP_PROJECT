@@ -87,15 +87,21 @@ interface Props {
     isEdit: boolean;
     newFormName: string;
     newFormDesc: string;
+    refPrefix: string;
     formFields: BuilderField[];
     approvalRoles: string[];
     availableRoles: string[];
     creating: boolean;
     createSuccess: boolean;
+    saveError?: string | null;
+    prefixError?: string | null;
+    firstRoutingRole: string | null;
     onNameChange: (v: string) => void;
     onDescChange: (v: string) => void;
+    onRefPrefixChange: (v: string) => void;
     onFieldsChange: (fields: BuilderField[]) => void;
     onApprovalRolesChange: (roles: string[]) => void;
+    onFirstRoutingRoleChange: (r: string | null) => void;
     onSave: () => void;
     onCancel: () => void;
 }
@@ -103,8 +109,9 @@ interface Props {
 /* ─── Component ────────────────────────────────────────────────────────────── */
 
 export default function CreateFormView({
-    isEdit, newFormName, newFormDesc, formFields, approvalRoles, availableRoles,
-    creating, createSuccess, onNameChange, onDescChange, onFieldsChange, onApprovalRolesChange,
+    isEdit, newFormName, newFormDesc, refPrefix, formFields, approvalRoles, availableRoles,
+    creating, createSuccess, saveError, prefixError,
+    firstRoutingRole, onNameChange, onDescChange, onRefPrefixChange, onFieldsChange, onApprovalRolesChange, onFirstRoutingRoleChange,
     onSave, onCancel,
 }: Props) {
     const [draggedIdx, setDraggedIdx] = React.useState<number | null>(null);
@@ -326,6 +333,12 @@ export default function CreateFormView({
                     </div>
                 )}
 
+                {saveError && (
+                    <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', fontWeight: 500, color: '#dc2626', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        ⚠️ {saveError}
+                    </div>
+                )}
+
                 {/* Form Details */}
                 <div style={{ ...cardStyle, marginBottom: '16px' }}>
                     <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '14px' }}>Form Details</div>
@@ -337,6 +350,28 @@ export default function CreateFormView({
                         <div style={{ gridColumn: 'span 2' }}>
                             <label style={labelStyle}>Description</label>
                             <textarea value={newFormDesc} onChange={e => onDescChange(e.target.value)} placeholder="Brief description of the form" rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+                        </div>
+                        <div>
+                            <label style={labelStyle}>Reference Prefix <span style={{ color: '#ef4444' }}>*</span></label>
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    value={refPrefix}
+                                    onChange={e => onRefPrefixChange(e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4))}
+                                    placeholder="e.g. SLPF"
+                                    maxLength={4}
+                                    style={{ ...inputStyle, letterSpacing: '0.15em', fontWeight: 700, fontFamily: 'monospace', fontSize: '15px', ...(prefixError ? { border: '1px solid #ef4444', background: '#fff5f5' } : {}) }}
+                                />
+                                <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: '#9ca3af', fontWeight: 500 }}>{refPrefix.length}/4</span>
+                            </div>
+                            {prefixError ? (
+                                <p style={{ fontSize: '11px', color: '#dc2626', marginTop: '4px', lineHeight: 1.4, fontWeight: 500 }}>
+                                    ⚠️ {prefixError}
+                                </p>
+                            ) : (
+                                <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', lineHeight: 1.4 }}>
+                                    4 uppercase letters. Appears in every reference number, e.g. <code style={{ background: '#f3f4f6', padding: '1px 4px', borderRadius: '3px', fontFamily: 'monospace' }}>{refPrefix || 'XXXX'}{new Date().getFullYear()}000001</code>
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -364,6 +399,21 @@ export default function CreateFormView({
                                 </button>
                             );
                         })}
+                    </div>
+                    
+                    <div style={{ marginTop: '20px', borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>First Approver (Hardbound Step)</div>
+                        <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.4' }}>If set, applicants won't be able to forward this form to arbitrary users upon submission. It will automatically route to the user holding this role (matching the applicant's department for HODs).</p>
+                        <select
+                            value={firstRoutingRole || ''}
+                            onChange={e => onFirstRoutingRoleChange(e.target.value || null)}
+                            style={{ ...inputStyle, maxWidth: '300px' }}
+                        >
+                            <option value="">-- No fixed first approver --</option>
+                            {availableRoles.map(role => (
+                                <option key={role} value={role}>{role.replace(/_/g, ' ')}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
 

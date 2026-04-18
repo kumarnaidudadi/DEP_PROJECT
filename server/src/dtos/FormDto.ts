@@ -31,4 +31,5 @@ export interface CreateFormTypeDto {
     schema?: Record<string, unknown>;
     approval_rules?: Record<string, unknown>;
     is_active?: boolean;
+    ref_prefix?: string;
 }

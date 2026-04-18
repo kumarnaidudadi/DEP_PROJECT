@@ -7,8 +7,9 @@ export interface FormType {
     name: string;
     description: string;
     schema_definition: any;
-    approval_rules?: { required_roles?: string[] } | null;
+    approval_rules?: { required_roles?: string[], first_routing_role?: string | null } | null;
     is_active?: boolean;
+    ref_prefix?: string | null;
 }
 
 // ─── Form Forward ──────────────────────────────────────────────────────────────
@@ -34,6 +35,7 @@ export interface Application {
     submitted_at: string;
     updated_at: string;
     form_data: any;
+    reference_number?: string | null;
     form_types?: FormType;
     users?: { id?: number; name: string;  email: string };
     form_approvals?: any[];

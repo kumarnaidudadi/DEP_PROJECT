@@ -29,6 +29,7 @@ router.delete('/types/:id', verifyToken, controller.deleteFormType);
 
 // ─── User Search (for forwarding typeahead) ────────────────────────────────
 router.get('/users/search', verifyToken, controller.searchUsers);
+router.get('/routing-target/:roleName', verifyToken, controller.getRoutingTarget);
 
 // ─── Form / Application Routes ─────────────────────────────────────────────
 router.get('/', verifyToken, controller.getForms);

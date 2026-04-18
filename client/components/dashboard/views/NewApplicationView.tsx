@@ -12,6 +12,7 @@ import { Search, User } from 'lucide-react';
 import FieldRenderer from '../../ui/FieldRenderer';
 import Panel from '../Panel';
 import Modal from '../../ui/Modal';
+import { getRoutingTarget } from '@/services/formService';
 
 const inputStyle: React.CSSProperties = {
     width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: '8px',
@@ -148,6 +149,10 @@ export default function NewApplicationView({
     const [foundUsers, setFoundUsers] = useState<UserSearchResult[]>([]);
     const [selectedRecipient, setSelectedRecipient] = useState<UserSearchResult | null>(null);
     const [submissionNote, setSubmissionNote] = useState('');
+    
+    // Hardbound routing state
+    const [hardboundRecipient, setHardboundRecipient] = useState<UserSearchResult | null>(null);
+    const [fetchingHardbound, setFetchingHardbound] = useState(false);
     const [searchingUsers, setSearchingUsers] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false);
     const searchRef = useRef<HTMLDivElement>(null);
@@ -234,6 +239,28 @@ export default function NewApplicationView({
             autoFillProcessed.current = null;
         }
     }, [selectedFormType, profile, liveRoles, onFormDataChange]);
+
+    // Fetch hardbound routing target if specified
+    useEffect(() => {
+        if (!selectedFormType) {
+            setHardboundRecipient(null);
+            return;
+        }
+        
+        const firstRoutingRole = (selectedFormType.approval_rules as any)?.first_routing_role;
+        if (firstRoutingRole) {
+            setFetchingHardbound(true);
+            getRoutingTarget(firstRoutingRole)
+                .then(user => {
+                    setHardboundRecipient(user);
+                    if (user) setSelectedRecipient(user);
+                })
+                .finally(() => setFetchingHardbound(false));
+        } else {
+            setHardboundRecipient(null);
+            setSelectedRecipient(null);
+        }
+    }, [selectedFormType]);
 
     const handleFieldChange = (key: string, value: any) => {
         onFormDataChange({ ...formData, [key]: value });
@@ -471,7 +498,8 @@ export default function NewApplicationView({
                 maxWidth="550px"
             >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div ref={searchRef} style={{ position: 'relative' }}>
+                    {!hardboundRecipient && (
+                        <div ref={searchRef} style={{ position: 'relative' }}>
                         <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '8px' }}>
                             Search Approver (Name or Email) <span style={{ color: '#ef4444' }}>*</span>
                         </label>
@@ -491,7 +519,6 @@ export default function NewApplicationView({
                             />
                             {searchingUsers && <Loader2 size={16} className="animate-spin" style={{ color: '#3b82f6' }} />}
                         </div>
-
                         {showDropdown && foundUsers.length > 0 && (
                             <div style={{
                                 position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px',
@@ -524,7 +551,8 @@ export default function NewApplicationView({
                                 ))}
                             </div>
                         )}
-                    </div>
+                        </div>
+                    )}
 
                     {/* Selected recipient preview */}
                     {selectedRecipient && (
@@ -538,20 +566,29 @@ export default function NewApplicationView({
                                 <User size={20} />
                             </div>
                             <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '14px', fontWeight: 700, color: '#0369a1' }}>{selectedRecipient.name}</div>
+                                <div style={{ fontSize: '14px', fontWeight: 700, color: '#0369a1' }}>{selectedRecipient.name} {hardboundRecipient && '(Auto-Assigned)'}</div>
                                 <div style={{ fontSize: '12px', color: '#0ea5e9', fontWeight: 500 }}>{selectedRecipient.email}</div>
                                 <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
-                                    {selectedRecipient.roles.map(role => (
+                                    {selectedRecipient.roles?.map((role: string) => (
                                         <span key={role} style={{ fontSize: '10px', background: '#fff', color: '#0284c7', padding: '1px 6px', borderRadius: '4px', border: '1px solid #bae6fd', fontWeight: 600 }}>{role}</span>
                                     ))}
                                 </div>
                             </div>
-                            <button type="button" onClick={() => { setSelectedRecipient(null); setRecipientQuery(''); }} 
-                                style={{ background: '#fff', border: '1px solid #bae6fd', color: '#0284c7', fontSize: '12px', fontWeight: 600, cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', transition: 'all 0.2s' }}
-                                onMouseEnter={e => e.currentTarget.style.background = '#f0f9ff'}
-                                onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
-                                Change
-                            </button>
+                            {!hardboundRecipient && (
+                                <button type="button" onClick={() => { setSelectedRecipient(null); setRecipientQuery(''); }} 
+                                    style={{ background: '#fff', border: '1px solid #bae6fd', color: '#0284c7', fontSize: '12px', fontWeight: 600, cursor: 'pointer', padding: '6px 12px', borderRadius: '8px', transition: 'all 0.2s' }}
+                                    onMouseEnter={e => e.currentTarget.style.background = '#f0f9ff'}
+                                    onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                                    Change
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {fetchingHardbound && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: '#64748b', padding: '16px', background: '#f8fafc', borderRadius: '12px' }}>
+                            <Loader2 size={16} className="animate-spin" />
+                            Resolving first approver based on your department...
                         </div>
                     )}
 

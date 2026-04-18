@@ -49,17 +49,30 @@ export class FormService implements IFormService {
     }
 
     async createFormType(dto: CreateFormTypeDto): Promise<any> {
+        if (dto.ref_prefix) {
+            const prefix = dto.ref_prefix.toUpperCase().slice(0, 4);
+            const conflict = await this.formRepo.findFormTypeByPrefix(prefix);
+            if (conflict) throw new Error('PREFIX_TAKEN');
+        }
         return this.formRepo.createFormType({
             name: dto.name,
             description: dto.description || '',
             schema: dto.schema || {},
             approval_rules: dto.approval_rules || {},
+            ...(dto.ref_prefix ? { ref_prefix: dto.ref_prefix.toUpperCase().slice(0, 4) } : {}),
         });
     }
 
     async updateFormType(id: number, dto: CreateFormTypeDto): Promise<any> {
         const existing = await this.formRepo.findFormTypeById(id);
         if (!existing) throw new Error('FORM_TYPE_NOT_FOUND');
+
+        // Check prefix uniqueness (exclude this form's own id)
+        if (dto.ref_prefix !== undefined && dto.ref_prefix) {
+            const prefix = dto.ref_prefix.toUpperCase().slice(0, 4);
+            const conflict = await this.formRepo.findFormTypeByPrefix(prefix, id);
+            if (conflict) throw new Error('PREFIX_TAKEN');
+        }
 
         const updateData: any = {
             name: dto.name,
@@ -72,6 +85,9 @@ export class FormService implements IFormService {
         }
         if (dto.is_active !== undefined) {
             updateData.is_active = dto.is_active;
+        }
+        if (dto.ref_prefix !== undefined) {
+            updateData.ref_prefix = dto.ref_prefix ? dto.ref_prefix.toUpperCase().slice(0, 4) : null;
         }
 
         return this.formRepo.updateFormType(id, updateData);
@@ -113,18 +129,29 @@ export class FormService implements IFormService {
         if (!formType) throw new Error('FORM_TYPE_NOT_FOUND');
         const formDataWithSnapshot = this.buildFormDataSnapshot(formType, dto.form_data as Record<string, any>);
 
+        // Generate reference number: PREFIX + YEAR + 6-digit serial
+        const year = new Date().getFullYear();
+        const prefix = (formType.ref_prefix || 'FORM').toUpperCase().padEnd(4, 'X').slice(0, 4);
+        const serial = await this.formRepo.getNextReferenceNumber(year);
+        const referenceNumber = `${prefix}${year}${String(serial).padStart(6, '0')}`;
+
         let form;
         if (id) {
             // Update an existing draft and promote it to submitted
             form = await this.formRepo.updateStatus(id, 'submitted', {
                 form_data: formDataWithSnapshot,
-                submitted_at: new Date()
+                submitted_at: new Date(),
+                reference_number: referenceNumber,
             });
         } else {
             // Create a brand new submission
             form = await this.formRepo.create({
                 ...dto,
                 form_data: formDataWithSnapshot,
+            });
+            // Assign reference number
+            await this.formRepo.updateStatus(Number(form.id), 'submitted', {
+                reference_number: referenceNumber,
             });
         }
 
@@ -398,14 +425,30 @@ export class FormService implements IFormService {
         const users = await this.formRepo.searchUsers(query);
         return users.map((u: any) => ({
             id: Number(u.id),
-            name: [u.first_name, u.last_name].filter(Boolean).join(' ') || '',
+            name: [u.first_name, u.last_name].filter(Boolean).join(' ').trim() || u.email?.split('@')[0] || 'Unknown User',
             email: u.email,
             department: null,
             roles: u.user_roles?.map((ur: any) => ur.roles?.name).filter(Boolean) || [],
         }));
     }
 
-    // ── History ────────────────────────────────────────────────────────────
+    async getRoutingTarget(roleName: string, applicantId: number): Promise<any | null> {
+        const applicant = await this.formRepo.findUserById(applicantId);
+        if (!applicant) return null;
+        
+        const target = await this.formRepo.findFirstUserByRole(roleName, applicant.department_id || undefined);
+        if (!target) return null;
+
+        return {
+            id: Number(target.id),
+            name: [target.first_name, target.last_name].filter(Boolean).join(' ').trim() || target.email?.split('@')[0] || 'Unknown User',
+            email: target.email,
+            department: target.department_id ? `Dept ${target.department_id}` : null,
+            roles: target.user_roles?.map((ur: any) => ur.roles?.name).filter(Boolean) || []
+        };
+    }
+
+    // ── Form History ──────────────────────────────────────────────────────
 
     async getFormHistory(formId: number): Promise<any> {
         const form = await this.formRepo.findById(formId);

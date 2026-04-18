@@ -8,8 +8,9 @@ export interface FormTypePayload {
     name: string;
     description: string;
     schema: Record<string, any>;
-    approval_rules?: { required_roles: string[] };
+    approval_rules?: { required_roles: string[], first_routing_role?: string | null };
     is_active?: boolean;
+    ref_prefix?: string;
 }
 
 export async function createFormType(payload: FormTypePayload): Promise<FormType> {

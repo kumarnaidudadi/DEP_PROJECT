@@ -503,6 +503,13 @@ export default function ApplicationDetail({
                     <h1 style={{ fontSize: '20px', fontWeight: 700, color: '#1f2937', margin: '0 0 4px' }}>
                         {app.form_types?.name || 'Application'}
                     </h1>
+                    {app.reference_number && (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '6px', padding: '4px 10px', background: 'linear-gradient(135deg, #1e40af, #1d4ed8)', borderRadius: '6px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 800, color: '#fff', letterSpacing: '0.12em', fontFamily: 'monospace' }}>
+                                {app.reference_number}
+                            </span>
+                        </div>
+                    )}
                     <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
                         {app.current_status === 'DRAFT' ? 'Last saved ' : ''}
                         {new Date(app.current_status === 'DRAFT' ? app.updated_at : app.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
