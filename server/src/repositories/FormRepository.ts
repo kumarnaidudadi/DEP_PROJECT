@@ -299,20 +299,81 @@ export class FormRepository implements IFormRepository {
         return this.prisma.form_history.create({ data: data as any });
     }
 
+    /**
+     * Creates a form_history entry AND a corresponding form_comments entry
+     * in a single transaction. Returns { history, comment }.
+     *
+     * commentType: 'general' | 'forward' | 'approval' | 'rejection' | 'return' | 'recall'
+     * contentText: plain-text summary that becomes the TipTap doc content.
+     */
+    async createActionComment(opts: {
+        historyData: {
+            applied_form_id: number;
+            action: string;
+            changed_by: number;
+            old_data?: object;
+            new_data?: object;
+            remarks?: string;
+        };
+        commentType: string;
+        contentText: string;
+        commentedBy: number;
+    }): Promise<{ history: any; comment: any }> {
+        const { historyData, commentType, contentText, commentedBy } = opts;
+
+        return this.prisma.$transaction(async (tx) => {
+            const history = await tx.form_history.create({ data: historyData as any });
+
+            const comment = await tx.form_comments.create({
+                data: {
+                    applied_form_id: historyData.applied_form_id,
+                    commented_by: commentedBy,
+                    form_history_id: history.id,
+                    comment_type: commentType,
+                    content: {
+                        type: 'doc',
+                        content: [{ type: 'paragraph', content: [{ type: 'text', text: contentText }] }],
+                    },
+                    is_edited: false,
+                    is_deleted: false,
+                },
+            });
+
+            return { history, comment };
+        });
+    }
+
     async getSystemLogs(): Promise<any[]> {
-        return this.prisma.form_history.findMany({
+        const forms = await this.prisma.applied_forms.findMany({
+            where: { form_history: { some: {} } },
             include: {
-                users: { select: { id: true, first_name: true, last_name: true, email: true } },
-                applied_forms: {
-                    select: {
-                        id: true,
-                        form_types: { select: { name: true } },
-                    }
+                form_types: { select: { name: true } },
+                users: { select: { first_name: true, last_name: true, emp_code: true } },
+                form_history: {
+                    orderBy: { created_at: 'desc' },
+                    take: 1,
+                    include: { users: { select: { first_name: true, last_name: true } } }
+                },
+                _count: {
+                    select: { form_history: true, comments: true }
                 }
             },
-            orderBy: { created_at: 'desc' },
-            take: 1000 // Limit to last 1000 logs for safety
+            orderBy: { updated_at: 'desc' },
+            take: 1000
         });
+
+        return forms.map((form: any) => ({
+            id: form.id,
+            reference_number: form.reference_number,
+            status: form.status,
+            form_type_name: form.form_types?.name || 'Unknown',
+            applicant: form.users,
+            latest_action: form.form_history[0]?.action || 'Unknown',
+            last_actor: form.form_history[0]?.users || null,
+            last_updated: form.form_history[0]?.created_at || form.updated_at,
+            activity_count: form._count.form_history,
+            comment_count: form._count.comments
+        }));
     }
 
     // ── Transactions ───────────────────────────────────────────────────────

@@ -55,6 +55,7 @@ model users {
   forms               forms[]
   office_orders       office_orders[]
   user_roles          user_roles[]
+  comments            form_comments[]
 }
 
 model department_heads {
@@ -118,6 +119,7 @@ model applied_forms {
   form_forwards          form_forwards[]
   form_history           form_history[]
   office_orders          office_orders[]
+  comments               form_comments[]
 }
 
 model form_history {
@@ -131,6 +133,7 @@ model form_history {
   created_at      DateTime?      @default(now()) @db.Timestamp(6)
   applied_forms   applied_forms? @relation(fields: [applied_form_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   users           users?         @relation(fields: [changed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  comments        form_comments[]
 }
 
 model form_forwards {
@@ -210,4 +213,24 @@ model workflows {
   description String?
   created_at  DateTime?    @default(now()) @db.Timestamp(6)
   form_types  form_types[]
+}
+
+model form_comments {
+  id                Int             @id @default(autoincrement())
+  applied_form_id   Int
+  commented_by      Int?
+  form_history_id   Int?
+  parent_comment_id Int?
+  comment_type      String          @default("general")
+  content           Json
+  is_edited         Boolean         @default(false)
+  is_deleted        Boolean         @default(false)
+  created_at        DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at        DateTime?       @default(now()) @db.Timestamp(6)
+
+  applied_form  applied_forms   @relation(fields: [applied_form_id], references: [id], onDelete: Cascade)
+  user          users?          @relation(fields: [commented_by], references: [id], onDelete: SetNull)
+  form_history  form_history?   @relation(fields: [form_history_id], references: [id], onDelete: SetNull)
+  parent        form_comments?  @relation("CommentReplies", fields: [parent_comment_id], references: [id], onDelete: Cascade)
+  replies       form_comments[] @relation("CommentReplies")
 }

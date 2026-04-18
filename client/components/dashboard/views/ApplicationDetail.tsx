@@ -322,7 +322,7 @@ export default function ApplicationDetail({
     const [nextApproverUsers, setNextApproverUsers] = useState<UserSearchResult[]>([]);
     const [nextApproverUser, setNextApproverUser] = useState<UserSearchResult | null>(null);
     const [nextApproverNote, setNextApproverNote] = useState('');
-    const [isTimelineCollapsed, setIsTimelineCollapsed] = useState(false);
+    const [isTimelineCollapsed, setIsTimelineCollapsed] = useState(true);
     const [searchingNextApprover, setSearchingNextApprover] = useState(false);
     const [showNextApproverDropdown, setShowNextApproverDropdown] = useState(false);
     const nextApproverRef = useRef<HTMLDivElement>(null);

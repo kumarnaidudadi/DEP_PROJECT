@@ -155,12 +155,17 @@ export class FormService implements IFormService {
             });
         }
 
-        // Log history
-        await this.formRepo.createStatusHistory({
-            applied_form_id: Number(form.id),
-            action: 'submitted',
-            changed_by: Number(dto.userId),
-            new_data: { status: 'submitted' },
+        // Log history + create action comment
+        await this.formRepo.createActionComment({
+            historyData: {
+                applied_form_id: Number(form.id),
+                action: 'submitted',
+                changed_by: Number(dto.userId),
+                new_data: { status: 'submitted' },
+            },
+            commentType: 'general',
+            contentText: 'Application submitted.',
+            commentedBy: Number(dto.userId),
         });
 
         // ── Initial Forwarding ──
@@ -214,14 +219,27 @@ export class FormService implements IFormService {
         const oldStatus = form.status;
         await this.formRepo.updateStatus(dto.formId, 'forwarded');
 
-        // Log history
-        await this.formRepo.createStatusHistory({
-            applied_form_id: Number(dto.formId),
-            action: 'forwarded',
-            changed_by: Number(dto.fromUserId),
-            old_data: { status: oldStatus },
-            new_data: { status: 'forwarded', forwarded_to: dto.toUserId },
-            remarks: dto.note || '',
+        // Log history + create action comment
+        const fromUser = await this.formRepo.findUserById(Number(dto.fromUserId));
+        const fromName = fromUser
+            ? [fromUser.first_name, fromUser.last_name].filter(Boolean).join(' ') || 'User'
+            : 'User';
+        const toName = [toUser.first_name, toUser.last_name].filter(Boolean).join(' ') || 'User';
+
+        await this.formRepo.createActionComment({
+            historyData: {
+                applied_form_id: Number(dto.formId),
+                action: 'forwarded',
+                changed_by: Number(dto.fromUserId),
+                old_data: { status: oldStatus },
+                new_data: { status: 'forwarded', forwarded_to: dto.toUserId },
+                remarks: dto.note || '',
+            },
+            commentType: 'forward',
+            contentText: dto.note
+                ? `${fromName} forwarded to ${toName}: "${dto.note}"`
+                : `${fromName} forwarded to ${toName}.`,
+            commentedBy: Number(dto.fromUserId),
         });
 
         // Notify the target user
@@ -299,13 +317,25 @@ export class FormService implements IFormService {
 
             const result = await this.formRepo.updateStatus(dto.formId, 'rejected');
 
-            await this.formRepo.createStatusHistory({
-                applied_form_id: Number(dto.formId),
-                action: 'rejected',
-                changed_by: Number(dto.userId),
-                old_data: { status: oldStatus },
-                new_data: { status: 'rejected' },
-                remarks: dto.remarks || '',
+            const rejector = await this.formRepo.findUserById(Number(dto.userId));
+            const rejectorName = rejector
+                ? [rejector.first_name, rejector.last_name].filter(Boolean).join(' ') || 'User'
+                : 'User';
+
+            await this.formRepo.createActionComment({
+                historyData: {
+                    applied_form_id: Number(dto.formId),
+                    action: 'rejected',
+                    changed_by: Number(dto.userId),
+                    old_data: { status: oldStatus },
+                    new_data: { status: 'rejected' },
+                    remarks: dto.remarks || '',
+                },
+                commentType: 'rejection',
+                contentText: dto.remarks
+                    ? `${rejectorName} rejected: "${dto.remarks}"`
+                    : `${rejectorName} rejected this application.`,
+                commentedBy: Number(dto.userId),
             });
 
             this.notifyApplicant(form, 'rejected');
@@ -354,13 +384,25 @@ export class FormService implements IFormService {
             await this.finalizeForm(form);
             const result = await this.formRepo.updateStatus(dto.formId, 'approved', { form_data: mergedFormData });
 
-            await this.formRepo.createStatusHistory({
-                applied_form_id: Number(dto.formId),
-                action: 'approved',
-                changed_by: Number(dto.userId),
-                old_data: { status: oldStatus },
-                new_data: { status: 'approved' },
-                remarks: dto.remarks || '',
+            const approver = await this.formRepo.findUserById(Number(dto.userId));
+            const approverName = approver
+                ? [approver.first_name, approver.last_name].filter(Boolean).join(' ') || 'User'
+                : 'User';
+
+            await this.formRepo.createActionComment({
+                historyData: {
+                    applied_form_id: Number(dto.formId),
+                    action: 'approved',
+                    changed_by: Number(dto.userId),
+                    old_data: { status: oldStatus },
+                    new_data: { status: 'approved' },
+                    remarks: dto.remarks || '',
+                },
+                commentType: 'approval',
+                contentText: dto.remarks
+                    ? `${approverName} approved: "${dto.remarks}"`
+                    : `${approverName} approved this application.`,
+                commentedBy: Number(dto.userId),
             });
 
             return result;
@@ -369,13 +411,25 @@ export class FormService implements IFormService {
             await this.formRepo.updateFormData(dto.formId, mergedFormData);
             await this.formRepo.updateStatus(dto.formId, 'partially_approved');
 
-            await this.formRepo.createStatusHistory({
-                applied_form_id: Number(dto.formId),
-                action: 'partially_approved',
-                changed_by: Number(dto.userId),
-                old_data: { status: oldStatus },
-                new_data: { status: 'partially_approved' },
-                remarks: dto.remarks || '',
+            const partialApprover = await this.formRepo.findUserById(Number(dto.userId));
+            const partialName = partialApprover
+                ? [partialApprover.first_name, partialApprover.last_name].filter(Boolean).join(' ') || 'User'
+                : 'User';
+
+            await this.formRepo.createActionComment({
+                historyData: {
+                    applied_form_id: Number(dto.formId),
+                    action: 'partially_approved',
+                    changed_by: Number(dto.userId),
+                    old_data: { status: oldStatus },
+                    new_data: { status: 'partially_approved' },
+                    remarks: dto.remarks || '',
+                },
+                commentType: 'approval',
+                contentText: dto.remarks
+                    ? `${partialName} partially approved: "${dto.remarks}"`
+                    : `${partialName} approved (awaiting additional approvals).`,
+                commentedBy: Number(dto.userId),
             });
 
             return this.formRepo.findById(dto.formId);

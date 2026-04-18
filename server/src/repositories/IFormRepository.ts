@@ -43,6 +43,19 @@ export interface IFormRepository {
 
     // History
     createStatusHistory(data: object): Promise<any>;
+    createActionComment(opts: {
+        historyData: {
+            applied_form_id: number;
+            action: string;
+            changed_by: number;
+            old_data?: object;
+            new_data?: object;
+            remarks?: string;
+        };
+        commentType: string;
+        contentText: string;
+        commentedBy: number;
+    }): Promise<{ history: any; comment: any }>;
     getSystemLogs(): Promise<any[]>;
 
     // Transactions

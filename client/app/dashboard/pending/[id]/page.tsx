@@ -2,12 +2,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, MessageSquare } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useForms } from '@/hooks/useForms';
 import { useProfile } from '@/hooks/useProfile';
+import { useFormComments } from '@/hooks/useFormComments';
 import { Application, getApplicationStatus, getLatestForward } from '@/types';
 import ApplicationDetail from '@/components/dashboard/views/ApplicationDetail';
+import CommentPanel from '@/components/forms/CommentPanel';
 
 export default function PendingWorkDetailPage() {
     const router = useRouter();
@@ -23,6 +25,10 @@ export default function PendingWorkDetailPage() {
     const [remarks, setRemarks] = useState('');
     const [approvalData, setApprovalData] = useState<Record<string, any>>({});
     const [actionLoading, setActionLoading] = useState(false);
+    const [panelOpen, setPanelOpen] = useState(false);
+
+    // Comment count badge
+    const { totalCount: commentCount } = useFormComments(appId || 0);
 
     useEffect(() => {
         fetchApplications();
@@ -145,11 +151,39 @@ export default function PendingWorkDetailPage() {
                 >
                     <X size={17} /> Back to Pending Work
                 </button>
+
+                {/* Comments toggle */}
+                <div style={{ marginLeft: 'auto' }}>
+                    <button
+                        id="comments-toggle-btn"
+                        onClick={() => setPanelOpen(o => !o)}
+                        title={panelOpen ? 'Hide comments' : 'Show comments'}
+                        style={{
+                            position: 'relative',
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            padding: '7px 14px',
+                            background: panelOpen ? '#eef2ff' : '#fff',
+                            border: `1px solid ${panelOpen ? '#a5b4fc' : '#e2e8f0'}`,
+                            borderRadius: '8px',
+                            color: panelOpen ? '#4338ca' : '#4b5563',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            transition: 'all 0.15s',
+                            boxShadow: panelOpen ? '0 0 0 2px #c7d2fe' : '0 1px 2px rgba(0,0,0,0.05)',
+                        }}
+                        onMouseEnter={e => { if (!panelOpen) { e.currentTarget.style.background = '#f1f5f9'; } }}
+                        onMouseLeave={e => { if (!panelOpen) { e.currentTarget.style.background = '#fff'; } }}
+                    >
+                        <MessageSquare size={15} />
+                        Comments
+                    </button>
+                </div>
             </div>
 
             {/* Detail content */}
-            <div style={{ flex: 1, overflowY: 'auto', background: '#f1f5f9', padding: '24px' }}>
-                <div style={{ maxWidth: '900px', margin: '0 auto', background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+            <div style={{ flex: 1, overflowY: 'auto', background: '#f1f5f9', padding: '24px', display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+                <div style={{ flex: 1, minWidth: 0, background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
                     <ApplicationDetail
                         app={selectedApp}
                         canApprove={canApprove}
@@ -168,6 +202,19 @@ export default function PendingWorkDetailPage() {
                         onSearchUsers={searchUsers}
                     />
                 </div>
+
+                {panelOpen && (
+                    <div style={{ width: '50%', flexShrink: 0, height: '100%', position: 'sticky', top: 0 }}>
+                        <div style={{ height: 'calc(100vh - 130px)', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                            <CommentPanel
+                                formId={appId}
+                                currentUserId={user?.id}
+                                isAdmin={storedRoles.includes('ADMIN') || storedRoles.includes('SUPER_ADMIN')}
+                                onClose={() => setPanelOpen(false)}
+                            />
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
