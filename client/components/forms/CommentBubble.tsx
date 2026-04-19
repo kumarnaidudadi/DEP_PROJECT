@@ -107,8 +107,7 @@ function CommentCard({
     };
 
     return (
-        <div className="group relative pl-6 pb-2">
-            <div className="absolute -left-[5px] top-2 w-2 h-2 rounded-full bg-gray-300"></div>
+        <div className="group pb-1">
             {/* "Replying to" chip — only for replies */}
             {isReply && replyingToName && (
                 <div style={{
@@ -122,7 +121,7 @@ function CommentCard({
             )}
 
             {/* Commenter & Header Row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '7px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                     <Avatar name={name} size={isReply ? 22 : 26} />
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -167,7 +166,7 @@ function CommentCard({
 
             {/* Action row */}
             {!comment.is_deleted && (
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200" style={{ display: 'flex', gap: '4px', marginTop: '7px', alignItems: 'center' }}>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200" style={{ display: 'flex', gap: '4px', marginTop: '4px', alignItems: 'center' }}>
                     {/* Reply available on ALL cards */}
                     {onReply && (
                         <ActionBtn icon={<Reply size={11} />} label="Reply" onClick={() => onReply(comment)} hoverColor="#6366f1" />

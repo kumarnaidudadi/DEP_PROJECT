@@ -209,7 +209,7 @@ export default function CommentPanel({
                 )}
 
                 {!isLoading && filtered.length > 0 && (
-                    <div className="border-l-2 border-gray-200 ml-4 space-y-6">
+                    <div className="space-y-4">
                         {filtered.map(comment => (
                             <CommentBubble
                                 key={comment.id}

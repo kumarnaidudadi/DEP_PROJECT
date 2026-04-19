@@ -10,7 +10,7 @@ import { useFormComments } from '@/hooks/useFormComments';
 import { Application, getApplicationStatus, getLatestForward } from '@/types';
 import ApplicationDetail from '@/components/dashboard/views/ApplicationDetail';
 import CommentPanel from '@/components/forms/CommentPanel';
-import ApprovalTimeline from '@/components/dashboard/WorkflowProgress';
+import ActivitySidebar from '@/components/dashboard/ActivitySidebar';
 
 export default function PendingWorkDetailPage() {
     const router = useRouter();
@@ -128,6 +128,22 @@ export default function PendingWorkDetailPage() {
         );
     }
 
+    const historyArr = selectedApp.form_history || [];
+    const forwardsArr = selectedApp.form_forwards || [];
+    const mergedHistory = historyArr.map((h: any) => {
+        if (h.action === 'forwarded' || h.action === 'approved' || h.action === 'rejected') {
+            const match = forwardsArr.find((f: any) => 
+                f.action === h.action && 
+                Math.abs(new Date(f.forwarded_at).getTime() - new Date(h.created_at).getTime()) < 5000
+            );
+            if (match && match.to_user) {
+                return { ...h, target_user: match.to_user };
+            }
+        }
+        return h;
+    });
+    const ascHistory = [...mergedHistory].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: '#f1f5f9' }}>
             {/* Header with back button */}
@@ -191,80 +207,18 @@ export default function PendingWorkDetailPage() {
                 )}
 
                 {/* Unified Sidebar Panel */}
-                <div 
-                    className="md:relative md:w-[360px] min-[1400px]:w-[420px] md:h-auto fixed inset-y-0 right-0 w-[85%] max-w-[420px] z-50 transition-all duration-200 ease-out"
-                    style={{ 
-                        flexShrink: 0, 
-                        transform: panelOpen ? 'translateX(0)' : 'translateX(100%)',
-                        opacity: panelOpen ? 1 : 0,
-                        visibility: panelOpen ? 'visible' : 'hidden',
-                        position: panelOpen ? undefined : 'absolute',
-                    }}
-                >
-                    <div style={{ height: 'calc(100vh - 130px)', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-                        
-                        {/* Tabs */}
-                        <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e2e8f0', background: '#fff', padding: '0 16px', gap: '4px' }}>
-                            <button
-                                onClick={() => setActiveTab('timeline')}
-                                style={{
-                                    padding: '12px 14px', fontSize: '13px', fontWeight: 500,
-                                    border: 'none', background: 'none', cursor: 'pointer',
-                                    color: activeTab === 'timeline' ? '#0f172a' : '#94a3b8',
-                                    borderBottom: activeTab === 'timeline' ? '2px solid #0f172a' : '2px solid transparent',
-                                    marginBottom: '-1px', transition: 'all 0.15s'
-                                }}
-                            >
-                                Timeline
-                            </button>
-                            <button
-                                onClick={() => setActiveTab('comments')}
-                                style={{
-                                    padding: '12px 14px', fontSize: '13px', fontWeight: 500,
-                                    border: 'none', background: 'none', cursor: 'pointer',
-                                    color: activeTab === 'comments' ? '#4f46e5' : '#94a3b8',
-                                    borderBottom: activeTab === 'comments' ? '2px solid #4f46e5' : '2px solid transparent',
-                                    marginBottom: '-1px', transition: 'all 0.15s'
-                                }}
-                            >
-                                Comments {commentCount > 0 ? commentCount : ''}
-                            </button>
-                            <button
-                                onClick={() => setPanelOpen(false)}
-                                style={{
-                                    marginLeft: 'auto', background: 'none', border: 'none',
-                                    cursor: 'pointer', color: '#94a3b8', padding: '4px', display: 'flex'
-                                }}
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-
-                        {/* Content */}
-                        <div style={{ flex: 1, overflowY: 'auto' }}>
-                            {activeTab === 'timeline' && (
-                                <div style={{ padding: '20px' }}>
-                                    <ApprovalTimeline
-                                        forwards={selectedApp.form_forwards || []}
-                                        approvals={selectedApp.form_approvals || []}
-                                        currentStatus={selectedApp.current_status}
-                                        submittedBy={selectedApp.users}
-                                    />
-                                </div>
-                            )}
-                            {activeTab === 'comments' && (
-                                <CommentPanel
-                                    formId={appId}
-                                    currentUserId={user?.id}
-                                    isAdmin={storedRoles.includes('ADMIN') || storedRoles.includes('SUPER_ADMIN')}
-                                    onClose={() => setPanelOpen(false)}
-                                    standalone={false}
-                                />
-                            )}
-                        </div>
-
-                    </div>
-                </div>
+                <ActivitySidebar
+                    isOpen={panelOpen}
+                    onClose={() => setPanelOpen(false)}
+                    applicationId={selectedApp.id}
+                    referenceId={selectedApp.reference_number || 'NO-REF'}
+                    title={selectedApp.form_types?.name || 'Application'}
+                    latestAction={historyArr[0]?.action || selectedApp.status}
+                    applicantName={selectedApp.users ? `${selectedApp.users.first_name} ${selectedApp.users.last_name}` : 'Unknown User'}
+                    timelineData={ascHistory}
+                    currentUserId={user?.id}
+                    isAdmin={storedRoles.includes('ADMIN') || storedRoles.includes('SUPER_ADMIN')}
+                />
             </div>
         </div>
     );

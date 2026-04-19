@@ -145,167 +145,73 @@ export default function ApprovalTimeline({
 
   const formatDate = (d: Date) =>
     d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) +
-    ' · ' +
+    ' at ' +
     d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div style={{ padding: '4px 0 8px' }}>
+    <div style={{ padding: '8px 4px 8px 12px' }}>
       {events.map((ev, idx) => {
         const c = config[ev.type];
         const isLast = idx === events.length - 1;
 
         return (
-          <div
-            key={ev.id}
-            style={{
-              display: 'flex',
-              gap: '0',
-              position: 'relative',
-              paddingBottom: isLast ? '0' : '0',
-            }}
-          >
-            {/* Left column: dot + connector */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '40px', flexShrink: 0 }}>
-              {/* Dot */}
-              <div
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  background: c.dotBg,
-                  border: `2px solid ${c.dotBorder}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '15px',
-                  fontWeight: 700,
-                  color: c.dotColor,
-                  flexShrink: 0,
-                  zIndex: 1,
-                  boxShadow: `0 0 0 3px ${c.dotBg}`,
-                  transition: 'box-shadow 0.2s',
-                }}
-              >
-                {c.iconChar}
-              </div>
-              {/* Connector line */}
-              {!isLast && (
-                <div
-                  style={{
-                    width: '2px',
-                    flexGrow: 1,
-                    minHeight: '24px',
-                    background: 'linear-gradient(to bottom, #e5e7eb 0%, #f3f4f6 100%)',
-                    margin: '4px 0',
-                  }}
-                />
-              )}
-            </div>
-
-            {/* Right column: card */}
-            <div
-              style={{
-                flex: 1,
-                marginLeft: '12px',
-                marginBottom: isLast ? '0' : '16px',
-                background: '#fff',
-                border: '1px solid #f1f5f9',
-                borderRadius: '10px',
-                padding: '12px 14px',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-                minWidth: 0,
-              }}
-            >
-              {/* Top row: title + badge + time */}
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flexWrap: 'wrap' }}>
-                <span
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    color: '#1e293b',
-                    flex: 1,
-                    minWidth: 0,
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {ev.title}
-                </span>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontSize: '10px',
-                    fontWeight: 700,
-                    padding: '2px 8px',
-                    borderRadius: '999px',
-                    background: c.badgeBg,
-                    color: c.badgeText,
-                    letterSpacing: '0.02em',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                  }}
-                >
-                  {c.badgeLabel}
-                </span>
-              </div>
-
-              {/* Actor / Target row */}
-              <div style={{ marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
-                {ev.actor && (
-                  <span style={{ fontSize: '12px', color: '#475569' }}>
-                    <span style={{ color: '#94a3b8', marginRight: '3px', fontSize: '11px' }}>by</span>
-                    <span style={{ fontWeight: 600, color: '#334155' }}>{ev.actor}</span>
-                  </span>
-                )}
-                {ev.target && (
-                  <>
-                    <span style={{ fontSize: '11px', color: '#cbd5e1' }}>→</span>
-                    <span style={{ fontSize: '12px', color: '#475569' }}>
-                      <span style={{ color: '#94a3b8', marginRight: '3px', fontSize: '11px' }}>to</span>
-                      <span style={{ fontWeight: 600, color: '#334155' }}>{ev.target}</span>
+          <div key={ev.id} style={{ display: 'flex', position: 'relative', minHeight: '60px' }}>
+            {/* Vertical Line */}
+            {!isLast && (
+              <div style={{ position: 'absolute', top: '22px', left: '7px', width: '2px', bottom: '-4px', background: '#e2e8f0' }} />
+            )}
+            
+            {/* Dot */}
+            <div style={{ 
+                width: '16px', height: '16px', borderRadius: '50%', 
+                background: c.dotColor || '#60a5fa', 
+                border: '4px solid #fff', 
+                marginTop: '4px', 
+                flexShrink: 0, zIndex: 1,
+                boxShadow: '0 0 0 1px #e2e8f0', // optional tiny subtle ring to make the white border pop
+            }} />
+                                                            
+            <div style={{ marginLeft: '16px', flex: 1, paddingBottom: isLast ? '0' : '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <span style={{
+                        background: c.badgeBg, color: c.badgeText,
+                        padding: '4px 10px', borderRadius: '12px',
+                        fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px'
+                    }}>
+                        {ev.title}
                     </span>
-                  </>
+                    {ev.time && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                            </svg>
+                            {formatDate(ev.time)}
+                        </div>
+                    )}
+                </div>
+
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#334155', marginTop: '6px' }}>
+                    {ev.actor}
+                    {ev.target && (
+                        <>
+                            <span style={{ fontSize: '11px', color: '#94a3b8', margin: '0 6px', fontWeight: 500 }}>→</span>
+                            {ev.target}
+                        </>
+                    )}
+                </div>
+
+                {ev.note && (
+                    <div style={{ 
+                        marginTop: '6px', 
+                        fontSize: '13px', color: '#475569', 
+                        background: '#f8fafc', 
+                        padding: '8px 12px', borderRadius: '6px', 
+                        border: '1px solid #f1f5f9',
+                        lineHeight: 1.5,
+                    }}>
+                        {ev.note}
+                    </div>
                 )}
-              </div>
-
-              {/* Note */}
-              {ev.note && (
-                <div
-                  style={{
-                    marginTop: '8px',
-                    padding: '6px 10px',
-                    background: '#f8fafc',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    color: '#64748b',
-                    lineHeight: 1.5,
-                    borderLeft: '3px solid #e2e8f0',
-                    fontStyle: 'italic',
-                  }}
-                >
-                  "{ev.note}"
-                </div>
-              )}
-
-              {/* Timestamp */}
-              {ev.time && (
-                <div
-                  style={{
-                    marginTop: '8px',
-                    fontSize: '11px',
-                    color: '#94a3b8',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-                  </svg>
-                  {formatDate(ev.time)}
-                </div>
-              )}
             </div>
           </div>
         );
@@ -315,23 +221,21 @@ export default function ApprovalTimeline({
       {isTerminal && (
         <div
           style={{
-            marginTop: '20px',
+            marginTop: '16px',
             padding: '12px 16px',
-            borderRadius: '10px',
-            background: isFullyApproved
-              ? 'linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%)'
-              : 'linear-gradient(135deg, #fee2e2 0%, #fff1f2 100%)',
-            border: `1.5px solid ${isFullyApproved ? '#86efac' : '#fca5a5'}`,
+            borderRadius: '8px',
+            background: isFullyApproved ? '#dcfce7' : '#fee2e2',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px',
             fontSize: '13px',
             fontWeight: 700,
-            color: isFullyApproved ? '#15803d' : '#dc2626',
+            color: isFullyApproved ? '#16a34a' : '#dc2626',
+            border: `1px solid ${isFullyApproved ? '#bbf7d0' : '#fecaca'}`,
           }}
         >
-          <span style={{ fontSize: '16px' }}>{isFullyApproved ? '✓' : '✕'}</span>
+          <span style={{ fontSize: '15px' }}>{isFullyApproved ? '✓' : '✕'}</span>
           {isFullyApproved ? 'Fully Approved' : 'Rejected'}
         </div>
       )}
