@@ -35,6 +35,9 @@ function selectCommenter() {
         first_name: true,
         last_name: true,
         emp_code: true,
+        user_roles: {
+            select: { roles: { select: { name: true } } }
+        }
     } as const;
 }
 
@@ -104,6 +107,7 @@ function sanitizeCommentBase(c: any): any {
                 first_name: c.user.first_name,
                 last_name: c.user.last_name,
                 emp_code: c.user.emp_code,
+                roles: c.user.user_roles?.map((ur: any) => ur.roles?.name).filter(Boolean) || [],
               }
             : null,
         form_history: c.form_history ? { action: c.form_history.action } : null,

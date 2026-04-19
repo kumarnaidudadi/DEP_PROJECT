@@ -2,7 +2,7 @@
 // ─── CommentInput.tsx ─────────────────────────────────────────────────────────
 // Rich-text editor for composing/replying to comments.
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Send, X, Loader2, Bold, Italic, Underline, Strikethrough, Heading1, Heading2, List, ListOrdered, Quote, Table as TableIcon, Link as LinkIcon } from 'lucide-react';
 import { FormComment } from '@/types/comments';
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -24,7 +24,20 @@ interface Props {
 
 export default function CommentInput({ replyTo, onCancelReply, onSubmit, placeholder }: Props) {
     const [submitting, setSubmitting] = useState(false);
+    const [isFocused, setIsFocused] = useState(false);
     const [showToolbar, setShowToolbar] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsFocused(false);
+                setShowToolbar(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const editor = useEditor({
         extensions: [
@@ -40,16 +53,14 @@ export default function CommentInput({ replyTo, onCancelReply, onSubmit, placeho
             Placeholder.configure({ placeholder: placeholder || 'Write a comment... (Ctrl+Enter to send)' }),
         ],
         content: '',
+        onFocus: () => setIsFocused(true),
         editorProps: {
             attributes: {
-                class: 'prose prose-sm max-w-none focus:outline-none min-h-[80px] max-h-[200px] overflow-y-auto p-2',
+                class: 'prose prose-sm max-w-none focus:outline-none min-h-[50px] overflow-y-auto w-full p-2',
             },
             handleKeyDown: (view, event) => {
                 if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
                     event.preventDefault();
-                    // Needs to reference the latest handleSubmit, which is tricky in TipTap plugins,
-                    // so we use a DOM wrapper for the shortcut, or handle it via a separate ref.
-                    // For simplicity, we trigger the submit button click using an ID or ref.
                     const submitBtn = document.getElementById('comment-submit-btn');
                     if (submitBtn) submitBtn.click();
                     return true;
@@ -65,6 +76,8 @@ export default function CommentInput({ replyTo, onCancelReply, onSubmit, placeho
         try {
             await onSubmit(editor.getJSON());
             editor.commands.clearContent();
+            setIsFocused(false);
+            setShowToolbar(false);
         } catch (e: any) {
             alert(e?.response?.data?.error || 'Failed to send comment');
         } finally {
@@ -75,7 +88,7 @@ export default function CommentInput({ replyTo, onCancelReply, onSubmit, placeho
     if (!editor) return null;
 
     const btnStyle = (isActive: boolean) => ({
-        padding: '4px',
+        padding: '3px',
         background: isActive ? '#e0e7ff' : 'transparent',
         color: isActive ? '#4338ca' : '#6b7280',
         borderRadius: '4px',
@@ -84,12 +97,14 @@ export default function CommentInput({ replyTo, onCancelReply, onSubmit, placeho
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        width: '24px',
+        height: '24px',
     });
 
     return (
         <div style={{
             borderTop: '1px solid #e2e8f0',
-            padding: '12px 14px',
+            padding: '16px',
             background: '#fff',
             flexShrink: 0,
         }}>
@@ -110,22 +125,17 @@ export default function CommentInput({ replyTo, onCancelReply, onSubmit, placeho
                 </div>
             )}
 
-            <div style={{
-                background: '#f8fafc', borderRadius: '10px',
-                border: '1px solid #e2e8f0',
-                transition: 'border-color 0.2s',
-                display: 'flex', flexDirection: 'column',
-                position: 'relative'
-            }}
-                onFocusCapture={e => (e.currentTarget.style.borderColor = '#6366f1')}
-                onBlurCapture={e => (e.currentTarget.style.borderColor = '#e2e8f0')}
+            <div 
+                ref={containerRef}
+                className="border border-gray-300 rounded-lg bg-white focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all flex flex-col p-2"
+                onClick={() => setIsFocused(true)}
             >
                 {/* Toolbar */}
-                {showToolbar && (
-                    <div className="animate-fade-in" style={{
-                        display: 'flex', gap: '4px', padding: '6px 8px',
-                        borderBottom: '1px solid #e2e8f0', alignItems: 'center',
-                        flexWrap: 'wrap'
+                {isFocused && showToolbar && (
+                    <div style={{
+                        display: 'flex', gap: '4px', paddingBottom: '6px',
+                        borderBottom: '1px solid #f1f5f9',
+                        alignItems: 'center', flexWrap: 'wrap', marginBottom: '4px'
                     }}>
                         <button type="button" style={btnStyle(editor.isActive('bold'))} onClick={() => editor.chain().focus().toggleBold().run()}><Bold size={14} /></button>
                         <button type="button" style={btnStyle(editor.isActive('italic'))} onClick={() => editor.chain().focus().toggleItalic().run()}><Italic size={14} /></button>
@@ -157,50 +167,55 @@ export default function CommentInput({ replyTo, onCancelReply, onSubmit, placeho
                 )}
 
                 {/* Editor Content */}
-                <div style={{ position: 'relative' }}>
-                    <EditorContent editor={editor} style={{ minHeight: '80px', maxHeight: '200px', overflowY: 'auto', padding: '0 8px', fontSize: '13px' }} />
-                    
-                    <div style={{ position: 'absolute', bottom: '8px', right: '8px' }}>
+                <EditorContent
+                    editor={editor}
+                    style={{
+                        minHeight: isFocused ? '100px' : '40px', maxHeight: '300px', overflowY: 'auto',
+                        fontSize: '14px', lineHeight: 1.6, width: '100%', cursor: 'text'
+                    }}
+                />
+
+                {/* Action Bar */}
+                {isFocused && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #f1f5f9' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <button
+                                type="button"
+                                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setShowToolbar(prev => !prev); }}
+                                style={{
+                                    background: showToolbar ? '#e0e7ff' : '#f1f5f9',
+                                    color: showToolbar ? '#4338ca' : '#64748b',
+                                    border: 'none', borderRadius: '4px', padding: '4px 8px',
+                                    fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', gap: '4px',
+                                    transition: 'all 0.15s'
+                                }}
+                            >
+                                <span style={{ fontFamily: 'serif', fontStyle: 'italic', fontSize: '13px' }}>Aa</span>
+                            </button>
+                            <p style={{ margin: 0, fontSize: '11px', color: '#94a3b8' }}>
+                                Ctrl+Enter to send
+                            </p>
+                        </div>
                         <button
                             id="comment-submit-btn"
                             onClick={handleSubmit}
                             disabled={editor.isEmpty || submitting}
                             style={{
-                                border: 'none', borderRadius: '7px',
-                                width: 32, height: 32,
-                                background: !editor.isEmpty && !submitting
-                                    ? 'linear-gradient(135deg, #6366f1, #4f46e5)'
-                                    : '#e5e7eb',
-                                color: !editor.isEmpty && !submitting ? '#fff' : '#9ca3af',
-                                cursor: !editor.isEmpty && !submitting ? 'pointer' : 'not-allowed',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                transition: 'all 0.15s',
-                                boxShadow: !editor.isEmpty && !submitting ? '0 2px 8px rgba(99,102,241,0.35)' : 'none',
+                                background: '#4f46e5', color: '#fff',
+                                padding: '6px 14px', borderRadius: '6px',
+                                fontSize: '12px', fontWeight: 500, border: 'none',
+                                cursor: editor.isEmpty || submitting ? 'not-allowed' : 'pointer',
+                                display: 'flex', alignItems: 'center', gap: '4px',
+                                transition: 'opacity 0.15s',
+                                opacity: editor.isEmpty || submitting ? 0.4 : 1,
                             }}
                         >
-                            {submitting
-                                ? <Loader2 size={14} className="animate-spin" />
-                                : <Send size={14} />}
+                            {submitting && <Loader2 size={14} className="animate-spin" />}
+                            <Send size={14} /> Send
                         </button>
                     </div>
-                </div>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', alignItems: 'center' }}>
-                <button
-                    onClick={() => setShowToolbar(s => !s)}
-                    style={{
-                        background: 'none', border: 'none', color: showToolbar ? '#4f46e5' : '#94a3b8',
-                        cursor: 'pointer', fontSize: '13px', fontWeight: 600, padding: '4px',
-                        display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '4px',
-                        transition: 'color 0.2s',
-                    }}
-                    title="Formatting options"
-                >
-                    Aa
-                </button>
-                <p style={{ margin: 0, fontSize: '10px', color: '#94a3b8' }}>
-                    Ctrl+Enter to send
-                </p>
+                )}
             </div>
             <style>{`
             .ProseMirror p.is-editor-empty:first-child::before {

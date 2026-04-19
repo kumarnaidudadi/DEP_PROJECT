@@ -10,6 +10,7 @@ import { useFormComments } from '@/hooks/useFormComments';
 import { Application, getApplicationStatus, getLatestForward } from '@/types';
 import ApplicationDetail from '@/components/dashboard/views/ApplicationDetail';
 import CommentPanel from '@/components/forms/CommentPanel';
+import ApprovalTimeline from '@/components/dashboard/WorkflowProgress';
 
 export default function PendingWorkDetailPage() {
     const router = useRouter();
@@ -25,7 +26,8 @@ export default function PendingWorkDetailPage() {
     const [remarks, setRemarks] = useState('');
     const [approvalData, setApprovalData] = useState<Record<string, any>>({});
     const [actionLoading, setActionLoading] = useState(false);
-    const [panelOpen, setPanelOpen] = useState(false);
+    const [panelOpen, setPanelOpen] = useState(true);
+    const [activeTab, setActiveTab] = useState<'timeline' | 'comments'>('timeline');
 
     // Comment count badge
     const { totalCount: commentCount } = useFormComments(appId || 0);
@@ -151,38 +153,9 @@ export default function PendingWorkDetailPage() {
                 >
                     <X size={17} /> Back to Pending Work
                 </button>
-
-                {/* Comments toggle */}
-                <div style={{ marginLeft: 'auto' }}>
-                    <button
-                        id="comments-toggle-btn"
-                        onClick={() => setPanelOpen(o => !o)}
-                        title={panelOpen ? 'Hide comments' : 'Show comments'}
-                        style={{
-                            position: 'relative',
-                            display: 'flex', alignItems: 'center', gap: '6px',
-                            padding: '7px 14px',
-                            background: panelOpen ? '#eef2ff' : '#fff',
-                            border: `1px solid ${panelOpen ? '#a5b4fc' : '#e2e8f0'}`,
-                            borderRadius: '8px',
-                            color: panelOpen ? '#4338ca' : '#4b5563',
-                            cursor: 'pointer',
-                            fontWeight: 600,
-                            fontSize: '13px',
-                            transition: 'all 0.15s',
-                            boxShadow: panelOpen ? '0 0 0 2px #c7d2fe' : '0 1px 2px rgba(0,0,0,0.05)',
-                        }}
-                        onMouseEnter={e => { if (!panelOpen) { e.currentTarget.style.background = '#f1f5f9'; } }}
-                        onMouseLeave={e => { if (!panelOpen) { e.currentTarget.style.background = '#fff'; } }}
-                    >
-                        <MessageSquare size={15} />
-                        Comments
-                    </button>
-                </div>
             </div>
-
             {/* Detail content */}
-            <div style={{ flex: 1, overflowY: 'auto', background: '#f1f5f9', padding: '24px', display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+            <div style={{ flex: 1, overflowY: 'auto', background: '#f1f5f9', padding: '24px', display: 'flex', gap: '20px', alignItems: 'flex-start', position: 'relative' }}>
                 <div style={{ flex: 1, minWidth: 0, background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
                     <ApplicationDetail
                         app={selectedApp}
@@ -200,21 +173,98 @@ export default function PendingWorkDetailPage() {
                         onSigUpload={handleSigUpload}
                         onForward={handleForward}
                         onSearchUsers={searchUsers}
+                        onTabSwitch={setActiveTab}
+                        onTogglePanel={() => setPanelOpen(o => !o)}
+                        activeTab={activeTab}
+                        panelOpen={panelOpen}
+                        commentCount={commentCount}
                     />
                 </div>
 
+                {/* Mobile Backdrop */}
                 {panelOpen && (
-                    <div style={{ width: '50%', flexShrink: 0, height: '100%', position: 'sticky', top: 0 }}>
-                        <div style={{ height: 'calc(100vh - 130px)', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-                            <CommentPanel
-                                formId={appId}
-                                currentUserId={user?.id}
-                                isAdmin={storedRoles.includes('ADMIN') || storedRoles.includes('SUPER_ADMIN')}
-                                onClose={() => setPanelOpen(false)}
-                            />
-                        </div>
-                    </div>
+                    <div 
+                        className="md:hidden"
+                        onClick={() => setPanelOpen(false)}
+                        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 40 }}
+                    />
                 )}
+
+                {/* Unified Sidebar Panel */}
+                <div 
+                    className="md:relative md:w-[360px] min-[1400px]:w-[420px] md:h-auto fixed inset-y-0 right-0 w-[85%] max-w-[420px] z-50 transition-all duration-200 ease-out"
+                    style={{ 
+                        flexShrink: 0, 
+                        transform: panelOpen ? 'translateX(0)' : 'translateX(100%)',
+                        opacity: panelOpen ? 1 : 0,
+                        visibility: panelOpen ? 'visible' : 'hidden',
+                        position: panelOpen ? undefined : 'absolute',
+                    }}
+                >
+                    <div style={{ height: 'calc(100vh - 130px)', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+                        
+                        {/* Tabs */}
+                        <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e2e8f0', background: '#fff', padding: '0 16px', gap: '4px' }}>
+                            <button
+                                onClick={() => setActiveTab('timeline')}
+                                style={{
+                                    padding: '12px 14px', fontSize: '13px', fontWeight: 500,
+                                    border: 'none', background: 'none', cursor: 'pointer',
+                                    color: activeTab === 'timeline' ? '#0f172a' : '#94a3b8',
+                                    borderBottom: activeTab === 'timeline' ? '2px solid #0f172a' : '2px solid transparent',
+                                    marginBottom: '-1px', transition: 'all 0.15s'
+                                }}
+                            >
+                                Timeline
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('comments')}
+                                style={{
+                                    padding: '12px 14px', fontSize: '13px', fontWeight: 500,
+                                    border: 'none', background: 'none', cursor: 'pointer',
+                                    color: activeTab === 'comments' ? '#4f46e5' : '#94a3b8',
+                                    borderBottom: activeTab === 'comments' ? '2px solid #4f46e5' : '2px solid transparent',
+                                    marginBottom: '-1px', transition: 'all 0.15s'
+                                }}
+                            >
+                                Comments {commentCount > 0 ? commentCount : ''}
+                            </button>
+                            <button
+                                onClick={() => setPanelOpen(false)}
+                                style={{
+                                    marginLeft: 'auto', background: 'none', border: 'none',
+                                    cursor: 'pointer', color: '#94a3b8', padding: '4px', display: 'flex'
+                                }}
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div style={{ flex: 1, overflowY: 'auto' }}>
+                            {activeTab === 'timeline' && (
+                                <div style={{ padding: '20px' }}>
+                                    <ApprovalTimeline
+                                        forwards={selectedApp.form_forwards || []}
+                                        approvals={selectedApp.form_approvals || []}
+                                        currentStatus={selectedApp.current_status}
+                                        submittedBy={selectedApp.users}
+                                    />
+                                </div>
+                            )}
+                            {activeTab === 'comments' && (
+                                <CommentPanel
+                                    formId={appId}
+                                    currentUserId={user?.id}
+                                    isAdmin={storedRoles.includes('ADMIN') || storedRoles.includes('SUPER_ADMIN')}
+                                    onClose={() => setPanelOpen(false)}
+                                    standalone={false}
+                                />
+                            )}
+                        </div>
+
+                    </div>
+                </div>
             </div>
         </div>
     );

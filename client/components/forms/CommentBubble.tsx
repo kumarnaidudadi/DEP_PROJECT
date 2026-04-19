@@ -107,15 +107,8 @@ function CommentCard({
     };
 
     return (
-        <div style={{
-            borderLeft: `${isReply ? '2px' : '3px'} solid ${cfg.border}`,
-            background: isReply ? '#fff' : cfg.bg,
-            borderRadius: '8px',
-            padding: isReply ? '9px 12px' : '12px 14px',
-            border: `1px solid ${cfg.border}22`,
-            borderLeftWidth: isReply ? '2px' : '3px',
-            borderLeftColor: cfg.border,
-        }}>
+        <div className="group relative pl-6 pb-2">
+            <div className="absolute -left-[5px] top-2 w-2 h-2 rounded-full bg-gray-300"></div>
             {/* "Replying to" chip — only for replies */}
             {isReply && replyingToName && (
                 <div style={{
@@ -128,41 +121,35 @@ function CommentCard({
                 </div>
             )}
 
-            {/* Header row: badge + timestamp */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                <span style={{
-                    fontSize: '10px', fontWeight: 700, padding: '2px 7px',
-                    borderRadius: '999px', background: cfg.badge, color: cfg.badgeText,
-                    letterSpacing: '0.3px',
-                }}>
-                    {cfg.label}
-                </span>
-                <span style={{ fontSize: '10px', color: '#9ca3af', whiteSpace: 'nowrap', marginLeft: '8px' }}>
+            {/* Commenter & Header Row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '7px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                    <Avatar name={name} size={isReply ? 22 : 26} />
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: isReply ? '11px' : '12px', fontWeight: 700, color: '#1f2937' }}>
+                                {name}
+                            </span>
+                            <span style={{
+                                fontSize: '9px', fontWeight: 700, padding: '1px 6px',
+                                borderRadius: '999px', background: cfg.badge, color: cfg.badgeText,
+                                letterSpacing: '0.3px', border: `1px solid ${cfg.border}30`
+                            }}>
+                                {cfg.label}
+                            </span>
+                            {comment.is_edited && (
+                                <span style={{ fontSize: '10px', color: '#9ca3af', fontStyle: 'italic' }}>edited</span>
+                            )}
+                        </div>
+                        <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>
+                            {comment.commenter?.roles?.[0] || 'User'}
+                            {comment.commenter?.emp_code && ` · ${comment.commenter.emp_code}`}
+                        </div>
+                    </div>
+                </div>
+                <span style={{ fontSize: '10px', color: '#9ca3af', whiteSpace: 'nowrap', marginTop: '2px' }}>
                     {fmtDate(comment.created_at)}
                 </span>
-            </div>
-
-            {/* Commenter row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
-                <Avatar name={name} size={isReply ? 22 : 26} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: isReply ? '11px' : '12px', fontWeight: 700, color: '#1f2937' }}>
-                        {name}
-                    </span>
-                    {comment.commenter?.emp_code && (
-                        <span style={{ fontSize: '10px', color: '#9ca3af', marginLeft: '5px' }}>
-                            · {comment.commenter.emp_code}
-                        </span>
-                    )}
-                    {comment.form_history?.action && (
-                        <div style={{ fontSize: '10px', color: '#6b7280', fontStyle: 'italic', marginTop: '1px' }}>
-                            via {comment.form_history.action}
-                        </div>
-                    )}
-                </div>
-                {comment.is_edited && (
-                    <span style={{ fontSize: '10px', color: '#9ca3af', fontStyle: 'italic' }}>edited</span>
-                )}
             </div>
 
             {/* Content */}
@@ -180,7 +167,7 @@ function CommentCard({
 
             {/* Action row */}
             {!comment.is_deleted && (
-                <div style={{ display: 'flex', gap: '4px', marginTop: '7px', alignItems: 'center' }}>
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200" style={{ display: 'flex', gap: '4px', marginTop: '7px', alignItems: 'center' }}>
                     {/* Reply available on ALL cards */}
                     {onReply && (
                         <ActionBtn icon={<Reply size={11} />} label="Reply" onClick={() => onReply(comment)} hoverColor="#6366f1" />

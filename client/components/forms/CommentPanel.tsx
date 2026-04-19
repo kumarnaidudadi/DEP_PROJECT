@@ -18,10 +18,11 @@ interface Props {
     currentUserId?: number;
     isAdmin?: boolean;
     onClose: () => void;
+    standalone?: boolean;
 }
 
 export default function CommentPanel({
-    formId, currentUserId, isAdmin, onClose
+    formId, currentUserId, isAdmin, onClose, standalone = true
 }: Props) {
     const { comments, isLoading, error, addComment, editComment, deleteComment, refetch } = useFormComments(formId);
 
@@ -76,10 +77,10 @@ export default function CommentPanel({
                 flexDirection: 'column',
                 height: '100%',
                 background: '#f8fafc',
-                borderLeft: '1px solid #e2e8f0',
-                borderRadius: '0 16px 16px 0',
+                borderLeft: standalone ? '1px solid #e2e8f0' : 'none',
+                borderRadius: standalone ? '0 16px 16px 0' : '0',
                 overflow: 'hidden',
-                animation: 'slideInRight 0.25s ease-out',
+                animation: standalone ? 'slideInRight 0.25s ease-out' : 'none',
             }}
         >
             <style>{`
@@ -98,52 +99,54 @@ export default function CommentPanel({
             `}</style>
 
             {/* ── Header ────────────────────────────────────────────────────── */}
-            <div style={{
-                padding: '14px 16px',
-                background: '#fff',
-                borderBottom: '1px solid #e2e8f0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                flexShrink: 0,
-            }}>
-                <MessageSquare size={18} style={{ color: '#6366f1' }} />
-                <div style={{ flex: 1 }}>
-                    <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1f2937' }}>
-                        Comments
-                    </h2>
+            {standalone && (
+                <div style={{
+                    padding: '14px 16px',
+                    background: '#fff',
+                    borderBottom: '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    flexShrink: 0,
+                }}>
+                    <MessageSquare size={18} style={{ color: '#6366f1' }} />
+                    <div style={{ flex: 1 }}>
+                        <h2 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#1f2937' }}>
+                            Comments
+                        </h2>
+                    </div>
+                    <button
+                        onClick={() => refetch()}
+                        title="Refresh"
+                        style={{
+                            background: 'none', border: 'none', cursor: 'pointer', padding: '5px',
+                            borderRadius: '6px', display: 'flex', color: '#9ca3af',
+                            transition: 'all 0.15s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#374151'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#9ca3af'; }}
+                    >
+                        <RefreshCw size={14} />
+                    </button>
+                    <button
+                        onClick={onClose}
+                        title="Close comments"
+                        style={{
+                            background: 'none', border: 'none', cursor: 'pointer', padding: '5px',
+                            borderRadius: '6px', display: 'flex', color: '#9ca3af',
+                            transition: 'all 0.15s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#ef4444'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#9ca3af'; }}
+                    >
+                        <X size={16} />
+                    </button>
                 </div>
-                <button
-                    onClick={() => refetch()}
-                    title="Refresh"
-                    style={{
-                        background: 'none', border: 'none', cursor: 'pointer', padding: '5px',
-                        borderRadius: '6px', display: 'flex', color: '#9ca3af',
-                        transition: 'all 0.15s',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#374151'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#9ca3af'; }}
-                >
-                    <RefreshCw size={14} />
-                </button>
-                <button
-                    onClick={onClose}
-                    title="Close comments"
-                    style={{
-                        background: 'none', border: 'none', cursor: 'pointer', padding: '5px',
-                        borderRadius: '6px', display: 'flex', color: '#9ca3af',
-                        transition: 'all 0.15s',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#ef4444'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#9ca3af'; }}
-                >
-                    <X size={16} />
-                </button>
-            </div>
+            )}
 
             {/* ── Filter pills ──────────────────────────────────────────────── */}
             <div style={{
-                display: 'flex', gap: '6px', padding: '10px 14px',
+                display: 'flex', gap: '16px', padding: '10px 14px',
                 overflowX: 'auto', background: '#fff',
                 borderBottom: '1px solid #e2e8f0', flexShrink: 0,
             }}>
@@ -153,19 +156,12 @@ export default function CommentPanel({
                     return (
                         <button
                             key={type}
-                            className="filter-pill"
+                            className={isActive ? "text-sm font-medium text-blue-600 border-b-2 border-blue-600 pb-2" : "text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 border-transparent pb-2"}
                             onClick={() => setFilterType(type)}
                             style={{
-                                flexShrink: 0, fontSize: '11px', fontWeight: 600,
-                                padding: '4px 10px', borderRadius: '999px', border: 'none',
+                                flexShrink: 0,
+                                background: 'transparent',
                                 cursor: 'pointer', transition: 'all 0.15s',
-                                background: isActive
-                                    ? (cfg ? cfg.badge : '#e0e7ff')
-                                    : '#f1f5f9',
-                                color: isActive
-                                    ? (cfg ? cfg.badgeText : '#4338ca')
-                                    : '#6b7280',
-                                boxShadow: isActive ? '0 0 0 1.5px ' + (cfg?.border || '#6366f1') : 'none',
                             }}
                         >
                             {type === 'all' ? 'All' : COMMENT_TYPE_CONFIG[type].label}
@@ -212,17 +208,21 @@ export default function CommentPanel({
                     </div>
                 )}
 
-                {!isLoading && filtered.map(comment => (
-                    <CommentBubble
-                        key={comment.id}
-                        comment={comment}
-                        currentUserId={currentUserId}
-                        isAdmin={isAdmin}
-                        onReply={handleReply}
-                        onEdit={handleEdit}
-                        onDelete={deleteComment}
-                    />
-                ))}
+                {!isLoading && filtered.length > 0 && (
+                    <div className="border-l-2 border-gray-200 ml-4 space-y-6">
+                        {filtered.map(comment => (
+                            <CommentBubble
+                                key={comment.id}
+                                comment={comment}
+                                currentUserId={currentUserId}
+                                isAdmin={isAdmin}
+                                onReply={handleReply}
+                                onEdit={handleEdit}
+                                onDelete={deleteComment}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* ── Input ─────────────────────────────────────────────────────── */}

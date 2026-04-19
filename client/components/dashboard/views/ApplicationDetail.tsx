@@ -4,7 +4,7 @@
 // approve/reject action panel, and PDF download.
 
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, CheckCircle, XCircle, Upload, ShieldCheck, Loader2, Send, Search, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileText, CheckCircle, XCircle, Upload, ShieldCheck, Loader2, Send, Search, User, ChevronDown, ChevronUp, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { Application, Profile, UserSearchResult, getApprovalFields, getSchemaFields, isFieldVisible, formatTitleCase } from '@/types';
 import Panel from '../Panel';
 import StatusBadge from '../StatusBadge';
@@ -29,6 +29,11 @@ interface Props {
     onForward?: (toUserId: number, note: string) => Promise<void>;
     onSearchUsers?: (query: string) => Promise<UserSearchResult[]>;
     isAdmin?: boolean;
+    onTabSwitch?: (tab: 'timeline' | 'comments') => void;
+    onTogglePanel?: () => void;
+    activeTab?: 'timeline' | 'comments';
+    panelOpen?: boolean;
+    commentCount?: number;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -310,10 +315,9 @@ function ForwardPanel({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ApplicationDetail({
-    app, canApprove, isInPendingView, profile, sigUploading,
-    remarks, approvalData, actionLoading,
-    onRemarks, onApprovalData, onDecision, onDownloadPdf, onSigUpload,
-    onForward, onSearchUsers, isAdmin
+    app, canApprove, isInPendingView, profile, sigUploading, remarks, approvalData, actionLoading,
+    onRemarks, onApprovalData, onDecision, onDownloadPdf, onSigUpload, onForward, onSearchUsers, isAdmin,
+    onTabSwitch, onTogglePanel, activeTab, panelOpen, commentCount = 0
 }: Props) {
     const isApproved = app.current_status === 'APPROVED';
     const isRejected = app.current_status === 'REJECTED';
@@ -475,11 +479,58 @@ export default function ApplicationDetail({
             );
         }
 
+        if (field.type === 'paragraph_blanks') {
+            const template = field.options?.[0] || '';
+            const blankTokenPattern = /\[_{2,}\]/g;
+            const segments = template.split(blankTokenPattern);
+            const blankCount = (template.match(blankTokenPattern) || []).length;
+            const values = Array.isArray(value) ? value : [];
+
+            return (
+                <div style={{
+                    lineHeight: '2',
+                    fontSize: '14px',
+                    color: '#374151',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                }}>
+                    {segments.map((segment: string, idx: number) => (
+                        <React.Fragment key={idx}>
+                            {segment && <span>{segment}</span>}
+                            {idx < blankCount && (
+                                <span style={{
+                                    display: 'inline-block',
+                                    padding: '0 8px',
+                                    margin: '0 4px',
+                                    borderBottom: '1px solid #1f2937',
+                                    fontWeight: 600,
+                                    color: '#111827',
+                                    minWidth: '40px',
+                                    textAlign: 'center',
+                                }}>
+                                    {values[idx] || ''}
+                                </span>
+                            )}
+                        </React.Fragment>
+                    ))}
+                </div>
+            );
+        }
+
         if (typeof value === 'object' && value !== null) {
-            return Object.entries(value)
-                .filter(([_, val]) => val !== '' && val !== null)
-                .map(([sk, sv]) => `${getSubFieldLabel(sk, field.subFields, formatTitleCase)}: ${sv}`)
-                .join(' | ') || '—';
+            const entries = Object.entries(value).filter(([_, val]) => val !== '' && val !== null);
+            if (entries.length === 0) return '—';
+            
+            return (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 mt-1">
+                    {entries.map(([sk, sv]) => (
+                        <div key={sk} className="flex flex-col">
+                            <span className="text-xs font-medium text-gray-500 uppercase">{getSubFieldLabel(sk, field.subFields, formatTitleCase)}</span>
+                            <span className="text-sm text-gray-900">{String(sv)}</span>
+                        </div>
+                    ))}
+                </div>
+            );
         }
 
         return value === undefined || value === null || value === '' ? '—' : String(value);
@@ -520,60 +571,47 @@ export default function ApplicationDetail({
                         </div>
                     )}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
                     <StatusBadge status={app.current_status} lg />
-                    {isApproved && (
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {/* Details Toggle Button */}
                         <button
-                            onClick={() => onDownloadPdf(app.id, app.form_types?.name || 'Application')}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', border: 'none', background: '#2563eb', color: '#fff', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(37,99,235,0.3)' }}
-                            onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = '#1d4ed8'}
-                            onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = '#2563eb'}
+                            onClick={() => onTogglePanel?.()}
+                            style={{
+                                padding: '6px 12px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                background: panelOpen ? '#0f172a' : '#fff',
+                                color: panelOpen ? '#fff' : '#64748b',
+                                fontSize: '13px',
+                                fontWeight: 500,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s'
+                            }}
                         >
-                            <FileText size={14} /> Download PDF
+                            {panelOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+                            <span>Details</span>
                         </button>
-                    )}
+
+                        {isApproved && (
+                            <button
+                                onClick={() => onDownloadPdf(app.id, app.form_types?.name || 'Application')}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 14px', border: 'none', background: '#2563eb', color: '#fff', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(37,99,235,0.3)' }}
+                                onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = '#1d4ed8'}
+                                onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = '#2563eb'}
+                            >
+                                <FileText size={14} /> Download PDF
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* Approval Timeline */}
-            <Panel 
-                title="Approval Timeline"
-                headerAction={
-                    <button 
-                        onClick={() => setIsTimelineCollapsed(!isTimelineCollapsed)}
-                        style={{
-                            background: 'none', border: 'none', color: '#9ca3af',
-                            cursor: 'pointer', display: 'flex', alignItems: 'center',
-                            gap: '4px', fontSize: '10px', fontWeight: 600,
-                            padding: '2px 6px', borderRadius: '4px',
-                            transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={e => {
-                            e.currentTarget.style.color = '#4b5563';
-                            e.currentTarget.style.background = '#f1f5f9';
-                        }}
-                        onMouseLeave={e => {
-                            e.currentTarget.style.color = '#9ca3af';
-                            e.currentTarget.style.background = 'none';
-                        }}
-                    >
-                        {isTimelineCollapsed ? (
-                            <>Show <ChevronDown size={12} /></>
-                        ) : (
-                            <>Hide <ChevronUp size={12} /></>
-                        )}
-                    </button>
-                }
-            >
-                {!isTimelineCollapsed && (
-                    <ApprovalTimeline
-                        forwards={app.form_forwards || []}
-                        approvals={app.form_approvals || []}
-                        currentStatus={app.current_status}
-                        submittedBy={app.users}
-                    />
-                )}
-            </Panel>
+
 
             {/* Form Data */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '20px', marginTop: '20px' }}>
