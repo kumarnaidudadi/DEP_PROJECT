@@ -37,9 +37,10 @@ export interface Application {
     form_data: any;
     reference_number?: string | null;
     form_types?: FormType;
-    users?: { id?: number; name: string;  email: string };
+    users?: { id?: number; name: string; first_name?: string; last_name?: string; email: string };
     form_approvals?: any[];
     form_forwards?: FormForward[];
+    form_history?: any[];
     office_orders?: { order_number: string; pdf_url?: string } | null;
     form_status_history?: any[];
 }

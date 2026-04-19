@@ -212,7 +212,7 @@ export default function PendingWorkDetailPage() {
                     applicationId={selectedApp.id}
                     referenceId={selectedApp.reference_number || 'NO-REF'}
                     title={selectedApp.form_types?.name || 'Application'}
-                    latestAction={historyArr[0]?.action || selectedApp.status}
+                    latestAction={historyArr[0]?.action || selectedApp.current_status}
                     applicantName={selectedApp.users ? `${selectedApp.users.first_name} ${selectedApp.users.last_name}` : 'Unknown User'}
                     timelineData={ascHistory}
                     currentUserId={user?.id}
