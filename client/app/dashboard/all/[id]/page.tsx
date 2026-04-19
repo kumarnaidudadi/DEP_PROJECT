@@ -9,7 +9,6 @@ import { useProfile } from '@/hooks/useProfile';
 import { useFormComments } from '@/hooks/useFormComments';
 import { Application } from '@/types';
 import ApplicationDetail from '@/components/dashboard/views/ApplicationDetail';
-import CommentPanel from '@/components/forms/CommentPanel';
 import ActivitySidebar from '@/components/dashboard/ActivitySidebar';
 
 export default function ApplicationDetailPage() {

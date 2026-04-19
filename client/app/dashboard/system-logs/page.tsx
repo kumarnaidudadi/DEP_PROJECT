@@ -10,7 +10,6 @@ import ActivitySidebar from '@/components/dashboard/ActivitySidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
-import CommentPanel from '@/components/forms/CommentPanel';
 
 // ── Custom dropdown ───────────────────────────────────────────────────────────
 interface DropdownProps {
@@ -117,32 +116,7 @@ function Dropdown({ label, value, options, onChange, minWidth = 140, alignRight 
     );
 }
 
-function StatusBadge({ action }: { action: string }) {
-    let bg = '#f1f5f9';
-    let text = '#64748b';
-    const a = (action || '').toLowerCase();
 
-    if (a.includes('create') || a.includes('submit')) {
-        bg = '#dbeafe'; text = '#2563eb';
-    } else if (a.includes('approve') || a.includes('forward')) {
-        bg = '#dcfce7'; text = '#16a34a';
-    } else if (a.includes('reject')) {
-        bg = '#fee2e2'; text = '#dc2626';
-    } else if (a.includes('update') || a.includes('edit')) {
-        bg = '#fef9c3'; text = '#ca8a04';
-    }
-
-    return (
-        <span style={{
-            background: bg, color: text,
-            padding: '4px 10px', borderRadius: '12px',
-            fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px',
-            whiteSpace: 'nowrap'
-        }}>
-            {action}
-        </span>
-    );
-}
 
 function SystemLogsContent() {
     const { userRoles, user } = useAuth();

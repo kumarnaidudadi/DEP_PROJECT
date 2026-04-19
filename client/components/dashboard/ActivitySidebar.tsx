@@ -188,6 +188,7 @@ export default function ActivitySidebar({
                                 currentUserId={currentUserId} 
                                 isAdmin={isAdmin} 
                                 onClose={onClose} 
+                                standalone={false}
                             />
                         )}
                     </div>

@@ -8,7 +8,6 @@ import { FileText, CheckCircle, XCircle, Upload, ShieldCheck, Loader2, Send, Sea
 import { Application, Profile, UserSearchResult, getApprovalFields, getSchemaFields, isFieldVisible, formatTitleCase } from '@/types';
 import Panel from '../Panel';
 import StatusBadge from '../StatusBadge';
-import ApprovalTimeline from '../WorkflowProgress';
 import FieldRenderer from '../../ui/FieldRenderer';
 import Modal from '../../ui/Modal';
 
