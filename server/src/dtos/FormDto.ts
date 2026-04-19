@@ -8,6 +8,7 @@ export interface CreateFormDto {
     userId: number;
     toUserId?: number;
     note?: string;
+    reference_number?: string;
 }
 
 export interface UpdateFormStatusDto {

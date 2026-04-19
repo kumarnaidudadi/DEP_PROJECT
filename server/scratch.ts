@@ -2,16 +2,18 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-    const res = await prisma.users.findFirst({
-        where: { email: '2023csb1115+4@iitrpr.ac.in' },
+    const res = await prisma.applied_forms.findMany({
+        orderBy: { updated_at: 'desc' },
+        take: 5,
         select: {
             id: true,
-            email: true,
-            first_name: true,
-            user_roles: { include: { roles: { select: { name: true } } } }
+            status: true,
+            reference_number: true,
+            submitted_at: true,
+            updated_at: true,
+            form_types: { select: { name: true, ref_prefix: true } }
         }
     });
-
-    console.log(JSON.stringify(res, null, 2));
+    console.log(res);
 }
 main().catch(console.error).finally(() => prisma.$disconnect());

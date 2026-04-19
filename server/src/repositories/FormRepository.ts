@@ -68,6 +68,7 @@ export class FormRepository implements IFormRepository {
                 form_data: dto.form_data as any,
                 status: 'submitted',
                 submitted_at: new Date(),
+                reference_number: dto.reference_number || null,
             },
         });
     }

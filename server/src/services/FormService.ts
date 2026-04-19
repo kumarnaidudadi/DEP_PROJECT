@@ -148,9 +148,6 @@ export class FormService implements IFormService {
             form = await this.formRepo.create({
                 ...dto,
                 form_data: formDataWithSnapshot,
-            });
-            // Assign reference number
-            await this.formRepo.updateStatus(Number(form.id), 'submitted', {
                 reference_number: referenceNumber,
             });
         }
