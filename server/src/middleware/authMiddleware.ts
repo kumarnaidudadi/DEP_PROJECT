@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import prisma from '../prisma';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 
@@ -55,3 +56,30 @@ export function checkRole(allowedRoles: string[]) {
         next();
     };
 }
+
+// ─── Inactive User Guard ─────────────────────────────────────────────
+export async function inactiveUserGuard(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    if (!req.user || !req.user.userId) {
+        // Not authenticated yet, allow verifyToken to handle it or skip if public route
+        return next();
+    }
+
+    try {
+        const user = await prisma.users.findUnique({
+            where: { id: req.user.userId },
+            select: { is_active: true }
+        });
+
+        if (user && user.is_active === false) {
+            // Send 403 with a special flag indicating inactive status
+            res.status(403).json({ error: 'Account is inactive', inactive: true });
+            return;
+        }
+
+        next();
+    } catch (e: any) {
+        console.error('[authMiddleware] inactiveUserGuard error:', e.message);
+        res.status(500).json({ error: 'Internal server error verifying account status' });
+    }
+}
+

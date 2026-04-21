@@ -27,6 +27,12 @@ api.interceptors.response.use(
                 window.location.href = '/login';
             }
         }
+        if (typeof window !== 'undefined' && error.response?.status === 403 && error.response?.data?.inactive) {
+            // Account is inactive, redirect to inactive wall
+            if (!window.location.pathname.startsWith('/inactive-wall')) {
+                window.location.href = '/inactive-wall';
+            }
+        }
         return Promise.reject(error);
     }
 );

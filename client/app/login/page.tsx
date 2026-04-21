@@ -40,16 +40,26 @@ export default function LoginPage() {
         setIsLoading(true);
 
         try {
-            const { token, user } = await verifyOtp(email, otp);
+            const result = await verifyOtp(email, otp);
+            
+            if (result.token && result.user) {
+                // Store session
+                localStorage.setItem('token', result.token);
+                localStorage.setItem('user', JSON.stringify(result.user));
 
-            // Store session
-            localStorage.setItem('token', token);
-            localStorage.setItem('user', JSON.stringify(user));
-
-            // Redirect to unified dashboard (it handles roles internally)
-            router.push('/dashboard/all');
+                // Redirect to unified dashboard (it handles roles internally)
+                router.push('/dashboard/all');
+            }
         } catch (err: any) {
             console.error('Verify OTP failed:', err);
+            if (err.response?.data?.locked) {
+                // If account is locked, we can still store user info if returned, or just redirect
+                if (err.response.data.user) {
+                    localStorage.setItem('user', JSON.stringify(err.response.data.user));
+                }
+                router.push('/inactive-wall');
+                return;
+            }
             setError(err.response?.data?.error || 'Invalid OTP. Please try again.');
         } finally {
             setIsLoading(false);

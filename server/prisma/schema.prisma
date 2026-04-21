@@ -43,6 +43,7 @@ model users {
   middle_name         String?
   otp_code            String?
   otp_expiry          DateTime?
+  otp_attempts        Int?                  @default(0)
   signature_url       String?
   applied_forms       applied_forms[]
   department_heads    department_heads[]
@@ -55,7 +56,10 @@ model users {
   forms               forms[]
   office_orders       office_orders[]
   user_roles          user_roles[]
-  comments            form_comments[]
+  comments               form_comments[]
+  user_activity_logs     user_activity_logs[]
+  reactivation_requests  reactivation_requests[] @relation("UserReactivationRequests")
+  reviewed_requests      reactivation_requests[] @relation("ReviewerReactivationRequests")
 }
 
 model department_heads {
@@ -233,4 +237,27 @@ model form_comments {
   form_history  form_history?   @relation(fields: [form_history_id], references: [id], onDelete: SetNull)
   parent        form_comments?  @relation("CommentReplies", fields: [parent_comment_id], references: [id], onDelete: Cascade)
   replies       form_comments[] @relation("CommentReplies")
+}
+
+model user_activity_logs {
+  id            Int       @id @default(autoincrement())
+  user_id       Int?
+  reason        String?
+  action        String?
+  triggered_by  String?
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  users         users?    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model reactivation_requests {
+  id           Int       @id @default(autoincrement())
+  user_id      Int?
+  reason       String?
+  status       String?   @default("pending")
+  admin_note   String?
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  reviewed_at  DateTime? @db.Timestamp(6)
+  reviewed_by  Int?
+  users        users?    @relation("UserReactivationRequests", fields: [user_id], references: [id], onDelete: Cascade)
+  reviewer     users?    @relation("ReviewerReactivationRequests", fields: [reviewed_by], references: [id], onDelete: SetNull)
 }

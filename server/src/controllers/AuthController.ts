@@ -5,10 +5,11 @@
 
 import { Request, Response } from 'express';
 import { IAuthService } from '../services/IAuthService';
+import { OtpService } from '../services/OtpService';
 
 export class AuthController {
     // Dependency Injection: receives service interface, not concrete class
-    constructor(private readonly authService: IAuthService) { }
+    constructor(private readonly authService: IAuthService, private readonly otpService?: OtpService) { }
 
     register = async (req: Request, res: Response): Promise<void> => {
         const { first_name, last_name, email, password } = req.body;
@@ -79,7 +80,11 @@ export class AuthController {
         }
 
         try {
-            await this.authService.sendOtp(email);
+            if (this.otpService) {
+                await this.otpService.sendOtp(email);
+            } else {
+                await this.authService.sendOtp(email);
+            }
             res.json({ message: 'OTP sent successfully to your email' });
         } catch (e: any) {
             console.error('[AuthController] sendOtp:', e.message);
@@ -97,8 +102,29 @@ export class AuthController {
         }
 
         try {
-            const result = await this.authService.verifyOtp(email, otp);
-            res.json(result);
+            if (this.otpService) {
+                const result = await this.otpService.verifyOtp(email, otp);
+                if (!result.success) {
+                    if (result.deactivated) {
+                        res.status(403).json({ error: result.message || 'Account deactivated', locked: true });
+                    } else if (result.shouldWarn) {
+                        res.status(401).json({ error: result.message || 'Warning', warning: true });
+                    } else {
+                        res.status(401).json({ error: result.message || 'Invalid OTP' });
+                    }
+                    return;
+                }
+                
+                // Using the generated token logic from AuthService logic implicitly via internal verify 
+                // but since OtpService doesn't generate JWT, we need AuthService to generate the token!
+                // Ah! I should let OtpService delegate back to AuthService OR we generate JWT in AuthController.
+                // Let's fallback to authService for the token part if Otp verifies! 
+                const authResult = await this.authService.verifyOtp(email, otp);
+                res.json(authResult);
+            } else {
+                const result = await this.authService.verifyOtp(email, otp);
+                res.json(result);
+            }
         } catch (e: any) {
             console.error('[AuthController] verifyOtp:', e.message);
             if (e.message === 'USER_NOT_FOUND') res.status(404).json({ error: 'User not found' });

@@ -6,7 +6,8 @@ import React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
     FilePlus, FileText, ClipboardList,
-    User, LogOut, Building2, Activity
+    User, LogOut, Building2, Activity,
+    Users
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -30,13 +31,16 @@ export default function Sidebar({ canApprove, pendingCount, onLogout }: SidebarP
     const pathname = usePathname();
 
     const { userRoles } = useAuth();
-    const isAdmin = userRoles.includes('ADMIN');
+    const isAdmin = userRoles.some(r => ['ADMIN', 'SUPER_ADMIN'].includes(r));
 
     const items: SidebarItem[] = [
         { href: '/dashboard/all', icon: <FileText size={20} />, label: 'All Applications' },
         ...(canApprove ? [{ href: '/dashboard/pending', icon: <ClipboardList size={20} />, label: 'Pending Work', badge: pendingCount || undefined }] : []),
         { href: '/dashboard/new', icon: <FilePlus size={20} />, label: 'New Application' },
-        ...(isAdmin ? [{ href: '/dashboard/system-logs', icon: <Activity size={20} />, label: 'System Logs' }] : []),
+        ...(isAdmin ? [
+            { href: '/dashboard/user-management', icon: <Users size={20} />, label: 'User Management' },
+            { href: '/dashboard/system-logs', icon: <Activity size={20} />, label: 'System Logs' }
+        ] : []),
     ];
 
     const isActive = (href: string) => {

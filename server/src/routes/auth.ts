@@ -7,14 +7,17 @@ import express from 'express';
 import { AuthController } from '../controllers/AuthController';
 import { AuthService } from '../services/AuthService';
 import { UserRepository } from '../repositories/UserRepository';
+import { OtpService } from '../services/OtpService';
+import { ActivityLogService } from '../services/ActivityLogService';
 import prismaClient from '../prisma';
 
 const router = express.Router();
 
-// ─── Dependency Injection (manual composition root) ────────────────────────
 const userRepo = new UserRepository(prismaClient);
 const authService = new AuthService(userRepo);
-const controller = new AuthController(authService);
+const activityLogService = new ActivityLogService(prismaClient);
+const otpService = new OtpService(prismaClient, activityLogService);
+const controller = new AuthController(authService, otpService);
 
 // ─── Email + Password ──────────────────────────────────────────────────────
 router.post('/register', controller.register);
