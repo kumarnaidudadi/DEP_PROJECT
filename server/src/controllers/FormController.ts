@@ -228,13 +228,10 @@ export class FormController {
 
     searchUsers = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         const query = (req.query.q as string) || '';
-        if (!query || query.length < 2) {
-            res.json([]);
-            return;
-        }
+        const formId = req.query.formId ? Number(req.query.formId) : undefined;
 
         try {
-            const users = await this.formService.searchUsers(query);
+            const users = await this.formService.searchUsers(query, formId);
             res.json(users);
         } catch (e: any) {
             console.error('[FormController] searchUsers:', e.message);

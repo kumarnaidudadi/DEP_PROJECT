@@ -20,13 +20,13 @@ export class FormRepository implements IFormRepository {
                 users: { select: { id: true, first_name: true, last_name: true, email: true, department_id: true } },
                 form_forwards: {
                     include: {
-                        from_user: { select: { id: true, first_name: true, last_name: true, email: true } },
-                        to_user: { select: { id: true, first_name: true, last_name: true, email: true } }
+                        from_user: { select: { id: true, first_name: true, last_name: true, email: true, user_roles: { include: { roles: { select: { name: true } } } } } },
+                        to_user: { select: { id: true, first_name: true, last_name: true, email: true, user_roles: { include: { roles: { select: { name: true } } } } } }
                     },
                     orderBy: { forwarded_at: 'asc' }
                 },
                 form_history: {
-                    include: { users: { select: { id: true, first_name: true, last_name: true, email: true } } },
+                    include: { users: { select: { id: true, first_name: true, last_name: true, email: true, user_roles: { include: { roles: { select: { name: true } } } } } } },
                     orderBy: { created_at: 'desc' }
                 },
                 office_orders: true
@@ -150,8 +150,8 @@ export class FormRepository implements IFormRepository {
         return this.prisma.form_forwards.findMany({
             where: { form_id: Number(formId) },
             include: {
-                from_user: { select: { id: true, first_name: true, last_name: true, email: true } },
-                to_user: { select: { id: true, first_name: true, last_name: true, email: true } }
+                from_user: { select: { id: true, first_name: true, last_name: true, email: true, user_roles: { include: { roles: { select: { name: true } } } } } },
+                to_user: { select: { id: true, first_name: true, last_name: true, email: true, user_roles: { include: { roles: { select: { name: true } } } } } }
             },
             orderBy: { forwarded_at: 'asc' },
         });
@@ -222,15 +222,37 @@ export class FormRepository implements IFormRepository {
 
     // ── Users (for search & lookup) ───────────────────────────────────────
 
-    async searchUsers(query: string, limit: number = 10): Promise<any[]> {
-        return this.prisma.users.findMany({
-            where: {
+    async searchUsers(query: string, limit: number = 10, formId?: number): Promise<any[]> {
+        let defaultRoles = ['ADMIN', 'SUPER_ADMIN', 'HEAD_OF_DEPARTMENT', 'DIRECTOR', 'DEAN', 'HOD', 'ESTABLISHMENT'];
+        
+        if (query.length < 2 && formId) {
+            const form = await this.prisma.applied_forms.findUnique({
+                where: { id: Number(formId) },
+                include: { form_types: true }
+            });
+            if (form && form.form_types && form.form_types.approval_rules) {
+                const rules = form.form_types.approval_rules as any;
+                if (rules.required_roles && Array.isArray(rules.required_roles) && rules.required_roles.length > 0) {
+                    defaultRoles = rules.required_roles;
+                }
+            }
+        }
+
+        const whereArgs = query.length < 2 
+            ? {
+                user_roles: { some: { roles: { name: { in: defaultRoles } } } }
+            }
+            : {
                 OR: [
                     { first_name: { contains: query, mode: 'insensitive' } },
                     { last_name: { contains: query, mode: 'insensitive' } },
                     { email: { contains: query, mode: 'insensitive' } },
+                    { user_roles: { some: { roles: { name: { contains: query, mode: 'insensitive' } } } } }
                 ]
-            },
+            };
+
+        return this.prisma.users.findMany({
+            where: whereArgs as any,
             select: {
                 id: true,
                 first_name: true,

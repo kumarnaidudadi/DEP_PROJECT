@@ -110,8 +110,8 @@ export async function forwardForm(
 }
 
 /** Search users by name/email for the forwarding typeahead */
-export async function searchUsers(query: string): Promise<UserSearchResult[]> {
-    const res = await api.get('/forms/users/search', { params: { q: query } });
+export async function searchUsers(query: string, formId?: number): Promise<UserSearchResult[]> {
+    const res = await api.get('/forms/users/search', { params: { q: query, formId } });
     return res.data;
 }
 

@@ -35,8 +35,7 @@ export interface IFormRepository {
     // Roles
     findRoleByName(name: string): Promise<any | null>;
 
-    // Users
-    searchUsers(query: string, limit?: number): Promise<any[]>;
+    searchUsers(query: string, limit?: number, formId?: number): Promise<any[]>;
     findFirstUserByRole(roleName: string, departmentId?: number): Promise<any | null>;
     findUserById(id: number): Promise<any | null>;
     getUserRoles(userId: number): Promise<string[]>;

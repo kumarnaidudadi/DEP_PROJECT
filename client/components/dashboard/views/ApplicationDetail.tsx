@@ -26,7 +26,7 @@ interface Props {
     onDownloadPdf: (id: number, name: string) => void;
     onSigUpload: (file: File) => void;
     onForward?: (toUserId: number, note: string) => Promise<void>;
-    onSearchUsers?: (query: string) => Promise<UserSearchResult[]>;
+    onSearchUsers?: (query: string, formId?: number) => Promise<UserSearchResult[]>;
     isAdmin?: boolean;
     onTabSwitch?: (tab: 'timeline' | 'comments') => void;
     onTogglePanel?: () => void;
@@ -87,7 +87,7 @@ function ForwardPanel({
     loading,
 }: {
     onForward?: (toUserId: number, note: string) => Promise<void>;
-    onSearchUsers?: (query: string) => Promise<UserSearchResult[]>;
+    onSearchUsers?: (query: string, formId?: number) => Promise<UserSearchResult[]>;
     loading: boolean;
 }) {
     const [searchQuery, setSearchQuery] = useState('');
@@ -126,6 +126,7 @@ function ForwardPanel({
             if (!onSearchUsers) return;
             setSearching(true);
             try {
+                // Not passing app.id here since this is ForwardPanel which expects basic search, but maybe we should. Let's not for now unless it breaks. Or wait, let's just pass `app?.id` if we had it but ForwardPanel doesn't have app.id. Let's pass undefined.
                 const results = await onSearchUsers(query);
                 setUsers(results);
                 setShowDropdown(true);
@@ -359,6 +360,34 @@ export default function ApplicationDetail({
     }, [app.id]);
 
     useEffect(() => {
+        if (showApproveFlow && onSearchUsers && app.id) {
+            setSearchingNextApprover(true);
+            onSearchUsers('', app.id).then(results => {
+                setNextApproverUsers(results);
+                setShowNextApproverDropdown(true);
+            }).catch(() => {
+                setNextApproverUsers([]);
+            }).finally(() => {
+                setSearchingNextApprover(false);
+            });
+        }
+    }, [showApproveFlow, onSearchUsers]);
+
+    useEffect(() => {
+        if (showForwardModal && onSearchUsers && app.id) {
+            setSearchingForwardUsers(true);
+            onSearchUsers('', app.id).then(results => {
+                setForwardUsers(results);
+                setShowForwardDropdown(true);
+            }).catch(() => {
+                setForwardUsers([]);
+            }).finally(() => {
+                setSearchingForwardUsers(false);
+            });
+        }
+    }, [showForwardModal, onSearchUsers]);
+
+    useEffect(() => {
         const handler = (e: MouseEvent) => {
             if (nextApproverRef.current && !nextApproverRef.current.contains(e.target as Node)) {
                 setShowNextApproverDropdown(false);
@@ -377,7 +406,7 @@ export default function ApplicationDetail({
 
         if (nextApproverDebounceRef.current) clearTimeout(nextApproverDebounceRef.current);
 
-        if (query.length < 2 || !onSearchUsers) {
+        if (!onSearchUsers) {
             setNextApproverUsers([]);
             setShowNextApproverDropdown(false);
             return;
@@ -401,7 +430,7 @@ export default function ApplicationDetail({
         setForwardQuery(query);
         setSelectedForwardUser(null);
         if (forwardDebounceRef.current) clearTimeout(forwardDebounceRef.current);
-        if (query.length < 2 || !onSearchUsers) {
+        if (!onSearchUsers) {
             setForwardUsers([]);
             setShowForwardDropdown(false);
             return;
@@ -848,6 +877,11 @@ export default function ApplicationDetail({
                                 borderRadius: '12px', maxHeight: '200px', overflowY: 'auto', 
                                 boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' 
                             }}>
+                                {nextApproverQuery.length < 2 && (
+                                    <div style={{ padding: '8px 14px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.5px', color: '#64748b', textTransform: 'uppercase', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                        Suggested Approvers
+                                    </div>
+                                )}
                                 {nextApproverUsers.map(u => (
                                     <div key={u.id} onClick={() => { setNextApproverUser(u); setNextApproverQuery(u.name); setShowNextApproverDropdown(false); }} 
                                         style={{ 
@@ -863,6 +897,18 @@ export default function ApplicationDetail({
                                         <div>
                                             <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{u.name}</div>
                                             <div style={{ fontSize: '11px', color: '#64748b' }}>{u.email}</div>
+                                            <div style={{ display: 'flex', gap: '4px', marginTop: '3px', flexWrap: 'wrap' }}>
+                                                {u.roles?.map((role: string) => (
+                                                    <span key={role} style={{ fontSize: '9px', padding: '1px 6px', background: '#eff6ff', color: '#1d4ed8', borderRadius: '4px', fontWeight: 600, border: '1px solid #bfdbfe' }}>
+                                                        {role}
+                                                    </span>
+                                                ))}
+                                                {u.department && (
+                                                    <span style={{ fontSize: '9px', padding: '1px 6px', background: '#f0fdf4', color: '#15803d', borderRadius: '4px', fontWeight: 600, border: '1px solid #bbf7d0' }}>
+                                                        {u.department}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -968,6 +1014,11 @@ export default function ApplicationDetail({
 
                         {showForwardDropdown && forwardUsers.length > 0 && (
                             <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '8px', zIndex: 1000, background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', maxHeight: '200px', overflowY: 'auto', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+                                {forwardQuery.length < 2 && (
+                                    <div style={{ padding: '8px 14px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.5px', color: '#64748b', textTransform: 'uppercase', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                        Suggested Users
+                                    </div>
+                                )}
                                 {forwardUsers.map(u => (
                                     <div key={u.id} onClick={() => { setSelectedForwardUser(u); setForwardQuery(u.name); setShowForwardDropdown(false); }} 
                                         style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
@@ -980,6 +1031,18 @@ export default function ApplicationDetail({
                                         <div>
                                             <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{u.name}</div>
                                             <div style={{ fontSize: '11px', color: '#64748b' }}>{u.email}</div>
+                                            <div style={{ display: 'flex', gap: '4px', marginTop: '3px', flexWrap: 'wrap' }}>
+                                                {u.roles?.map((role: string) => (
+                                                    <span key={role} style={{ fontSize: '9px', padding: '1px 6px', background: '#eff6ff', color: '#1d4ed8', borderRadius: '4px', fontWeight: 600, border: '1px solid #bfdbfe' }}>
+                                                        {role}
+                                                    </span>
+                                                ))}
+                                                {u.department && (
+                                                    <span style={{ fontSize: '9px', padding: '1px 6px', background: '#f0fdf4', color: '#15803d', borderRadius: '4px', fontWeight: 600, border: '1px solid #bbf7d0' }}>
+                                                        {u.department}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

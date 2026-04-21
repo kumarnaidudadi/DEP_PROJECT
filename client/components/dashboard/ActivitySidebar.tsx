@@ -10,10 +10,12 @@ interface TimelineEvent {
     users?: {
         first_name?: string;
         last_name?: string;
+        user_roles?: Array<{ roles?: { name: string } }>;
     };
     target_user?: {
         first_name?: string;
         last_name?: string;
+        user_roles?: Array<{ roles?: { name: string } }>;
     };
     remarks?: string;
 }
@@ -55,6 +57,17 @@ export default function ActivitySidebar({
     const fmtDate = (val: string | Date) => {
         const d = new Date(val);
         return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    };
+
+    const getPrimaryRole = (user: any) => {
+        if (!user || !user.user_roles || user.user_roles.length === 0) return null;
+        const roles = user.user_roles.map((ur: any) => ur.roles?.name).filter(Boolean);
+        if (roles.includes('ADMIN')) return 'Admin';
+        if (roles.includes('DIRECTOR')) return 'Director';
+        if (roles.includes('DEAN')) return 'Dean';
+        if (roles.includes('HEAD_OF_DEPARTMENT') || roles.includes('HOD')) return 'HOD';
+        if (roles.includes('ESTABLISHMENT')) return 'Establishment';
+        return roles[0] ? roles[0].replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase()) : null;
     };
 
     return (
@@ -158,12 +171,22 @@ export default function ActivitySidebar({
                                                             </div>
                                                         </div>
                                                         {item.users && (
-                                                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#333', marginTop: '6px' }}>
-                                                                {item.users.first_name} {item.users.last_name}
+                                                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#333', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                <span>{item.users.first_name} {item.users.last_name}</span>
+                                                                {getPrimaryRole(item.users) && (
+                                                                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500, background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+                                                                        {getPrimaryRole(item.users)}
+                                                                    </span>
+                                                                )}
                                                                 {item.target_user && (
                                                                     <>
-                                                                        <span style={{ fontSize: '11px', color: '#94a3b8', margin: '0 6px', fontWeight: 500 }}>→</span>
-                                                                        {item.target_user.first_name} {item.target_user.last_name}
+                                                                        <span style={{ fontSize: '11px', color: '#94a3b8', margin: '0 2px', fontWeight: 500 }}>→</span>
+                                                                        <span>{item.target_user.first_name} {item.target_user.last_name}</span>
+                                                                        {getPrimaryRole(item.target_user) && (
+                                                                            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500, background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+                                                                                {getPrimaryRole(item.target_user)}
+                                                                            </span>
+                                                                        )}
                                                                     </>
                                                                 )}
                                                             </div>

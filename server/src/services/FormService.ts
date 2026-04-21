@@ -472,8 +472,8 @@ export class FormService implements IFormService {
 
     // ── Search Users ──────────────────────────────────────────────────────
 
-    async searchUsers(query: string): Promise<any[]> {
-        const users = await this.formRepo.searchUsers(query);
+    async searchUsers(query: string, formId?: number): Promise<any[]> {
+        const users = await this.formRepo.searchUsers(query, 10, formId);
         return users.map((u: any) => ({
             id: Number(u.id),
             name: [u.first_name, u.last_name].filter(Boolean).join(' ').trim() || u.email?.split('@')[0] || 'Unknown User',

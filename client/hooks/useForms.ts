@@ -83,8 +83,8 @@ export function useForms() {
         return result;
     }, []);
 
-    const searchUsers = useCallback(async (query: string): Promise<UserSearchResult[]> => {
-        return formSvc.searchUsers(query);
+    const searchUsers = useCallback(async (query: string, formId?: number): Promise<UserSearchResult[]> => {
+        return formSvc.searchUsers(query, formId);
     }, []);
 
     const triggerDownloadPdf = useCallback(async (formId: number, fileName: string) => {

@@ -21,8 +21,7 @@ export interface IFormService {
     forwardForm(dto: ForwardFormDto): Promise<any>;
     updateFormStatus(dto: UpdateFormStatusDto): Promise<any>;
 
-    // Users
-    searchUsers(query: string): Promise<any[]>;
+    searchUsers(query: string, formId?: number): Promise<any[]>;
     getRoutingTarget(roleName: string, applicantId: number): Promise<any>;
 
     // History
