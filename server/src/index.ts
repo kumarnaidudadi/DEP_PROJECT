@@ -48,6 +48,7 @@ app.get('/', (req, res) => {
 });
 
 // ─── Start Server ─────────────────────────────────────────────────────
-app.listen(port, () => {
-    console.log(`🚀 Server is running on http://localhost:${port}`);
+const host = process.env.HOST || '0.0.0.0';
+app.listen(port as number, host, () => {
+    console.log(`🚀 Server is running on http://${host}:${port}`);
 });
