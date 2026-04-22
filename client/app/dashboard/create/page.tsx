@@ -57,12 +57,9 @@ function CreateFormInner() {
     const [createSuccess, setCreateSuccess] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [prefixError, setPrefixError] = useState<string | null>(null);
-    const [initialSnapshot, setInitialSnapshot] = useState(() =>
-        serializeBuilderState('', '', '', [createBuilderField()], [], null)
-    );
-
+    const [initialSnapshot, setInitialSnapshot] = useState<string | null>(null);
     const currentSnapshot = serializeBuilderState(newFormName, newFormDesc, refPrefix, formFields, approvalRoles, firstRoutingRole);
-    const isDirty = currentSnapshot !== initialSnapshot;
+    const isDirty = initialSnapshot !== null && currentSnapshot !== initialSnapshot;
     const allowNavigationRef = React.useRef(false);
     const popGuardActiveRef = React.useRef(false);
     const isDirtyRef = React.useRef(isDirty);
@@ -79,8 +76,9 @@ function CreateFormInner() {
 
     useEffect(() => {
         if (editId) return;
-        setInitialSnapshot(serializeBuilderState('', '', '', [createBuilderField()], [], null));
-    }, [editId]);
+        // Initialize snapshot with the ACTUAL initial state (matching field IDs)
+        setInitialSnapshot(serializeBuilderState('', '', '', formFields, [], null));
+    }, [editId]); // Only run on mount or when switching to 'create' mode
 
     // Pre-fill when editing
     useEffect(() => {
@@ -207,21 +205,14 @@ function CreateFormInner() {
     const handleAttemptLeave = React.useCallback(async () => {
         if (!isDirty || allowNavigationRef.current) return true;
 
-        const wantsSave = window.confirm('You have unsaved changes. Do you want to save this form before leaving?');
-        if (wantsSave) {
-            const saved = await handleSave({ redirectAfterSave: false });
-            if (saved) allowNavigationRef.current = true;
-            return Boolean(saved);
-        }
-
-        const discard = window.confirm('Discard your unsaved changes and leave this page?');
+        const discard = window.confirm('You have unsaved changes. Discard them and leave this page?');
         if (discard) {
             allowNavigationRef.current = true;
             return true;
         }
 
         return false;
-    }, [handleSave, isDirty]);
+    }, [isDirty]);
 
     useEffect(() => {
         attemptLeaveRef.current = handleAttemptLeave;
@@ -239,7 +230,8 @@ function CreateFormInner() {
     }, [isDirty]);
 
     useEffect(() => {
-        if (popGuardActiveRef.current) return;
+        // Only activate the popstate guard if the form is actually dirty
+        if (!isDirty || popGuardActiveRef.current || allowNavigationRef.current) return;
 
         window.history.pushState({ createFormGuard: true }, '', window.location.href);
         popGuardActiveRef.current = true;
@@ -264,12 +256,19 @@ function CreateFormInner() {
             window.removeEventListener('popstate', handlePopState);
             popGuardActiveRef.current = false;
         };
-    }, []);
+    }, [isDirty]);
 
     const handleCancel = React.useCallback(async () => {
         const canLeave = await handleAttemptLeave();
         if (!canLeave) return;
-        router.back();
+        
+        if (popGuardActiveRef.current) {
+            // Setting this to true avoids the popstate listener catching the navigation
+            allowNavigationRef.current = true;
+            window.history.go(-2);
+        } else {
+            router.back();
+        }
     }, [handleAttemptLeave, router]);
 
     return (
