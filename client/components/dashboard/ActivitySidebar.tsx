@@ -191,11 +191,7 @@ export default function ActivitySidebar({
                                                                 )}
                                                             </div>
                                                         )}
-                                                        {item.remarks && (
-                                                            <div style={{ marginTop: '4px', fontSize: '13px', color: '#64748b', background: '#f8fafc', padding: '8px', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
-                                                                {item.remarks}
-                                                            </div>
-                                                        )}
+
                                                     </div>
                                                 </div>
                                             );

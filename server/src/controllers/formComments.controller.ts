@@ -1,6 +1,13 @@
 // ─── formComments.controller.ts ────────────────────────────────────────────────
 // HTTP layer for form comment endpoints.
-// Access control: commenter must be the applicant OR appear in form_forwards.
+//
+// Visibility rule (Option A — Strict Pairwise Isolation):
+//   • ADMIN / SUPER_ADMIN → see ALL comments on the form.
+//   • Everyone else       → see only comments where they are the sender OR the receiver.
+//     i.e.  commented_by = userId  OR  receiver_id = userId
+//
+// When adding a comment, receiver_id is auto-determined as the "other party" in
+// the commenter's most-recent forwarding involvement for this form.
 
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
@@ -29,6 +36,37 @@ async function canComment(formId: number, userId: number): Promise<boolean> {
     return !!forward;
 }
 
+/**
+ * Determine the pairwise receiver for a NEW top-level general comment.
+ *
+ * Priority order:
+ *  1. Whoever the commenter most recently FORWARDED TO  (A→B  → receiver = B) ← user's request
+ *  2. Whoever most recently FORWARDED TO the commenter  (User→A → receiver = User) — fallback
+ *  3. Current form holder (latest forwarded_to) — last resort for applicant before any forward
+ */
+async function determineReceiverId(formId: number, commenterId: number): Promise<number | null> {
+    // Priority 1: most recent forward SENT by this user
+    const lastSent = await prismaClient.form_forwards.findFirst({
+        where: { form_id: formId, forwarded_by: commenterId },
+        orderBy: { forwarded_at: 'desc' },
+    });
+    if (lastSent) return lastSent.forwarded_to;
+
+    // Priority 2: most recent forward RECEIVED by this user
+    const lastReceived = await prismaClient.form_forwards.findFirst({
+        where: { form_id: formId, forwarded_to: commenterId },
+        orderBy: { forwarded_at: 'desc' },
+    });
+    if (lastReceived) return lastReceived.forwarded_by;
+
+    // Priority 3: current holder (applicant commenting before any forward exists)
+    const latestForward = await prismaClient.form_forwards.findFirst({
+        where: { form_id: formId },
+        orderBy: { forwarded_at: 'desc' },
+    });
+    return latestForward?.forwarded_to ?? null;
+}
+
 function selectCommenter() {
     return {
         id: true,
@@ -48,47 +86,6 @@ function getRootId(commentId: number, map: Map<number, any>): number {
     return getRootId(c.parent_comment_id, map);
 }
 
-// Fetch ALL comments for the form then build flatten-under-root tree in code.
-async function fetchComments(formId: number) {
-    const rows = await prismaClient.form_comments.findMany({
-        where: { applied_form_id: formId },
-        orderBy: { created_at: 'asc' },
-        include: {
-            user: { select: selectCommenter() },
-            form_history: { select: { action: true } },
-        },
-    });
-
-    // Build a lookup map id → raw row
-    const map = new Map<number, any>(rows.map(r => [r.id, r]));
-
-    // Separate top-level from descendants
-    const topLevel: any[] = [];
-    const descendants: any[] = [];
-    for (const row of rows) {
-        if (row.parent_comment_id === null) topLevel.push(row);
-        else descendants.push(row);
-    }
-
-    // Build output map: rootId → sanitized comment with flat replies array
-    const outputMap = new Map<number, any>();
-    for (const tl of topLevel) {
-        outputMap.set(tl.id, { ...sanitizeCommentBase(tl), replies: [] });
-    }
-
-    // Attach every descendant under its root ancestor, preserving created_at order
-    for (const d of descendants) {
-        const rootId = getRootId(d.id, map);
-        const root = outputMap.get(rootId);
-        if (root) {
-            root.replies.push(sanitizeCommentBase(d));
-        }
-        // If root not found (orphan), skip silently
-    }
-
-    return Array.from(outputMap.values());
-}
-
 function sanitizeCommentBase(c: any): any {
     return {
         id: c.id,
@@ -101,6 +98,7 @@ function sanitizeCommentBase(c: any): any {
         updated_at: c.updated_at,
         form_history_id: c.form_history_id,
         parent_comment_id: c.parent_comment_id,
+        receiver_id: c.receiver_id ?? null,
         commenter: c.user
             ? {
                 id: c.user.id,
@@ -119,6 +117,88 @@ function sanitizeComment(c: any): any {
     return { ...sanitizeCommentBase(c), replies: [] };
 }
 
+/**
+ * Fetch comments with pairwise visibility applied.
+ *
+ *  isAdmin = true  → return all comments for the form.
+ *  isAdmin = false → return only comments where userId is sender or receiver.
+ *
+ * We still fetch ALL rows from DB first and filter in code so that reply
+ * threading (parent_comment_id) doesn't break when a parent is visible but
+ * a sibling reply is not.
+ */
+async function fetchComments(formId: number, userId?: number, isAdmin: boolean = false) {
+    // Always fetch all rows so tree-building stays consistent
+    const rows = await prismaClient.form_comments.findMany({
+        where: { applied_form_id: formId },
+        orderBy: { created_at: 'asc' },
+        include: {
+            user: { select: selectCommenter() },
+            form_history: { select: { action: true } },
+        },
+    });
+
+    // Determine which comment IDs are visible to this user
+    let visibleIds: Set<number>;
+    if (isAdmin || !userId) {
+        // Admin sees everything
+        visibleIds = new Set(rows.map(r => r.id));
+    } else {
+        // Pairwise: visible if sender or receiver
+        const directlyVisible = new Set(
+            rows
+                .filter(r => r.commented_by === userId || r.receiver_id === userId)
+                .map(r => r.id)
+        );
+
+        // Also expose replies to visible top-level comments that themselves pass
+        // the same filter — keeps thread coherent.
+        const map = new Map<number, any>(rows.map(r => [r.id, r]));
+        visibleIds = new Set<number>();
+        for (const row of rows) {
+            if (directlyVisible.has(row.id)) {
+                visibleIds.add(row.id);
+            } else if (row.parent_comment_id !== null) {
+                // Include reply if its root ancestor is visible to this user
+                const rootId = getRootId(row.id, map);
+                if (directlyVisible.has(rootId)) {
+                    visibleIds.add(row.id);
+                }
+            }
+        }
+    }
+
+    const visibleRows = rows.filter(r => visibleIds.has(r.id));
+
+    // Build lookup map id → raw row (for the visible set)
+    const map = new Map<number, any>(visibleRows.map(r => [r.id, r]));
+
+    // Separate top-level from descendants
+    const topLevel: any[] = [];
+    const descendants: any[] = [];
+    for (const row of visibleRows) {
+        if (row.parent_comment_id === null) topLevel.push(row);
+        else descendants.push(row);
+    }
+
+    // Build output map: rootId → sanitized comment with flat replies array
+    const outputMap = new Map<number, any>();
+    for (const tl of topLevel) {
+        outputMap.set(tl.id, { ...sanitizeCommentBase(tl), replies: [] });
+    }
+
+    // Attach every descendant under its root ancestor, preserving created_at order
+    for (const d of descendants) {
+        const rootId = getRootId(d.id, map);
+        const root = outputMap.get(rootId);
+        if (root) {
+            root.replies.push(sanitizeCommentBase(d));
+        }
+    }
+
+    return Array.from(outputMap.values());
+}
+
 // ─── GET /api/forms/:formId/comments ─────────────────────────────────────────
 
 export const getComments = async (
@@ -126,9 +206,12 @@ export const getComments = async (
     res: Response
 ): Promise<void> => {
     const formId = Number(req.params.formId);
+    const userId = req.user?.userId;
+    const roles: string[] = req.user?.roles || [];
+    const isAdmin = roles.includes('ADMIN') || roles.includes('SUPER_ADMIN');
 
     try {
-        const comments = await fetchComments(formId);
+        const comments = await fetchComments(formId, userId, isAdmin);
         res.json(comments);
     } catch (e: any) {
         console.error('[formComments] getComments:', e.message);
@@ -160,10 +243,25 @@ export const addComment = async (
             return;
         }
 
+        // ── Determine pairwise receiver ──────────────────────────────────────
+        // Replies → receiver is the author of the parent comment (direct response)
+        // Top-level general comments → receiver is whoever this user last forwarded to
+        let receiverId: number | null = null;
+        if (parent_comment_id) {
+            const parent = await prismaClient.form_comments.findUnique({
+                where: { id: Number(parent_comment_id) },
+                select: { commented_by: true },
+            });
+            receiverId = parent?.commented_by ?? null;
+        } else {
+            receiverId = await determineReceiverId(formId, userId);
+        }
+
         const comment = await prismaClient.form_comments.create({
             data: {
                 applied_form_id: formId,
                 commented_by: userId,
+                receiver_id: receiverId,
                 content: typeof content === 'string' ? wrapPlainText(content) : content,
                 comment_type: 'general',
                 form_history_id: null,

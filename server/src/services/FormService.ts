@@ -152,7 +152,7 @@ export class FormService implements IFormService {
             });
         }
 
-        // Log history + create action comment
+        // Log history + create action comment (submission has no receiver yet — toUserId, if any)
         await this.formRepo.createActionComment({
             historyData: {
                 applied_form_id: Number(form.id),
@@ -163,6 +163,7 @@ export class FormService implements IFormService {
             commentType: 'general',
             contentText: 'Application submitted.',
             commentedBy: Number(dto.userId),
+            receiverId: dto.toUserId ? Number(dto.toUserId) : null,
         });
 
         // ── Initial Forwarding ──
@@ -237,6 +238,7 @@ export class FormService implements IFormService {
                 ? `${fromName} forwarded to ${toName}: "${dto.note}"`
                 : `${fromName} forwarded to ${toName}.`,
             commentedBy: Number(dto.fromUserId),
+            receiverId: Number(dto.toUserId),  // forward comment: visible to sender + recipient
         });
 
         // Notify the target user
@@ -333,6 +335,7 @@ export class FormService implements IFormService {
                     ? `${rejectorName} rejected: "${dto.remarks}"`
                     : `${rejectorName} rejected this application.`,
                 commentedBy: Number(dto.userId),
+                receiverId: Number(form.applicant_id),  // rejection: notify applicant
             });
 
             this.notifyApplicant(form, 'rejected');
@@ -400,6 +403,7 @@ export class FormService implements IFormService {
                     ? `${approverName} approved: "${dto.remarks}"`
                     : `${approverName} approved this application.`,
                 commentedBy: Number(dto.userId),
+                receiverId: Number(form.applicant_id),  // approval: applicant is the receiver
             });
 
             return result;
@@ -427,6 +431,7 @@ export class FormService implements IFormService {
                     ? `${partialName} partially approved: "${dto.remarks}"`
                     : `${partialName} approved (awaiting additional approvals).`,
                 commentedBy: Number(dto.userId),
+                receiverId: Number(form.applicant_id),  // partial approval: applicant is receiver
             });
 
             return this.formRepo.findById(dto.formId);

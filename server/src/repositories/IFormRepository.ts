@@ -54,6 +54,7 @@ export interface IFormRepository {
         commentType: string;
         contentText: string;
         commentedBy: number;
+        receiverId?: number | null;   // direct recipient — null = admin-only visibility
     }): Promise<{ history: any; comment: any }>;
     getSystemLogs(): Promise<any[]>;
 

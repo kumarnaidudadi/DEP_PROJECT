@@ -341,8 +341,9 @@ export class FormRepository implements IFormRepository {
         commentType: string;
         contentText: string;
         commentedBy: number;
+        receiverId?: number | null;
     }): Promise<{ history: any; comment: any }> {
-        const { historyData, commentType, contentText, commentedBy } = opts;
+        const { historyData, commentType, contentText, commentedBy, receiverId } = opts;
 
         return this.prisma.$transaction(async (tx) => {
             const history = await tx.form_history.create({ data: historyData as any });
@@ -351,6 +352,7 @@ export class FormRepository implements IFormRepository {
                 data: {
                     applied_form_id: historyData.applied_form_id,
                     commented_by: commentedBy,
+                    receiver_id: receiverId ?? null,
                     form_history_id: history.id,
                     comment_type: commentType,
                     content: {

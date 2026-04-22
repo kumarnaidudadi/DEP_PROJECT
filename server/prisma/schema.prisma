@@ -56,7 +56,8 @@ model users {
   forms               forms[]
   office_orders       office_orders[]
   user_roles          user_roles[]
-  comments               form_comments[]
+  comments               form_comments[]        @relation("CommentSender")
+  received_comments      form_comments[]        @relation("CommentReceiver")
   user_activity_logs     user_activity_logs[]
   reactivation_requests  reactivation_requests[] @relation("UserReactivationRequests")
   reviewed_requests      reactivation_requests[] @relation("ReviewerReactivationRequests")
@@ -223,6 +224,7 @@ model form_comments {
   id                Int             @id @default(autoincrement())
   applied_form_id   Int
   commented_by      Int?
+  receiver_id       Int?            // direct recipient of this comment (pairwise visibility)
   form_history_id   Int?
   parent_comment_id Int?
   comment_type      String          @default("general")
@@ -233,7 +235,8 @@ model form_comments {
   updated_at        DateTime?       @default(now()) @db.Timestamp(6)
 
   applied_form  applied_forms   @relation(fields: [applied_form_id], references: [id], onDelete: Cascade)
-  user          users?          @relation(fields: [commented_by], references: [id], onDelete: SetNull)
+  user          users?          @relation("CommentSender", fields: [commented_by], references: [id], onDelete: SetNull)
+  receiver      users?          @relation("CommentReceiver", fields: [receiver_id], references: [id], onDelete: SetNull)
   form_history  form_history?   @relation(fields: [form_history_id], references: [id], onDelete: SetNull)
   parent        form_comments?  @relation("CommentReplies", fields: [parent_comment_id], references: [id], onDelete: Cascade)
   replies       form_comments[] @relation("CommentReplies")
