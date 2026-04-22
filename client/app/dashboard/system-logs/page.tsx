@@ -366,67 +366,108 @@ function SystemLogsContent() {
                         </div>
                     ) : (
                         <div style={{
-                            display: 'flex', flexDirection: 'column', gap: '10px'
+                            background: '#fff',
+                            borderRadius: '12px',
+                            border: '1px solid #e2e8f0',
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                            overflow: 'hidden',
                         }}>
-                            {filtered.map((log) => {
-                                const isActive = selectedFormId === log.id;
-                                const applicantName = log.applicant ? `${log.applicant.first_name} ${log.applicant.last_name}`.trim() : 'Unknown User';
-                                const actorName = log.last_actor ? `${log.last_actor.first_name} ${log.last_actor.last_name}`.trim() : 'System';
+                            <div style={{ overflowX: 'auto', maxHeight: 'calc(100vh - 220px)' }}>
+                                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, textAlign: 'left' }}>
+                                    <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
+                                        <tr style={{ background: '#f8fafc' }}>
+                                            <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Ref No.</th>
+                                            <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Type</th>
+                                            <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Status</th>
+                                            <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Applicant</th>
+                                            <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Last Action By</th>
+                                            <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Date & Time</th>
+                                            <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>COMMENTS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filtered.map((log, index) => {
+                                            const isActive = selectedFormId === log.id;
+                                            const applicantName = log.applicant ? `${log.applicant.first_name} ${log.applicant.last_name}`.trim() : 'Unknown';
+                                            const actorName = log.last_actor ? `${log.last_actor.first_name} ${log.last_actor.last_name}`.trim() : 'System';
+                                            
+                                            const dateObj = new Date(log.last_updated);
+                                            const compactDate = `${dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}, ${dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
 
-                                return (
-                                    <div
-                                        key={log.id}
-                                        onClick={() => { setSelectedFormId(log.id); setActiveTab('timeline'); }}
-                                        style={{
-                                            border: `1px solid ${isActive ? '#bfdbfe' : '#e2e8f0'}`,
-                                            borderLeft: isActive ? '3px solid #3b82f6' : '1px solid #e2e8f0',
-                                            background: isActive ? '#eff6ff' : '#fff',
-                                            borderRadius: '12px',
-                                            padding: '16px 20px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.15s ease',
-                                            boxShadow: isActive ? '0 4px 6px -1px rgba(0,0,0,0.05)' : '0 1px 2px rgba(0,0,0,0.02)',
-                                        }}
-                                        onMouseEnter={e => { if (!isActive) e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.05)'; }}
-                                        onMouseLeave={e => { if (!isActive) e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.02)'; }}
-                                    >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                                <StatusBadge action={log.latest_action || 'Log'} />
-                                                <span style={{
-                                                    background: '#f1f5f9', color: '#475569', fontFamily: 'monospace',
-                                                    fontSize: '11px', padding: '3px 8px', borderRadius: '6px', fontWeight: 600
-                                                }}>
-                                                    {log.reference_number || 'NO-REF'}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                            <div style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>
-                                                {log.form_type_name}
-                                            </div>
-                                            <div style={{ fontSize: '12px', color: '#64748b' }}>
-                                                {fmtDate(log.last_updated)}
-                                            </div>
-                                        </div>
-
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#64748b' }}>
-                                            <div>
-                                                Applicant: <strong style={{ color: '#475569' }}>{applicantName}</strong> {log.applicant?.emp_code ? `(${log.applicant.emp_code})` : ''} · Last by: <strong style={{ color: '#475569' }}>{actorName}</strong>
-                                            </div>
-                                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    <ListTodo size={14} /> {log.activity_count} actions
-                                                </span>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                    💬 {log.comment_count} comments
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                                            return (
+                                                <tr
+                                                    key={log.id}
+                                                    onClick={() => { setSelectedFormId(log.id); setActiveTab('timeline'); }}
+                                                    style={{
+                                                        background: isActive ? '#eff6ff' : (index % 2 === 1 ? '#f8fafc' : '#ffffff'),
+                                                        transition: 'all 0.15s ease',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#f1f5f9'; }}
+                                                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = (index % 2 === 1 ? '#f8fafc' : '#ffffff'); }}
+                                                >
+                                                    <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9' }}>
+                                                        <span style={{
+                                                            background: '#f1f5f9', color: '#475569', fontFamily: 'monospace',
+                                                            fontSize: '11px', padding: '2px 6px', borderRadius: '4px', fontWeight: 600,
+                                                            border: '1px solid #e2e8f0'
+                                                        }}>
+                                                            {log.reference_number || 'NO-REF'}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9' }}>
+                                                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
+                                                            {log.form_type_name}
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9' }}>
+                                                        <StatusBadge action={log.latest_action || 'Log'} />
+                                                    </td>
+                                                    <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9' }}>
+                                                        <div style={{ fontSize: '13px', color: '#475569', fontWeight: 500 }}>
+                                                            {applicantName}
+                                                            {log.applicant?.emp_code && (
+                                                                <span style={{ marginLeft: '6px', color: '#94a3b8', fontSize: '11px', fontWeight: 400 }}>
+                                                                    ({log.applicant.emp_code})
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9' }}>
+                                                        <div style={{ fontSize: '13px', color: '#475569' }}>
+                                                            {actorName}
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9' }}>
+                                                        <div style={{ fontSize: '12px', color: '#64748b', whiteSpace: 'nowrap' }}>
+                                                            {compactDate}
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
+                                                        {log.comment_count > 0 ? (
+                                                            <div style={{ 
+                                                                display: 'inline-flex', 
+                                                                alignItems: 'center', 
+                                                                gap: '4px', 
+                                                                background: '#eff6ff', 
+                                                                color: '#2563eb', 
+                                                                padding: '2px 8px', 
+                                                                borderRadius: '6px', 
+                                                                fontSize: '12px', 
+                                                                fontWeight: 600 
+                                                            }}>
+                                                                💬 {log.comment_count}
+                                                            </div>
+                                                        ) : (
+                                                            <span style={{ color: '#cbd5e1' }}>—</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
                 </main>

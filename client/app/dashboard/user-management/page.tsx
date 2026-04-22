@@ -10,7 +10,7 @@ import api from '@/lib/api';
 export default function UserManagementPage() {
     const [activeTab, setActiveTab] = useState<'list' | 'add' | 'bulk'>('list');
     const [users, setUsers] = useState<InactiveUser[]>([]);
-    const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('inactive');
+    const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
