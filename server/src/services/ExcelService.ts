@@ -35,6 +35,7 @@ export class ExcelService {
             
             // basic defaults
             if (user.department_id) user.department_id = Number(user.department_id);
+            if (user.role_id) user.role_id = Number(user.role_id);
             if (user.joining_date) user.joining_date = new Date(user.joining_date);
             
             users.push(user);
@@ -49,22 +50,22 @@ export class ExcelService {
     generateTemplate(): Buffer {
         const headers = [
             'first_name', 'middle_name', 'last_name', 'email', 'password',
-            'emp_code', 'department_id', 'joining_date', 'auth_provider', 'signature_url'
+            'emp_code', 'department_id', 'role_id', 'joining_date', 'auth_provider', 'signature_url'
         ];
         
         const comments = [
             'First Name', 'Middle Name', 'Last Name', 'Unique Email (Required)', 'Temporary password (Required)',
-            'Unique Employee Code', 'Numeric ID of department', 'YYYY-MM-DD', 'oauth/local', 'URL if any'
+            'Unique Employee Code', 'Numeric ID of department', 'Numeric ID of role/designation', 'YYYY-MM-DD', 'oauth/local', 'URL if any'
         ];
         
         const example1 = [
             'John', '', 'Doe', 'john.doe@example.com', 'securepass123',
-            'EMP001', 1, '2023-01-15', 'local', ''
+            'EMP001', 1, 1, '2023-01-15', 'local', ''
         ];
         
         const example2 = [
             'Jane', 'A.', 'Smith', 'jane.s@example.com', 'pass456',
-            'EMP002', 2, '2023-02-01', 'local', ''
+            'EMP002', 2, 2, '2023-02-01', 'local', ''
         ];
         
         const data = [headers, comments, example1, example2];

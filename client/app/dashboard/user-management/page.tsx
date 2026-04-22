@@ -12,6 +12,24 @@ export default function UserManagementPage() {
     const [activeTab, setActiveTab] = useState<'list' | 'add' | 'bulk'>('list');
     const [users, setUsers] = useState<InactiveUser[]>([]);
     const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
+
+    useEffect(() => {
+        // Read initial state from URL on mount
+        const params = new URLSearchParams(window.location.search);
+        const tabParam = params.get('tab') as 'list' | 'add' | 'bulk';
+        const filterParam = params.get('filter') as 'all' | 'active' | 'inactive';
+        
+        if (tabParam && ['list', 'add', 'bulk'].includes(tabParam)) setActiveTab(tabParam);
+        if (filterParam && ['all', 'active', 'inactive'].includes(filterParam)) setFilter(filterParam);
+    }, []);
+
+    // Sync state to URL when changed
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        params.set('tab', activeTab);
+        params.set('filter', filter);
+        window.history.replaceState(null, '', `?${params.toString()}`);
+    }, [activeTab, filter]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
@@ -32,6 +50,7 @@ export default function UserManagementPage() {
         password: '',
         emp_code: '',
         department_id: '',
+        role_id: '',
         joining_date: '',
         auth_provider: 'local'
     });
@@ -42,10 +61,12 @@ export default function UserManagementPage() {
 
     // Departments for dropdown
     const [departments, setDepartments] = useState<{id: number, name: string}[]>([]);
+    const [roles, setRoles] = useState<{id: number, name: string}[]>([]);
 
     useEffect(() => {
         fetchUsers();
         fetchDepartments();
+        fetchRoles();
     }, []);
 
     const fetchDepartments = async () => {
@@ -54,6 +75,15 @@ export default function UserManagementPage() {
             setDepartments(res.data || []);
         } catch (err) {
             console.error('Failed to load departments', err);
+        }
+    };
+
+    const fetchRoles = async () => {
+        try {
+            const res = await api.get('/profile/roles');
+            setRoles(res.data || []);
+        } catch (err) {
+            console.error('Failed to load roles', err);
         }
     };
 
@@ -78,7 +108,7 @@ export default function UserManagementPage() {
             setFormData({
                 first_name: '', middle_name: '', last_name: '',
                 email: '', password: '', emp_code: '',
-                department_id: '', joining_date: '', auth_provider: 'local'
+                department_id: '', role_id: '', joining_date: '', auth_provider: 'local'
             });
             fetchUsers();
             setActiveTab('list');
@@ -236,8 +266,8 @@ export default function UserManagementPage() {
                         <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
                     </div>
                     <div style={{ gridColumn: 'span 1' }}>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Password *</label>
-                        <input type="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Password <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label>
+                        <input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
                     </div>
                     <div style={{ gridColumn: 'span 1' }}>
                         <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Employee Code</label>
@@ -253,6 +283,20 @@ export default function UserManagementPage() {
                             <option value="">-- No Department --</option>
                             {departments.map(d => (
                                 <option key={d.id} value={d.id}>{d.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div style={{ gridColumn: 'span 1' }}>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Designation / Role *</label>
+                        <select 
+                            required
+                            value={formData.role_id} 
+                            onChange={e => setFormData({...formData, role_id: e.target.value})}
+                            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '14px', color: formData.role_id ? '#0f172a' : '#94a3b8' }}
+                        >
+                            <option value="">-- Select Role --</option>
+                            {roles.map(r => (
+                                <option key={r.id} value={r.id}>{r.name}</option>
                             ))}
                         </select>
                     </div>
@@ -376,7 +420,10 @@ export default function UserManagementPage() {
                             return (
                                 <button
                                     key={f}
-                                    onClick={() => setFilter(f)}
+                                    onClick={() => {
+                                        setFilter(f);
+                                        setActiveTab('list');
+                                    }}
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: '8px',
                                         padding: '10px 4px',

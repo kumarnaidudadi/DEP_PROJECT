@@ -27,6 +27,10 @@ export class UserService {
             ? new Date(data.joining_date)
             : null;
 
+        const role_id = data.role_id !== '' && data.role_id != null
+            ? Number(data.role_id)
+            : null;
+
         return this.prisma.users.create({
             data: {
                 first_name: data.first_name || null,
@@ -39,7 +43,12 @@ export class UserService {
                 joining_date,
                 auth_provider: data.auth_provider || 'local',
                 signature_url: data.signature_url || null,
-                is_active: true
+                is_active: true,
+                ...(role_id ? {
+                    user_roles: {
+                        create: [{ role_id }]
+                    }
+                } : {})
             }
         });
     }
