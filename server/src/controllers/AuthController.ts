@@ -88,8 +88,13 @@ export class AuthController {
             res.json({ message: 'OTP sent successfully to your email' });
         } catch (e: any) {
             console.error('[AuthController] sendOtp:', e.message);
-            if (e.message === 'ACCESS_DENIED') res.status(403).json({ error: 'Access denied. You are not registered.' });
-            else res.status(500).json({ error: 'Failed to send OTP', details: e.message });
+            if (e.message === 'ACCESS_DENIED') {
+                res.status(403).json({ error: 'Access denied. You are not registered.' });
+            } else if (e.message === 'ACCOUNT_INACTIVE') {
+                res.status(403).json({ error: 'Your account has been blocked. Please contact the administrator.' });
+            } else {
+                res.status(500).json({ error: 'Failed to send OTP', details: e.message });
+            }
         }
     };
 

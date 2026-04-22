@@ -109,6 +109,10 @@ export class AuthService implements IAuthService {
             throw new Error('ACCESS_DENIED');
         }
 
+        if (!user.is_active) {
+            throw new Error('ACCOUNT_INACTIVE');
+        }
+
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
@@ -144,6 +148,10 @@ export class AuthService implements IAuthService {
     async verifyOtp(email: string, otp: string): Promise<AuthResultDto> {
         const user = await this.userRepo.findByEmail(email);
         if (!user) throw new Error('USER_NOT_FOUND');
+
+        if (!user.is_active) {
+            throw new Error('ACCOUNT_INACTIVE');
+        }
 
         if (!user.otp_code) throw new Error('NO_OTP_REQUESTED');
         if (user.otp_expiry && new Date() > new Date(user.otp_expiry)) throw new Error('OTP_EXPIRED');

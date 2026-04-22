@@ -1,8 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 import { ActivityLogService } from './ActivityLogService';
+import { AccountNotificationService } from './AccountNotificationService';
 import nodemailer from 'nodemailer';
 
 export class OtpService {
+    private accountNotifier = new AccountNotificationService();
+
     constructor(private prisma: PrismaClient, private activityLogService: ActivityLogService) {}
 
     async sendOtp(email: string): Promise<void> {
@@ -67,7 +70,17 @@ export class OtpService {
                     data: { is_active: false, otp_attempts: newAttempts }
                 });
                 await this.activityLogService.logAction(user.id, 'Exceeded OTP attempts (3 failed)', 'deactivated', 'system');
-                return { success: false, deactivated: true, message: 'Account deactivated due to excessive failed attempts.' };
+
+                // Notify user by email (fire-and-forget)
+                this.accountNotifier.sendAccountBlockedEmail({
+                    email: user.email,
+                    firstName: user.first_name || 'User',
+                    reason: '3 consecutive failed OTP login attempts detected.',
+                    triggeredBy: 'system',
+                    timestamp: new Date(),
+                });
+
+                return { success: false, deactivated: true, message: 'Your account has been blocked due to excessive failed OTP attempts. Please contact the administrator.' };
             } else {
                 // Update attempts
                 await this.prisma.users.update({

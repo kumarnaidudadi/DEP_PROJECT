@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-    Users, UserPlus, Upload, Download, Search, Check, Activity, AlertCircle, Loader2, X
+    Users, UserPlus, Upload, Download, Search, Activity, AlertCircle, Loader2
 } from 'lucide-react';
 import { userAdminService, InactiveUser } from '@/services/userAdminService';
 import api from '@/lib/api';
+import StatusBadge from '@/components/dashboard/StatusBadge';
 
 export default function UserManagementPage() {
     const [activeTab, setActiveTab] = useState<'list' | 'add' | 'bulk'>('list');
@@ -174,13 +175,7 @@ export default function UserManagementPage() {
                                     </div>
                                 </td>
                                 <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9' }}>
-                                    <span style={{ 
-                                        padding: '4px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px',
-                                        background: user.is_active ? '#dcfce7' : '#fee2e2',
-                                        color: user.is_active ? '#16a34a' : '#dc2626',
-                                    }}>
-                                        {user.is_active ? 'ACTIVE' : 'INACTIVE'}
-                                    </span>
+                                    <StatusBadge status={user.is_active ? 'ACTIVE' : 'INACTIVE'} />
                                 </td>
                                 <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9' }}>
                                     {user.user_activity_logs?.[0] ? (
@@ -394,8 +389,6 @@ export default function UserManagementPage() {
                                         marginBottom: '-1px',
                                     }}
                                 >
-                                    {f === 'active' && <Check size={14} style={{ opacity: active ? 1 : 0.6 }} />}
-                                    {f === 'inactive' && <X size={14} style={{ opacity: active ? 1 : 0.6 }} />}
                                     {label}
                                 </button>
                             );

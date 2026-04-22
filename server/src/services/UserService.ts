@@ -1,8 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { ActivityLogService } from './ActivityLogService';
+import { AccountNotificationService } from './AccountNotificationService';
 
 export class UserService {
+    private accountNotifier = new AccountNotificationService();
+
     constructor(private prisma: PrismaClient, private activityLogService: ActivityLogService) {}
 
     async createUser(data: any): Promise<any> {
@@ -67,7 +70,10 @@ export class UserService {
     }
 
     async toggleUserStatus(userId: number, isActive: boolean, adminId: number, reason: string): Promise<any> {
-        const user = await this.prisma.users.update({
+        const user = await this.prisma.users.findUnique({ where: { id: userId } });
+        if (!user) throw new Error('USER_NOT_FOUND');
+
+        const updatedUser = await this.prisma.users.update({
             where: { id: userId },
             data: { 
                 is_active: isActive, 
@@ -82,7 +88,18 @@ export class UserService {
             'admin'
         );
 
-        return user;
+        // Send notification email (fire-and-forget — non-blocking)
+        const firstName = user.first_name || 'User';
+        const email = user.email;
+        const timestamp = new Date();
+
+        if (isActive) {
+            this.accountNotifier.sendAccountActivatedEmail({ email, firstName, reason, triggeredBy: 'admin', timestamp });
+        } else {
+            this.accountNotifier.sendAccountBlockedEmail({ email, firstName, reason, triggeredBy: 'admin', timestamp });
+        }
+
+        return updatedUser;
     }
 
     async bulkCreate(users: any[]): Promise<{ added: number, failed: any[] }> {

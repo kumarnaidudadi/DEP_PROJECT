@@ -35,14 +35,18 @@ export default function StatusBadge({ status, action, lg, truncate }: Props) {
     }
 
     const s = status || 'UNKNOWN';
-    const ok = s === 'APPROVED';
-    const no = s === 'REJECTED';
+    const ok = s === 'APPROVED' || s === 'ACTIVE';
+    const no = s === 'REJECTED' || s === 'INACTIVE';
     const dr = s === 'DRAFT';
     const partial = s === 'PARTIALLY_APPROVED';
     const bg = ok ? '#dcfce7' : no ? '#fee2e2' : dr ? '#f1f5f9' : partial ? '#fff7ed' : '#fef3c7';
     const c = ok ? '#16a34a' : no ? '#dc2626' : dr ? '#64748b' : partial ? '#ea580c' : '#d97706';
     const Icon = ok ? CheckCircle : no ? XCircle : Clock;
-    const label = ok ? 'Approved' : no ? 'Rejected' : dr ? 'Draft' : partial ? 'Partially Approved' : s.replace(/_/g, ' ');
+    const label = ok ? (s === 'ACTIVE' ? 'Active' : 'Approved') : 
+                  no ? (s === 'INACTIVE' ? 'Inactive' : 'Rejected') : 
+                  dr ? 'Draft' : 
+                  partial ? 'Partially Approved' : 
+                  s.replace(/_/g, ' ');
     return (
         <span
             title={label}
