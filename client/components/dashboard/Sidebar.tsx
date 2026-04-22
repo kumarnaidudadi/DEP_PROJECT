@@ -91,10 +91,14 @@ export default function Sidebar({ canApprove, pendingCount, onLogout, isMobileOp
     };
 
     return (
-        <aside 
-            className={`fixed md:static inset-y-0 left-0 z-50 md:z-20 bg-white shadow-2xl md:shadow-[2px_0_16px_rgba(0,0,0,0.05)] border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
-            style={{ width: SB_W, minWidth: SB_W }}
-        >
+        <aside style={{
+            width: SB_W, minWidth: SB_W,
+            background: '#ffffff', color: '#374151',
+            display: 'flex', flexDirection: 'column',
+            position: 'relative',
+            zIndex: 100, boxShadow: '2px 0 16px rgba(0,0,0,0.05)',
+            borderRight: '1px solid #e5e7eb',
+        }}>
             {/* Logo */}
             <div style={{ padding: '20px 0', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '68px', position: 'relative' }}>
                 <Building2 size={24} style={{ color: '#3b82f6', flexShrink: 0 }} />
