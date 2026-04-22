@@ -2,12 +2,12 @@
 // ─── Sidebar ───────────────────────────────────────────────────────────────────
 // Icon-only sidebar with tooltips. Uses Next.js router for navigation.
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
     FilePlus, FileText, ClipboardList,
     User, LogOut, Building2, Activity,
-    Users
+    Users, X
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -15,6 +15,8 @@ interface SidebarProps {
     canApprove: boolean;
     pendingCount: number;
     onLogout: () => void;
+    isMobileOpen?: boolean;
+    onCloseMobile?: () => void;
 }
 
 interface SidebarItem {
@@ -26,12 +28,19 @@ interface SidebarItem {
 
 const SB_W = 64;
 
-export default function Sidebar({ canApprove, pendingCount, onLogout }: SidebarProps) {
+export default function Sidebar({ canApprove, pendingCount, onLogout, isMobileOpen = false, onCloseMobile }: SidebarProps) {
     const router = useRouter();
     const pathname = usePathname();
 
     const { userRoles } = useAuth();
     const isAdmin = userRoles.some(r => ['ADMIN', 'SUPER_ADMIN'].includes(r));
+
+    // Close mobile sidebar when pathname changes
+    useEffect(() => {
+        if (isMobileOpen && onCloseMobile) {
+            onCloseMobile();
+        }
+    }, [pathname]);
 
     const items: SidebarItem[] = [
         { href: '/dashboard/all', icon: <FileText size={20} />, label: 'All Applications' },
@@ -82,16 +91,23 @@ export default function Sidebar({ canApprove, pendingCount, onLogout }: SidebarP
     };
 
     return (
-        <aside style={{
-            width: SB_W, minWidth: SB_W,
-            background: '#ffffff', color: '#374151',
-            display: 'flex', flexDirection: 'column',
-            zIndex: 20, boxShadow: '2px 0 16px rgba(0,0,0,0.05)',
-            borderRight: '1px solid #e5e7eb',
-        }}>
+        <aside 
+            className={`fixed md:static inset-y-0 left-0 z-50 md:z-20 bg-white shadow-2xl md:shadow-[2px_0_16px_rgba(0,0,0,0.05)] border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out ${isMobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+            style={{ width: SB_W, minWidth: SB_W }}
+        >
             {/* Logo */}
-            <div style={{ padding: '20px 0', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '68px' }}>
+            <div style={{ padding: '20px 0', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '68px', position: 'relative' }}>
                 <Building2 size={24} style={{ color: '#3b82f6', flexShrink: 0 }} />
+                
+                {/* Mobile Close Button */}
+                {isMobileOpen && (
+                    <button 
+                        onClick={onCloseMobile}
+                        className="absolute -right-12 top-4 p-2 bg-white rounded-r-lg shadow-md md:hidden text-slate-500 hover:text-slate-800"
+                    >
+                        <X size={20} />
+                    </button>
+                )}
             </div>
 
             {/* Nav */}
