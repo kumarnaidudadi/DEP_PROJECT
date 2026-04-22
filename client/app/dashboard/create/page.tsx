@@ -79,7 +79,7 @@ function CreateFormInner() {
 
     useEffect(() => {
         if (editId) return;
-        setInitialSnapshot(serializeBuilderState('', '', '', [createBuilderField()], []));
+        setInitialSnapshot(serializeBuilderState('', '', '', [createBuilderField()], [], null));
     }, [editId]);
 
     // Pre-fill when editing
