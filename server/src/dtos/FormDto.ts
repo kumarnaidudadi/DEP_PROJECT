@@ -9,7 +9,9 @@ export interface CreateFormDto {
     toUserId?: number;
     note?: string;
     reference_number?: string;
+    ip_address?: string | null;
 }
+
 
 export interface UpdateFormStatusDto {
     formId: number;
@@ -17,14 +19,18 @@ export interface UpdateFormStatusDto {
     remarks?: string;
     approvalData?: Record<string, unknown>;
     userId: number;
+    ip_address?: string | null;
 }
+
 
 export interface ForwardFormDto {
     formId: number;
     fromUserId: number;
     toUserId: number;
     note?: string;
+    ip_address?: string | null;
 }
+
 
 export interface CreateFormTypeDto {
     name: string;

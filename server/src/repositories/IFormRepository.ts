@@ -50,12 +50,14 @@ export interface IFormRepository {
             old_data?: object;
             new_data?: object;
             remarks?: string;
+            ip_address?: string | null;   // client IP for audit trail
         };
         commentType: string;
         contentText: string;
         commentedBy: number;
-        receiverId?: number | null;   // direct recipient — null = admin-only visibility
+        receiverId?: number | null;
     }): Promise<{ history: any; comment: any }>;
+
     getSystemLogs(): Promise<any[]>;
 
     // Transactions

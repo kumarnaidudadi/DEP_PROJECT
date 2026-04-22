@@ -7,6 +7,7 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
 import { IFormService } from '../services/IFormService';
 import { IPdfService } from '../services/IPdfService';
+import { extractIp } from '../utils/ipHelper';
 
 export class FormController {
     // Dependency Injection: receives service interfaces, not concrete classes
@@ -127,6 +128,7 @@ export class FormController {
                 userId,
                 toUserId: toUserId ? Number(toUserId) : undefined,
                 note: note || '',
+                ip_address: extractIp(req),
             }, id ? Number(id) : undefined);
             res.status(201).json(form);
         } catch (e: any) {
@@ -170,7 +172,8 @@ export class FormController {
 
         try {
             const form = await this.formService.updateFormStatus({
-                formId, decision, remarks, approvalData, userId
+                formId, decision, remarks, approvalData, userId,
+                ip_address: extractIp(req),
             });
             res.json(form);
         } catch (e: any) {
@@ -213,6 +216,7 @@ export class FormController {
                 fromUserId: userId,
                 toUserId: Number(toUserId),
                 note: note || '',
+                ip_address: extractIp(req),
             });
             res.json(result);
         } catch (e: any) {

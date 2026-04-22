@@ -159,6 +159,7 @@ export class FormService implements IFormService {
                 action: 'submitted',
                 changed_by: Number(dto.userId),
                 new_data: { status: 'submitted' },
+                ip_address: dto.ip_address ?? null,
             },
             commentType: 'general',
             contentText: 'Application submitted.',
@@ -172,7 +173,8 @@ export class FormService implements IFormService {
                 formId: Number(form.id),
                 fromUserId: dto.userId,
                 toUserId: dto.toUserId,
-                note: dto.note || 'Initial submission'
+                note: dto.note || 'Initial submission',
+                ip_address: dto.ip_address,   // carry IP through so the forward history entry is also audited
             });
         }
 
@@ -232,6 +234,7 @@ export class FormService implements IFormService {
                 old_data: { status: oldStatus },
                 new_data: { status: 'forwarded', forwarded_to: dto.toUserId },
                 remarks: dto.note || '',
+                ip_address: dto.ip_address ?? null,
             },
             commentType: 'forward',
             contentText: dto.note
@@ -329,13 +332,14 @@ export class FormService implements IFormService {
                     old_data: { status: oldStatus },
                     new_data: { status: 'rejected' },
                     remarks: dto.remarks || '',
+                    ip_address: dto.ip_address ?? null,
                 },
                 commentType: 'rejection',
                 contentText: dto.remarks
                     ? `${rejectorName} rejected: "${dto.remarks}"`
                     : `${rejectorName} rejected this application.`,
                 commentedBy: Number(dto.userId),
-                receiverId: Number(form.applicant_id),  // rejection: notify applicant
+                receiverId: Number(form.applicant_id),
             });
 
             this.notifyApplicant(form, 'rejected');
@@ -397,13 +401,14 @@ export class FormService implements IFormService {
                     old_data: { status: oldStatus },
                     new_data: { status: 'approved' },
                     remarks: dto.remarks || '',
+                    ip_address: dto.ip_address ?? null,
                 },
                 commentType: 'approval',
                 contentText: dto.remarks
                     ? `${approverName} approved: "${dto.remarks}"`
                     : `${approverName} approved this application.`,
                 commentedBy: Number(dto.userId),
-                receiverId: Number(form.applicant_id),  // approval: applicant is the receiver
+                receiverId: Number(form.applicant_id),
             });
 
             return result;
@@ -425,13 +430,14 @@ export class FormService implements IFormService {
                     old_data: { status: oldStatus },
                     new_data: { status: 'partially_approved' },
                     remarks: dto.remarks || '',
+                    ip_address: dto.ip_address ?? null,
                 },
                 commentType: 'approval',
                 contentText: dto.remarks
                     ? `${partialName} partially approved: "${dto.remarks}"`
                     : `${partialName} approved (awaiting additional approvals).`,
                 commentedBy: Number(dto.userId),
-                receiverId: Number(form.applicant_id),  // partial approval: applicant is receiver
+                receiverId: Number(form.applicant_id),
             });
 
             return this.formRepo.findById(dto.formId);

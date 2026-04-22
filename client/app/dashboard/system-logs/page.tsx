@@ -246,7 +246,8 @@ function SystemLogsContent() {
         ...uniqueUsers.map(u => ({ value: u, label: u })),
     ];
 
-    const selectedForm = logs.find(l => l.id === selectedFormId);
+    const selectedForm = logs.find(l => l.form_id === selectedFormId);
+
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#f1f5f9' }}>
@@ -381,13 +382,14 @@ function SystemLogsContent() {
                                             <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Status</th>
                                             <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Applicant</th>
                                             <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Last Action By</th>
-                                            <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Date & Time</th>
+                                            <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Date &amp; Time</th>
+                                            <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>IP Address</th>
                                             <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>COMMENTS</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {filtered.map((log, index) => {
-                                            const isActive = selectedFormId === log.id;
+                                            const isActive = selectedFormId === log.form_id;
                                             const applicantName = log.applicant ? `${log.applicant.first_name} ${log.applicant.last_name}`.trim() : 'Unknown';
                                             const actorName = log.last_actor ? `${log.last_actor.first_name} ${log.last_actor.last_name}`.trim() : 'System';
                                             
@@ -397,7 +399,7 @@ function SystemLogsContent() {
                                             return (
                                                 <tr
                                                     key={log.id}
-                                                    onClick={() => { setSelectedFormId(log.id); setActiveTab('timeline'); }}
+                                                    onClick={() => { setSelectedFormId(log.form_id); setActiveTab('timeline'); }}
                                                     style={{
                                                         background: isActive ? '#eff6ff' : (index % 2 === 1 ? '#f8fafc' : '#ffffff'),
                                                         transition: 'all 0.15s ease',
@@ -443,6 +445,20 @@ function SystemLogsContent() {
                                                             {compactDate}
                                                         </div>
                                                     </td>
+                                                    <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9' }}>
+                                                        {log.last_ip ? (
+                                                            <span style={{
+                                                                fontFamily: 'monospace', fontSize: '11px',
+                                                                background: '#f1f5f9', color: '#475569',
+                                                                padding: '2px 7px', borderRadius: '4px',
+                                                                border: '1px solid #e2e8f0', whiteSpace: 'nowrap',
+                                                            }}>
+                                                                {log.last_ip}
+                                                            </span>
+                                                        ) : (
+                                                            <span style={{ color: '#cbd5e1' }}>—</span>
+                                                        )}
+                                                    </td>
                                                     <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
                                                         {log.comment_count > 0 ? (
                                                             <div style={{ 
@@ -479,7 +495,7 @@ function SystemLogsContent() {
                     applicationId={selectedFormId as number}
                     referenceId={selectedForm?.reference_number || 'NO-REF'}
                     title={selectedForm?.form_type_name || ''}
-                    latestAction={selectedForm?.latest_action || 'Log'}
+                    latestAction={selectedForm?.status || 'Log'}
                     applicantName={selectedForm?.applicant ? `${selectedForm.applicant.first_name} ${selectedForm.applicant.last_name}` : 'Unknown User'}
                     loadingTimeline={loadingTimeline}
                     timelineData={timelineItems}

@@ -337,6 +337,7 @@ export class FormRepository implements IFormRepository {
             old_data?: object;
             new_data?: object;
             remarks?: string;
+            ip_address?: string | null;
         };
         commentType: string;
         contentText: string;
@@ -346,7 +347,23 @@ export class FormRepository implements IFormRepository {
         const { historyData, commentType, contentText, commentedBy, receiverId } = opts;
 
         return this.prisma.$transaction(async (tx) => {
-            const history = await tx.form_history.create({ data: historyData as any });
+            // Prisma 7+ runtime validator defaults to CreateInput (relation) mode.
+            // Use explicit connect syntax to avoid "Unknown argument applied_form_id" error.
+            const history = await tx.form_history.create({
+                data: {
+                    applied_forms: historyData.applied_form_id
+                        ? { connect: { id: historyData.applied_form_id } }
+                        : undefined,
+                    users: historyData.changed_by
+                        ? { connect: { id: historyData.changed_by } }
+                        : undefined,
+                    action: historyData.action ?? null,
+                    remarks: historyData.remarks ?? null,
+                    ip_address: historyData.ip_address ?? null,
+                    old_data: (historyData.old_data as any) ?? undefined,
+                    new_data: (historyData.new_data as any) ?? undefined,
+                },
+            });
 
             const comment = await tx.form_comments.create({
                 data: {
@@ -369,35 +386,37 @@ export class FormRepository implements IFormRepository {
     }
 
     async getSystemLogs(): Promise<any[]> {
-        const forms = await this.prisma.applied_forms.findMany({
-            where: { form_history: { some: {} } },
+        const histories = await this.prisma.form_history.findMany({
+            where: { applied_form_id: { not: null } },
+            orderBy: { created_at: 'desc' },
+            take: 2000,
             include: {
-                form_types: { select: { name: true } },
-                users: { select: { first_name: true, last_name: true, emp_code: true } },
-                form_history: {
-                    orderBy: { created_at: 'desc' },
-                    take: 1,
-                    include: { users: { select: { first_name: true, last_name: true } } }
+                applied_forms: {
+                    select: {
+                        id: true,
+                        reference_number: true,
+                        status: true,
+                        form_types: { select: { name: true } },
+                        users: { select: { id: true, first_name: true, last_name: true, emp_code: true } },
+                        _count: { select: { comments: true } },
+                    },
                 },
-                _count: {
-                    select: { form_history: true, comments: true }
-                }
+                users: { select: { first_name: true, last_name: true } },
             },
-            orderBy: { updated_at: 'desc' },
-            take: 1000
         });
 
-        return forms.map((form: any) => ({
-            id: form.id,
-            reference_number: form.reference_number,
-            status: form.status,
-            form_type_name: form.form_types?.name || 'Unknown',
-            applicant: form.users,
-            latest_action: form.form_history[0]?.action || 'Unknown',
-            last_actor: form.form_history[0]?.users || null,
-            last_updated: form.form_history[0]?.created_at || form.updated_at,
-            activity_count: form._count.form_history,
-            comment_count: form._count.comments
+        return histories.map((h: any) => ({
+            id: h.id,                                              // history entry ID (unique key per row)
+            form_id: h.applied_forms?.id ?? null,                  // actual form ID (used for sidebar)
+            reference_number: h.applied_forms?.reference_number,
+            status: h.applied_forms?.status,
+            form_type_name: h.applied_forms?.form_types?.name || 'Unknown',
+            applicant: h.applied_forms?.users || null,
+            latest_action: h.action || 'Unknown',
+            last_actor: h.users || null,
+            last_updated: h.created_at,
+            last_ip: h.ip_address || null,
+            comment_count: h.applied_forms?._count?.comments || 0,
         }));
     }
 
