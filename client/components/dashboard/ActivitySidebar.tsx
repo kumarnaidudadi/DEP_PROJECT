@@ -67,7 +67,7 @@ export default function ActivitySidebar({
         if (roles.includes('DEAN')) return 'Dean';
         if (roles.includes('HEAD_OF_DEPARTMENT') || roles.includes('HOD')) return 'HOD';
         if (roles.includes('ESTABLISHMENT')) return 'Establishment';
-        return roles[0] ? roles[0].replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase()) : null;
+        return roles[0] ? roles[0].replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase()) : null;
     };
 
     return (
