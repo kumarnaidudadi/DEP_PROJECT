@@ -4,7 +4,7 @@
 // Only accessible to ADMIN.
 
 import React, { useEffect, useRef, useState, Suspense } from 'react';
-import { FileText, ArrowRight, Clock, Plus, Loader2, RefreshCw, X, ListTodo, Search, CalendarDays, User, Activity, AlertCircle, ChevronDown, Check } from 'lucide-react';
+import { FileText, ArrowRight, Clock, Plus, Loader2, RefreshCw, X, ListTodo, Search, CalendarDays, User, Activity, AlertCircle, ChevronDown, Check, Globe } from 'lucide-react';
 import StatusBadge from '@/components/dashboard/StatusBadge';
 import ActivitySidebar from '@/components/dashboard/ActivitySidebar';
 import { useAuth } from '@/hooks/useAuth';
@@ -123,7 +123,9 @@ function SystemLogsContent() {
     const router = useRouter();
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchUser, setSearchUser] = useState('');
+    const [searchIp, setSearchIp] = useState('');
+    const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
 
     const [filterAction, setFilterAction] = useState('all');
     const [filterFormType, setFilterFormType] = useState('all');
@@ -218,16 +220,26 @@ function SystemLogsContent() {
         filtered = filtered.filter(l => new Date(l.last_updated) <= toDt);
     }
 
-    if (searchQuery) {
-        const q = searchQuery.toLowerCase();
+    if (searchUser) {
+        const q = searchUser.toLowerCase();
         filtered = filtered.filter(l =>
-            l.latest_action?.toLowerCase().includes(q) ||
-            l.form_type_name?.toLowerCase().includes(q) ||
-            (l.reference_number || '').toLowerCase().includes(q) ||
             l.applicant?.first_name?.toLowerCase().includes(q) ||
             l.applicant?.last_name?.toLowerCase().includes(q)
         );
     }
+    
+    if (searchIp) {
+        filtered = filtered.filter(l => (l.last_ip || '').includes(searchIp));
+    }
+
+    const suggestions = searchUser ? Array.from(new Set(
+        filtered.map(l => {
+            const q = searchUser.toLowerCase();
+            const name = l.applicant ? `${l.applicant.first_name} ${l.applicant.last_name}`.trim() : 'System';
+            if (name.toLowerCase().includes(q)) return name;
+            return null;
+        }).filter(Boolean)
+    )).slice(0, 8) as string[] : [];
 
     const uniqueActions = Array.from(new Set(logs.map(l => l.latest_action).filter(Boolean))) as string[];
     const uniqueFormTypes = Array.from(new Set(logs.map(l => l.form_type_name).filter(Boolean))) as string[];
@@ -266,22 +278,61 @@ function SystemLogsContent() {
                     </div>
 
                     {/* Search */}
-                    <div style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        background: '#f8fafc', border: '1px solid #e2e8f0',
-                        borderRadius: '8px', padding: '8px 14px', width: '250px',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-                    }}>
-                        <Search size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
-                        <input
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            placeholder="Search logs..."
-                            style={{
-                                border: 'none', outline: 'none', background: 'transparent',
-                                fontSize: '13px', color: '#374151', width: '100%',
-                            }}
-                        />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '8px',
+                            background: '#f8fafc', border: '1px solid #e2e8f0',
+                            borderRadius: '8px', padding: '8px 14px', width: '220px',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                        }}>
+                            <Globe size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
+                            <input
+                                value={searchIp}
+                                onChange={e => setSearchIp(e.target.value)}
+                                placeholder="Search IP address..."
+                                style={{
+                                    border: 'none', outline: 'none', background: 'transparent',
+                                    fontSize: '13px', color: '#374151', width: '100%',
+                                }}
+                            />
+                        </div>
+
+                        <div style={{ position: 'relative' }}>
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: '8px',
+                                background: '#f8fafc', border: '1px solid #e2e8f0',
+                                borderRadius: '8px', padding: '8px 14px', width: '250px',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                            }}>
+                                <User size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
+                                <input
+                                    value={searchUser}
+                                    onChange={e => { setSearchUser(e.target.value); setSearchDropdownOpen(true); }}
+                                    onFocus={() => setSearchDropdownOpen(true)}
+                                    onBlur={() => setTimeout(() => setSearchDropdownOpen(false), 200)}
+                                    placeholder="Search User or Email..."
+                                    style={{
+                                        border: 'none', outline: 'none', background: 'transparent',
+                                        fontSize: '13px', color: '#374151', width: '100%',
+                                    }}
+                                />
+                            </div>
+                            {searchDropdownOpen && suggestions.length > 0 && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', marginTop: '4px', zIndex: 10, maxHeight: '250px', overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                                    {suggestions.map((s, i) => (
+                                        <div 
+                                            key={i}
+                                            onClick={() => { setSearchUser(s); setSearchDropdownOpen(false); }}
+                                            style={{ padding: '8px 14px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: '13px', color: '#1e293b' }}
+                                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}
+                                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                                        >
+                                            {s}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
