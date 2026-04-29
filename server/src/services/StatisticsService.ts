@@ -122,16 +122,33 @@ export class StatisticsService {
             if (cnt > peakCount) { peakCount = cnt; peakHour = Number(h); }
         }
 
-        // Daily activity breakdown
-        const dailyMap: Record<string, number> = {};
-        for (const h of allHistory) {
-            if (!h.created_at) continue;
-            const day = new Date(h.created_at).toISOString().slice(0, 10);
-            dailyMap[day] = (dailyMap[day] || 0) + 1;
+        // Activity breakdown (Hourly if singleDate, else Daily)
+        let breakdown: { date: string; count: number; isHourly?: boolean }[] = [];
+        if (params.singleDate) {
+            const hourlyMap: Record<string, number> = {};
+            for (let i = 0; i < 24; i++) {
+                hourlyMap[i.toString().padStart(2, '0') + ':00'] = 0;
+            }
+            for (const h of allHistory) {
+                if (!h.created_at) continue;
+                // Make sure to parse it into local time to match what user expects
+                const hour = new Date(h.created_at).getHours().toString().padStart(2, '0') + ':00';
+                hourlyMap[hour] = (hourlyMap[hour] || 0) + 1;
+            }
+            breakdown = Object.entries(hourlyMap)
+                .map(([time, count]) => ({ date: time, count, isHourly: true }))
+                .sort((a, b) => a.date.localeCompare(b.date));
+        } else {
+            const dailyMap: Record<string, number> = {};
+            for (const h of allHistory) {
+                if (!h.created_at) continue;
+                const day = new Date(h.created_at).toISOString().slice(0, 10);
+                dailyMap[day] = (dailyMap[day] || 0) + 1;
+            }
+            breakdown = Object.entries(dailyMap)
+                .map(([date, count]) => ({ date, count }))
+                .sort((a, b) => a.date.localeCompare(b.date));
         }
-        const dailyBreakdown = Object.entries(dailyMap)
-            .map(([date, count]) => ({ date, count }))
-            .sort((a, b) => a.date.localeCompare(b.date));
 
         // Status breakdown
         const statusGroups = await this.prisma.applied_forms.groupBy({
@@ -153,7 +170,7 @@ export class StatisticsService {
             totalLoggedIn,
             peakHour,
             peakCount,
-            dailyBreakdown,
+            dailyBreakdown: breakdown,
             statusBreakdown,
         };
     }
@@ -301,16 +318,32 @@ export class StatisticsService {
         const approvedActions = allHistory.filter(h => h.action === 'approved').length;
         const rejectedActions = allHistory.filter(h => h.action === 'rejected').length;
 
-        // Daily breakdown
-        const dailyMap: Record<string, number> = {};
-        for (const h of allHistory) {
-            if (!h.created_at) continue;
-            const day = new Date(h.created_at).toISOString().slice(0, 10);
-            dailyMap[day] = (dailyMap[day] || 0) + 1;
+        // Activity breakdown (Hourly if singleDate, else Daily)
+        let breakdown: { date: string; count: number; isHourly?: boolean }[] = [];
+        if (params.singleDate) {
+            const hourlyMap: Record<string, number> = {};
+            for (let i = 0; i < 24; i++) {
+                hourlyMap[i.toString().padStart(2, '0') + ':00'] = 0;
+            }
+            for (const h of allHistory) {
+                if (!h.created_at) continue;
+                const hour = new Date(h.created_at).getHours().toString().padStart(2, '0') + ':00';
+                hourlyMap[hour] = (hourlyMap[hour] || 0) + 1;
+            }
+            breakdown = Object.entries(hourlyMap)
+                .map(([time, count]) => ({ date: time, count, isHourly: true }))
+                .sort((a, b) => a.date.localeCompare(b.date));
+        } else {
+            const dailyMap: Record<string, number> = {};
+            for (const h of allHistory) {
+                if (!h.created_at) continue;
+                const day = new Date(h.created_at).toISOString().slice(0, 10);
+                dailyMap[day] = (dailyMap[day] || 0) + 1;
+            }
+            breakdown = Object.entries(dailyMap)
+                .map(([date, count]) => ({ date, count }))
+                .sort((a, b) => a.date.localeCompare(b.date));
         }
-        const dailyBreakdown = Object.entries(dailyMap)
-            .map(([date, count]) => ({ date, count }))
-            .sort((a, b) => a.date.localeCompare(b.date));
 
         const multipleUsers = distinctUsers.length > 1;
         // Security flag: if multiple users from same IP — potential shared/suspicious
@@ -332,7 +365,7 @@ export class StatisticsService {
             })),
             multipleUsers,
             securityWarning,
-            dailyBreakdown,
+            dailyBreakdown: breakdown,
             recentActions: allHistory.slice(-20).reverse().map((h: any) => ({
                 action: h.action,
                 date: h.created_at,

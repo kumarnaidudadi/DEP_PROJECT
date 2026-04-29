@@ -165,6 +165,7 @@ function StatisticsContent() {
     const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
     // Data State
+    const [refreshTick, setRefreshTick] = useState(0);
     const [loading, setLoading] = useState(true);
     const [users, setUsers] = useState<any[]>([]);
     const [stats, setStats] = useState<any>(null);
@@ -237,7 +238,7 @@ function StatisticsContent() {
         }, 300);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [dateFrom, dateTo, singleDate, timeFrom, timeTo, filterUser, filterIp, userRoles]);
+    }, [dateFrom, dateTo, singleDate, timeFrom, timeTo, filterUser, filterIp, userRoles, refreshTick]);
 
     const handleReset = () => {
         setDateFrom('');
@@ -279,6 +280,19 @@ function StatisticsContent() {
                         <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <BarChart2 size={24} style={{ color: '#3b82f6' }} />
                             Statistics
+                            <button 
+                                onClick={() => { setLoading(true); setRefreshTick(t => t + 1); }} 
+                                style={{ 
+                                    background: 'none', border: 'none', cursor: 'pointer', 
+                                    color: '#64748b', display: 'flex', alignItems: 'center', 
+                                    padding: '4px', marginLeft: '4px', borderRadius: '4px', transition: 'background 0.2s' 
+                                }} 
+                                title="Refresh Statistics"
+                                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#f1f5f9'}
+                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                            >
+                                <RefreshCw size={16} />
+                            </button>
                         </h1>
                         <p style={{ fontSize: '13px', color: '#94a3b8', margin: '2px 0 0' }}>
                             {viewMode === 'general' ? 'Platform wide statistics' : viewMode === 'user' ? 'User specific statistics' : 'IP specific statistics'}
@@ -564,7 +578,7 @@ function StatisticsContent() {
                                             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
                                         }}>
                                             <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0' }}>
-                                                <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b', margin: 0 }}>Activity Volume by Day</h3>
+                                                <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b', margin: 0 }}>{singleDate ? 'Activity Volume by Hour' : 'Activity Volume by Day'}</h3>
                                             </div>
                                             <div style={{ height: '260px', display: 'flex', alignItems: 'flex-end', gap: '8px', padding: '20px' }}>
                                                 {stats.dailyBreakdown?.length > 0 ? (
@@ -572,14 +586,35 @@ function StatisticsContent() {
                                                         const maxCount = Math.max(...stats.dailyBreakdown.map((x: any) => x.count), 1);
                                                         const height = (d.count / maxCount) * 100;
                                                         return (
-                                                            <div key={d.date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', height: '100%' }}>
+                                                            <div 
+                                                                key={d.date} 
+                                                                onClick={() => {
+                                                                    if (!d.isHourly) {
+                                                                        setSingleDate(d.date); setDateFrom(''); setDateTo('');
+                                                                    }
+                                                                }}
+                                                                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', height: '100%', cursor: d.isHourly ? 'default' : 'pointer' }}
+                                                                onMouseEnter={e => {
+                                                                    if (!d.isHourly) {
+                                                                        const bar = e.currentTarget.children[0] as HTMLElement;
+                                                                        bar.style.background = '#2563eb';
+                                                                    }
+                                                                }}
+                                                                onMouseLeave={e => {
+                                                                    if (!d.isHourly) {
+                                                                        const bar = e.currentTarget.children[0] as HTMLElement;
+                                                                        bar.style.background = '#3b82f6';
+                                                                    }
+                                                                }}
+                                                            >
                                                                 <div style={{ 
                                                                     width: '100%', height: `${height}%`, background: '#3b82f6', 
-                                                                    borderRadius: '4px 4px 0 0', position: 'relative' 
+                                                                    borderRadius: '4px 4px 0 0', position: 'relative',
+                                                                    transition: 'background 0.2s'
                                                                 }} title={`${d.date}: ${d.count} actions`}>
                                                                 </div>
                                                                 <div style={{ fontSize: '10px', color: '#64748b', transform: 'rotate(-45deg)', marginTop: '12px', whiteSpace: 'nowrap' }}>
-                                                                    {new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                                                    {d.isHourly ? d.date : new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                                                                 </div>
                                                             </div>
                                                         );

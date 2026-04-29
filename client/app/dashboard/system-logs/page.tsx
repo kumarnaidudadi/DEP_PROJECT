@@ -122,6 +122,7 @@ function SystemLogsContent() {
     const { userRoles, user } = useAuth();
     const router = useRouter();
     const [logs, setLogs] = useState<any[]>([]);
+    const [refreshTick, setRefreshTick] = useState(0);
     const [loading, setLoading] = useState(true);
     const [searchUser, setSearchUser] = useState('');
     const [searchIp, setSearchIp] = useState('');
@@ -158,7 +159,7 @@ function SystemLogsContent() {
         if (userRoles.includes('ADMIN')) {
             fetchLogs();
         }
-    }, [userRoles, router]);
+    }, [userRoles, router, refreshTick]);
 
     useEffect(() => {
         if (!selectedFormId || activeTab !== 'timeline') return;
@@ -271,6 +272,19 @@ function SystemLogsContent() {
                         <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <Activity size={24} style={{ color: '#3b82f6' }} />
                             System Logs
+                            <button 
+                                onClick={() => { setLoading(true); setRefreshTick(t => t + 1); }} 
+                                style={{ 
+                                    background: 'none', border: 'none', cursor: 'pointer', 
+                                    color: '#64748b', display: 'flex', alignItems: 'center', 
+                                    padding: '4px', marginLeft: '4px', borderRadius: '4px', transition: 'background 0.2s' 
+                                }} 
+                                title="Refresh Logs"
+                                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#f1f5f9'}
+                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                            >
+                                <RefreshCw size={16} />
+                            </button>
                         </h1>
                         <p style={{ fontSize: '13px', color: '#94a3b8', margin: '2px 0 0' }}>
                             {filtered.length} log entr{filtered.length === 1 ? 'y' : 'ies'} found
