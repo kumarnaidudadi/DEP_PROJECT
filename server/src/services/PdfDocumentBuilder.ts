@@ -110,9 +110,13 @@ export class PdfDocumentBuilder {
         pg.drawLine({ start: { x: tx, y: y - 2 }, end: { x: tx + tW, y: y - 2 }, thickness: 0.75, color: BLACK });
 
         y -= 14;
-        const docId = `DOC-${String(form.id).padStart(5,'0')}`;
-        const status = String(form.status || 'pending').toUpperCase();
-        const date   = form.created_at ? new Date(form.created_at).toLocaleDateString('en-IN') : '';
+        const docId = form.reference_number || `DOC-${String(form.id).padStart(5,'0')}`;
+        const status = String(form.status || form.current_status || 'pending').toUpperCase();
+        let date = '';
+        if (form.submitted_at || form.created_at) {
+            const d = new Date(form.submitted_at || form.created_at);
+            date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+        }
         pg.drawText(`${docId}   |   Status: ${status}   |   Date: ${date}`, { x: ML, y, size: 8, font: R, color: GREY });
 
         y -= 10;
