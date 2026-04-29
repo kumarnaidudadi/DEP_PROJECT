@@ -144,7 +144,7 @@ function CreateFormInner() {
         setInitialSnapshot(serializeBuilderState(ft.name, ft.description || '', loadedPrefix, loadedFields.length ? loadedFields : [createBuilderField()], nextApprovalRoles, loadedFirstRoutingRole));
     }, [editId, formTypes]);
 
-    const handleSave = React.useCallback(async ({ redirectAfterSave = true }: { redirectAfterSave?: boolean } = {}) => {
+    const handleSave = React.useCallback(async (status: 'published' | 'drafted' = 'published', { redirectAfterSave = true }: { redirectAfterSave?: boolean } = {}) => {
         if (!newFormName.trim()) { alert('Form name is required'); return; }
         setCreating(true); setCreateSuccess(false); setSaveError(null); setPrefixError(null);
         try {
@@ -170,6 +170,7 @@ function CreateFormInner() {
                 },
                 approval_rules: { required_roles: approvalRoles, first_routing_role: firstRoutingRole },
                 ref_prefix: refPrefix.trim() || undefined,
+                status: status,
             };
             
             if (editId) { await formTypeSvc.updateFormType(Number(editId), payload); }
@@ -272,7 +273,7 @@ function CreateFormInner() {
     }, [handleAttemptLeave, router]);
 
     return (
-        <main style={{ flex: 1, overflowY: 'auto', background: '#f8fafc' }}>
+        <main style={{ flex: 1, background: '#f8fafc' }}>
             <CreateFormView
                 isEdit={!!editId}
                 newFormName={newFormName} newFormDesc={newFormDesc}

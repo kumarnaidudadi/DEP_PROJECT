@@ -11,6 +11,7 @@ export interface FormTypePayload {
     approval_rules?: { required_roles: string[], first_routing_role?: string | null };
     is_active?: boolean;
     ref_prefix?: string;
+    status?: string;
 }
 
 export async function createFormType(payload: FormTypePayload): Promise<FormType> {

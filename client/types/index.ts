@@ -10,6 +10,7 @@ export interface FormType {
     approval_rules?: { required_roles?: string[], first_routing_role?: string | null } | null;
     is_active?: boolean;
     ref_prefix?: string | null;
+    status?: string | null;
 }
 
 // ─── Form Forward ──────────────────────────────────────────────────────────────
@@ -174,14 +175,14 @@ export const FIELD_TYPE_OPTIONS: FieldTypeOption[] = [
     { category: 'structural', type: 'heading', label: 'Section Heading', description: 'Break the form into clearly named sections.' },
     { category: 'structural', type: 'paragraph_blanks', label: 'Paragraph with Blanks', description: 'Inline sentence template with fillable blanks.' },
     { category: 'structural', type: 'tuple', label: 'Data Group (Tuple)', description: 'Collect related fields in one compact group.' },
-    { category: 'structural', type: 'list', label: 'Repeating List', description: 'Repeat a row of fields for multiple entries.' },
+    { category: 'structural', type: 'list', label: 'Table', description: 'Repeat a row of fields for multiple entries.' },
 ];
 
 export const FIELD_TYPE_LABELS: Record<string, string> = {
     text: 'Text', number: 'Number', date: 'Date', date_from_to: 'Date Range',
     bool: 'Yes / No', select: 'Select (Options)', textarea: 'Long Text',
     signature: 'Signature', department: 'Department', role: 'Role',
-    tuple: 'Group (Tuple)', list: 'Repeating List',
+    tuple: 'Group (Tuple)', list: 'Table',
     name: 'Name', designation: 'Designation', employee_code: 'Employee Code',
     heading: 'Section Heading',
     paragraph_blanks: 'Paragraph with Blanks',

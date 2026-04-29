@@ -82,7 +82,7 @@ export default function FormBuilderPreview({
         padding: '24px 16px',
         overflowY: 'auto'
     } : {
-        width: '340px', flexShrink: 0, position: 'sticky', top: '24px', alignSelf: 'flex-start'
+        width: '340px', flexShrink: 0, position: 'sticky', top: '24px', alignSelf: 'flex-start', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto'
     };
 
     return (

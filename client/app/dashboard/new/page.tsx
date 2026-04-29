@@ -30,7 +30,7 @@ function NewApplicationListContent() {
     const { profile, fetchProfile } = useProfile();
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [adminTab, setAdminTab] = useState<'active' | 'inactive'>('active');
+    const [adminTab, setAdminTab] = useState<'active' | 'inactive' | 'drafted'>('active');
     const [hoveredId, setHoveredId] = useState<number | null>(null);
 
     useEffect(() => {
@@ -52,11 +52,12 @@ function NewApplicationListContent() {
         );
     }
 
-    const activeForms = list.filter(f => f.is_active !== false);
-    const inactiveForms = list.filter(f => f.is_active === false);
+    const activeForms = list.filter(f => f.is_active !== false && f.status !== 'drafted');
+    const inactiveForms = list.filter(f => f.is_active === false && f.status !== 'drafted');
+    const draftedForms = list.filter(f => f.status === 'drafted');
     
     const formsToShow = isAdmin 
-        ? (adminTab === 'active' ? activeForms : inactiveForms)
+        ? (adminTab === 'active' ? activeForms : adminTab === 'inactive' ? inactiveForms : draftedForms)
         : activeForms;
 
     return (
@@ -122,6 +123,19 @@ function NewApplicationListContent() {
                         >
                             Inactive Forms
                         </button>
+                        <button
+                            onClick={() => setAdminTab('drafted')}
+                            style={{
+                                padding: '10px 0',
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                fontSize: '14px',
+                                fontWeight: adminTab === 'drafted' ? 700 : 500,
+                                color: adminTab === 'drafted' ? '#d97706' : '#6b7280',
+                                borderBottom: adminTab === 'drafted' ? '2.5px solid #d97706' : '2.5px solid transparent',
+                            }}
+                        >
+                            Drafts
+                        </button>
                     </div>
                 )}
                 
@@ -180,6 +194,9 @@ function NewApplicationListContent() {
 
                                     {!isAdmin && ft.is_active === false && (
                                         <span style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', background: '#f1f5f9', padding: '4px 8px', borderRadius: '6px' }}>Inactive</span>
+                                    )}
+                                    {isAdmin && ft.status === 'drafted' && (
+                                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#d97706', textTransform: 'uppercase', background: '#fef3c7', padding: '4px 8px', borderRadius: '6px' }}>Draft</span>
                                     )}
 
                                     <ChevronRight

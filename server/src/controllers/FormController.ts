@@ -30,7 +30,7 @@ export class FormController {
     };
 
     createFormType = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-        const { name, description, schema, approval_rules, ref_prefix } = req.body;
+        const { name, description, schema, approval_rules, ref_prefix, status } = req.body;
 
         if (!name) {
             res.status(400).json({ error: 'Form type name is required' });
@@ -39,7 +39,7 @@ export class FormController {
 
         try {
             const result = await this.formService.createFormType({
-                name, description, schema, approval_rules, ref_prefix
+                name, description, schema, approval_rules, ref_prefix, status
             });
             res.status(201).json(result);
         } catch (e: any) {
@@ -52,14 +52,14 @@ export class FormController {
 
     updateFormType = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         const id = Number(req.params.id);
-        const { name, description, schema, approval_rules, is_active, ref_prefix } = req.body;
+        const { name, description, schema, approval_rules, is_active, ref_prefix, status } = req.body;
 
         if (!name) { res.status(400).json({ error: 'Form type name is required' }); return; }
         if (isNaN(id)) { res.status(400).json({ error: 'Invalid form type id' }); return; }
 
         try {
             const result = await this.formService.updateFormType(id, {
-                name, description, schema, approval_rules, is_active, ref_prefix
+                name, description, schema, approval_rules, is_active, ref_prefix, status
             });
             res.json(result);
         } catch (e: any) {
@@ -294,13 +294,14 @@ export class FormController {
 
         try {
             const pdfBuffer = await this.pdfService.generateFormPdf(id);
+            const safeId = String(id).padStart(5, '0');
+            const filename = `LTMS_DOC-${safeId}.pdf`;
             res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `attachment; filename="Application_${id}.pdf"`);
+            res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
             res.send(pdfBuffer);
         } catch (e: any) {
             console.error('[FormController] downloadPdf:', e.message);
             if (e.message === 'FORM_NOT_FOUND') res.status(404).json({ error: 'Form not found' });
-            else if (e.message === 'PDF_TEMPLATE_NOT_FOUND') res.status(500).json({ error: 'PDF template not found on server' });
             else res.status(500).json({ error: 'Failed to generate PDF' });
         }
     };

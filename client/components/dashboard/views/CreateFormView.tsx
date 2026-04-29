@@ -102,7 +102,7 @@ interface Props {
     onFieldsChange: (fields: BuilderField[]) => void;
     onApprovalRolesChange: (roles: string[]) => void;
     onFirstRoutingRoleChange: (r: string | null) => void;
-    onSave: () => void;
+    onSave: (status: 'published' | 'drafted') => void;
     onCancel: () => void;
 }
 
@@ -257,7 +257,7 @@ export default function CreateFormView({
         padding: '24px 16px',
         overflowY: 'auto'
     } : {
-        width: '240px', flexShrink: 0, position: 'sticky', top: '24px', alignSelf: 'flex-start'
+        width: '240px', flexShrink: 0, position: 'sticky', top: '24px', alignSelf: 'flex-start', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto'
     };
 
     /* ─── Render ──────────────────────────────────────────────────────────── */
@@ -296,12 +296,16 @@ export default function CreateFormView({
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <button type="button" onClick={onSave} disabled={creating}
+                        <button type="button" onClick={() => onSave('published')} disabled={creating}
                             style={{ ...btnPrimary, width: '100%', justifyContent: 'center', opacity: creating ? 0.7 : 1, cursor: creating ? 'not-allowed' : 'pointer' }}>
                             {creating ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={14} />}
-                            {creating ? 'Saving...' : isEdit ? 'Update Form' : 'Save Form'}
+                            {creating ? 'Saving...' : isEdit ? 'Update Form' : 'Publish Form'}
                         </button>
-                        <button type="button" onClick={onCancel} style={{ ...btnSecondary, width: '100%', justifyContent: 'center' }}>
+                        <button type="button" onClick={() => onSave('drafted')} disabled={creating}
+                            style={{ ...btnSecondary, width: '100%', justifyContent: 'center', opacity: creating ? 0.7 : 1, cursor: creating ? 'not-allowed' : 'pointer' }}>
+                            Save as Draft
+                        </button>
+                        <button type="button" onClick={onCancel} style={{ ...btnSecondary, width: '100%', justifyContent: 'center', marginTop: '8px' }}>
                             Cancel
                         </button>
                     </div>

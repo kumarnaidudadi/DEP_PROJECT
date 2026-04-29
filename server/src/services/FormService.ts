@@ -60,6 +60,7 @@ export class FormService implements IFormService {
             schema: dto.schema || {},
             approval_rules: dto.approval_rules || {},
             ...(dto.ref_prefix ? { ref_prefix: dto.ref_prefix.toUpperCase().slice(0, 4) } : {}),
+            ...(dto.status ? { status: dto.status } : {}),
         });
     }
 
@@ -88,6 +89,9 @@ export class FormService implements IFormService {
         }
         if (dto.ref_prefix !== undefined) {
             updateData.ref_prefix = dto.ref_prefix ? dto.ref_prefix.toUpperCase().slice(0, 4) : null;
+        }
+        if (dto.status !== undefined) {
+            updateData.status = dto.status;
         }
 
         return this.formRepo.updateFormType(id, updateData);

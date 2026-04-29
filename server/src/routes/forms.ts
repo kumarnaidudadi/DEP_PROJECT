@@ -7,7 +7,7 @@ import express from 'express';
 import { verifyToken } from '../middleware/authMiddleware';
 import { FormController } from '../controllers/FormController';
 import { FormService } from '../services/FormService';
-import { PdfService } from '../services/PdfService';
+import { PdfDocumentBuilder } from '../services/PdfDocumentBuilder';
 import { EmailService } from '../services/EmailService';
 import { FormRepository } from '../repositories/FormRepository';
 import prismaClient from '../prisma';
@@ -17,7 +17,7 @@ const router = express.Router();
 // ─── Dependency Injection (manual composition root) ────────────────────────
 const formRepo = new FormRepository(prismaClient);
 const emailService = new EmailService(prismaClient);
-const pdfService = new PdfService(prismaClient);
+const pdfService = new PdfDocumentBuilder(prismaClient);
 const formService = new FormService(formRepo, emailService);
 const controller = new FormController(formService, pdfService);
 
