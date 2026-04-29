@@ -7,7 +7,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import {
     FilePlus, FileText, ClipboardList,
     User, LogOut, Building2, Activity,
-    Users, X
+    Users, X, BarChart2
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -48,7 +48,8 @@ export default function Sidebar({ canApprove, pendingCount, onLogout, isMobileOp
         { href: '/dashboard/new', icon: <FilePlus size={20} />, label: 'New Application' },
         ...(isAdmin ? [
             { href: '/dashboard/user-management', icon: <Users size={20} />, label: 'User Management' },
-            { href: '/dashboard/system-logs', icon: <Activity size={20} />, label: 'System Logs' }
+            { href: '/dashboard/system-logs', icon: <Activity size={20} />, label: 'System Logs' },
+            { href: '/dashboard/statistics', icon: <BarChart2 size={20} />, label: 'Statistics' },
         ] : []),
     ];
 
