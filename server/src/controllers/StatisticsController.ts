@@ -71,11 +71,6 @@ export class StatisticsController {
 
     // GET /api/statistics/users — for the user filter dropdown
     getAllUsers = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-        const roles = req.user?.roles || [];
-        if (!roles.includes('ADMIN')) {
-            res.status(403).json({ error: 'Admin access required' });
-            return;
-        }
         try {
             const users = await this.statsService.getAllUsersForFilter();
             res.json(users);

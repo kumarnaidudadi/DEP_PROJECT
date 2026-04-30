@@ -21,7 +21,11 @@ export interface FormComment {
         emp_code: string;
         roles?: string[];
     } | null;
-    form_history?: { action: string } | null;
+    form_history?: { 
+        action: string;
+        acting_users?: { id: number; first_name: string; last_name: string } | null;
+        acting_role_label?: string | null;
+    } | null;
     replies: FormComment[];
 }
 

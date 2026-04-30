@@ -18,8 +18,11 @@ export default function PendingWorkDetailPage() {
     const appId = Number(params.id);
     const tab = searchParams.get('tab') || 'needs-review';
 
+    const actingFor = searchParams.get('actingFor') ? Number(searchParams.get('actingFor')) : undefined;
+    const actingReqId = searchParams.get('actingReqId') ? Number(searchParams.get('actingReqId')) : undefined;
+
     const { user, userRoles } = useAuth();
-    const { applications, loading, fetchApplications, makeDecision, forwardForm, searchUsers, triggerDownloadPdf } = useForms();
+    const { applications, loading, fetchApplications, makeDecision, forwardForm, searchUsers, triggerDownloadPdf } = useForms(actingFor);
     const { profile, sigUploading, fetchProfile, handleSigUpload } = useProfile();
 
     const [remarks, setRemarks] = useState('');
@@ -39,14 +42,17 @@ export default function PendingWorkDetailPage() {
     const selectedApp = applications.find(a => a.id === appId);
     const storedRoles = userRoles.map(r => (typeof r === 'string' ? r.toUpperCase() : ''));
     const NON_APPROVER = ['STAFF', 'INSTRUCTOR'];
-    const isApprovalRole = storedRoles.length > 0 && !storedRoles.every(r => NON_APPROVER.includes(r));
+    const nativeIsApprovalRole = storedRoles.length > 0 && !storedRoles.every(r => NON_APPROVER.includes(r));
+    // If acting on behalf of someone, the user inherits approval authority from the delegation
+    const isApprovalRole = nativeIsApprovalRole || Boolean(actingFor);
     
     // Check if the current pending approval is for this user's role
     const latestForward = selectedApp ? getLatestForward(selectedApp) : null;
+    const effectiveUserId = actingFor || Number(user?.id);
     const hasPendingApprovalForThisUser = Boolean(
         selectedApp &&
         latestForward?.action === 'forwarded' &&
-        Number(latestForward.forwarded_to) === Number(user?.id) &&
+        Number(latestForward.forwarded_to) === effectiveUserId &&
         !['APPROVED', 'REJECTED'].includes(getApplicationStatus(selectedApp))
     );
     const canApprove = Boolean(isApprovalRole && hasPendingApprovalForThisUser);
@@ -69,7 +75,9 @@ export default function PendingWorkDetailPage() {
             setRemarks('');
             setApprovalData({});
             fetchApplications();
-            router.push(`/dashboard/pending?tab=${tab}`);
+            let returnUrl = `/dashboard/pending?tab=${tab}`;
+            if (actingReqId) returnUrl = `/dashboard/acting-pending/${actingReqId}?tab=${tab}`;
+            router.push(returnUrl);
         } catch {
             alert('Failed to update');
         } finally {
@@ -130,16 +138,22 @@ export default function PendingWorkDetailPage() {
     const historyArr = selectedApp.form_history || [];
     const forwardsArr = selectedApp.form_forwards || [];
     const mergedHistory = historyArr.map((h: any) => {
+        const enriched: any = {
+            ...h,
+            // Always carry acting context if present
+            acting_users: h.acting_users ?? null,
+            acting_role_label: h.acting_role_label ?? null,
+        };
         if (h.action === 'forwarded' || h.action === 'approved' || h.action === 'rejected') {
             const match = forwardsArr.find((f: any) => 
                 f.action === h.action && 
                 Math.abs(new Date(f.forwarded_at).getTime() - new Date(h.created_at).getTime()) < 5000
             );
-            if (match && match.to_user) {
-                return { ...h, target_user: match.to_user };
+            if (match?.to_user) {
+                enriched.target_user = match.to_user;
             }
         }
-        return h;
+        return enriched;
     });
     const ascHistory = [...mergedHistory].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
@@ -169,6 +183,13 @@ export default function PendingWorkDetailPage() {
                     <X size={17} /> Back to Pending Work
                 </button>
             </div>
+            
+            {actingFor && (
+                <div style={{ background: '#fef2f2', borderBottom: '1px solid #fca5a5', padding: '10px 24px', color: '#991b1b', fontSize: '13px', fontWeight: 600 }}>
+                    Acting Mode Active. You are taking actions on behalf of another user.
+                </div>
+            )}
+
             {/* Detail content */}
             <div style={{ flex: 1, overflowY: 'auto', background: '#f1f5f9', padding: '24px', display: 'flex', gap: '20px', alignItems: 'flex-start', position: 'relative' }}>
                 <div style={{ flex: 1, minWidth: 0, background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', overflow: 'hidden', border: '1px solid #e2e8f0' }}>

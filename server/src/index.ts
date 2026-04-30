@@ -14,6 +14,7 @@ import profileRoutes from './routes/profile';
 import formCommentsRouter from './routes/formComments.routes';
 import userAdminRoutes from './routes/user-admin';
 import statisticsRoutes from './routes/statistics';
+import actingRolesRoutes from './routes/actingRoles';
 import path from 'path';
 
 // Fix BigInt serialization: Express res.json() will use this to convert BigInts to numbers/strings!
@@ -38,6 +39,7 @@ app.use('/api/applications', formRoutes); // Alias for backward compat
 app.use('/api/profile', profileRoutes);
 app.use('/api/user-admin', userAdminRoutes);
 app.use('/api/statistics', statisticsRoutes);
+app.use('/api/acting-roles', actingRolesRoutes);
 app.use('/api/forms/:formId/comments', formCommentsRouter);
 app.use('/api/applications/:formId/comments', formCommentsRouter);
 

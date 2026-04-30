@@ -57,8 +57,8 @@ export async function getFormTypes(): Promise<FormType[]> {
     return data;
 }
 
-export async function getForms(): Promise<Application[]> {
-    const res = await api.get('/forms');
+export async function getForms(actingForUserId?: number): Promise<Application[]> {
+    const res = await api.get('/forms', { params: { actingForUserId } });
     return Array.isArray(res.data) ? res.data.map(normalizeApplication) : res.data;
 }
 
@@ -93,9 +93,10 @@ export async function updateFormStatus(
     formId: number,
     decision: 'APPROVED' | 'REJECTED',
     remarks: string,
-    approvalData: Record<string, any>
+    approvalData: Record<string, any>,
+    actingForUserId?: number
 ): Promise<Application> {
-    const res = await api.patch(`/forms/${formId}/status`, { decision, remarks, approvalData });
+    const res = await api.patch(`/forms/${formId}/status`, { decision, remarks, approvalData, actingForUserId });
     return normalizeApplication(res.data);
 }
 
@@ -103,9 +104,10 @@ export async function updateFormStatus(
 export async function forwardForm(
     formId: number,
     toUserId: number,
-    note?: string
+    note?: string,
+    actingForUserId?: number
 ): Promise<Application> {
-    const res = await api.post(`/forms/${formId}/forward`, { toUserId, note });
+    const res = await api.post(`/forms/${formId}/forward`, { toUserId, note, actingForUserId });
     return normalizeApplication(res.data);
 }
 

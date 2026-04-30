@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
+import {
     Users, UserPlus, Upload, Download, Search, Activity, AlertCircle, Loader2
 } from 'lucide-react';
 import { userAdminService, InactiveUser } from '@/services/userAdminService';
@@ -18,7 +18,7 @@ export default function UserManagementPage() {
         const params = new URLSearchParams(window.location.search);
         const tabParam = params.get('tab') as 'list' | 'add' | 'bulk';
         const filterParam = params.get('filter') as 'all' | 'active' | 'inactive';
-        
+
         if (tabParam && ['list', 'add', 'bulk'].includes(tabParam)) setActiveTab(tabParam);
         if (filterParam && ['all', 'active', 'inactive'].includes(filterParam)) setFilter(filterParam);
     }, []);
@@ -40,7 +40,7 @@ export default function UserManagementPage() {
         setToast({ message, type });
         setTimeout(() => setToast(null), 3500);
     };
-    
+
     // Form states
     const [formData, setFormData] = useState({
         first_name: '',
@@ -57,11 +57,11 @@ export default function UserManagementPage() {
 
     // Bulk upload states
     const [file, setFile] = useState<File | null>(null);
-    const [uploadResult, setUploadResult] = useState<{added: number, failed: any[]} | null>(null);
+    const [uploadResult, setUploadResult] = useState<{ added: number, failed: any[] } | null>(null);
 
     // Departments for dropdown
-    const [departments, setDepartments] = useState<{id: number, name: string}[]>([]);
-    const [roles, setRoles] = useState<{id: number, name: string}[]>([]);
+    const [departments, setDepartments] = useState<{ id: number, name: string }[]>([]);
+    const [roles, setRoles] = useState<{ id: number, name: string }[]>([]);
 
     useEffect(() => {
         fetchUsers();
@@ -142,7 +142,7 @@ export default function UserManagementPage() {
         const action = currentActive ? 'DEACTIVATE' : 'ACTIVATE';
         const reason = window.prompt(`Reason for ${action}:`, '');
         if (reason === null) return;
-        
+
         try {
             await userAdminService.toggleUserStatus(userId, !currentActive, reason || 'Admin action');
             showToast(`User ${currentActive ? 'deactivated' : 'activated'} successfully`);
@@ -180,9 +180,9 @@ export default function UserManagementPage() {
                     </thead>
                     <tbody>
                         {filteredUsers.map((user, index) => (
-                            <tr 
-                                key={user.id} 
-                                style={{ 
+                            <tr
+                                key={user.id}
+                                style={{
                                     background: index % 2 === 1 ? '#f8fafc' : '#ffffff',
                                     transition: 'all 0.15s ease',
                                 }}
@@ -220,13 +220,13 @@ export default function UserManagementPage() {
                                     )}
                                 </td>
                                 <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}>
-                                    <button 
+                                    <button
                                         onClick={() => handleToggleStatus(user.id, user.is_active)}
-                                        style={{ 
-                                            padding: '4px 12px', 
-                                            background: user.is_active ? '#fef2f2' : '#f0fdf4', 
-                                            color: user.is_active ? '#ef4444' : '#16a34a', 
-                                            border: `1px solid ${user.is_active ? '#fee2e2' : '#bbf7d0'}`, 
+                                        style={{
+                                            padding: '4px 12px',
+                                            background: user.is_active ? '#fef2f2' : '#f0fdf4',
+                                            color: user.is_active ? '#ef4444' : '#16a34a',
+                                            border: `1px solid ${user.is_active ? '#fee2e2' : '#bbf7d0'}`,
                                             borderRadius: '6px', fontSize: '12px', fontWeight: 600,
                                             cursor: 'pointer'
                                         }}
@@ -244,7 +244,7 @@ export default function UserManagementPage() {
 
     const renderAdd = () => (
         <div style={{ position: 'relative' }}>
-            <button 
+            <button
                 onClick={() => setActiveTab('list')}
                 style={{ position: 'absolute', top: '-70px', left: '0', background: 'none', border: 'none', color: '#3b82f6', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
@@ -255,29 +255,29 @@ export default function UserManagementPage() {
                 <form onSubmit={handleAddUser} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <div style={{ gridColumn: 'span 1' }}>
                         <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>First Name *</label>
-                        <input type="text" required value={formData.first_name} onChange={e => setFormData({...formData, first_name: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                        <input type="text" required value={formData.first_name} onChange={e => setFormData({ ...formData, first_name: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
                     </div>
                     <div style={{ gridColumn: 'span 1' }}>
                         <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Last Name *</label>
-                        <input type="text" required value={formData.last_name} onChange={e => setFormData({...formData, last_name: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                        <input type="text" required value={formData.last_name} onChange={e => setFormData({ ...formData, last_name: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
                     </div>
                     <div style={{ gridColumn: 'span 2' }}>
                         <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Email Address *</label>
-                        <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                        <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
                     </div>
                     <div style={{ gridColumn: 'span 1' }}>
                         <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Password <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label>
-                        <input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                        <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
                     </div>
                     <div style={{ gridColumn: 'span 1' }}>
                         <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Employee Code</label>
-                        <input type="text" value={formData.emp_code} onChange={e => setFormData({...formData, emp_code: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                        <input type="text" value={formData.emp_code} onChange={e => setFormData({ ...formData, emp_code: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
                     </div>
                     <div style={{ gridColumn: 'span 1' }}>
                         <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Department <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label>
-                        <select 
-                            value={formData.department_id} 
-                            onChange={e => setFormData({...formData, department_id: e.target.value})}
+                        <select
+                            value={formData.department_id}
+                            onChange={e => setFormData({ ...formData, department_id: e.target.value })}
                             style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '14px', color: formData.department_id ? '#0f172a' : '#94a3b8' }}
                         >
                             <option value="">-- No Department --</option>
@@ -288,10 +288,10 @@ export default function UserManagementPage() {
                     </div>
                     <div style={{ gridColumn: 'span 1' }}>
                         <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Designation / Role *</label>
-                        <select 
+                        <select
                             required
-                            value={formData.role_id} 
-                            onChange={e => setFormData({...formData, role_id: e.target.value})}
+                            value={formData.role_id}
+                            onChange={e => setFormData({ ...formData, role_id: e.target.value })}
                             style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '14px', color: formData.role_id ? '#0f172a' : '#94a3b8' }}
                         >
                             <option value="">-- Select Role --</option>
@@ -302,10 +302,10 @@ export default function UserManagementPage() {
                     </div>
                     <div style={{ gridColumn: 'span 1' }}>
                         <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Joining Date <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label>
-                        <input type="date" value={formData.joining_date} onChange={e => setFormData({...formData, joining_date: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                        <input type="date" value={formData.joining_date} onChange={e => setFormData({ ...formData, joining_date: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
                     </div>
                     <div style={{ gridColumn: 'span 2', marginTop: '12px' }}>
-                        <button 
+                        <button
                             type="submit" disabled={processing}
                             style={{ width: '100%', padding: '12px', background: '#3b82f6', color: '#fff', borderRadius: '12px', border: 'none', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
                         >
@@ -319,7 +319,7 @@ export default function UserManagementPage() {
 
     const renderBulk = () => (
         <div style={{ position: 'relative' }}>
-            <button 
+            <button
                 onClick={() => setActiveTab('list')}
                 style={{ position: 'absolute', top: '-70px', left: '0', background: 'none', border: 'none', color: '#3b82f6', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
@@ -332,7 +332,7 @@ export default function UserManagementPage() {
                     </div>
                     <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>Bulk User Upload</h2>
                     <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '32px' }}>Upload an Excel file (.xlsx) containing user profiles to create them in bulk.</p>
-                    
+
                     <div style={{ border: '2px dashed #e2e8f0', borderRadius: '16px', padding: '32px', position: 'relative', cursor: 'pointer', background: file ? '#f0f9ff' : 'transparent', transition: 'all 0.2s' }} onDragOver={e => e.preventDefault()}>
                         <input type="file" accept=".xlsx" onChange={e => setFile(e.target.files?.[0] || null)} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
                         <div style={{ color: '#1e293b', fontWeight: 500 }}>{file ? file.name : 'Click to select or drag and drop Excel file'}</div>
@@ -357,13 +357,13 @@ export default function UserManagementPage() {
                     )}
 
                     <div style={{ display: 'flex', gap: '12px', marginTop: '32px' }}>
-                        <button 
+                        <button
                             onClick={() => userAdminService.downloadTemplate()}
                             style={{ flex: 1, padding: '12px', background: '#f8fafc', color: '#475569', borderRadius: '12px', border: '1px solid #e2e8f0', fontWeight: 600, cursor: 'pointer' }}
                         >
                             Download Template
                         </button>
-                        <button 
+                        <button
                             onClick={handleBulkUpload} disabled={!file || processing}
                             style={{ flex: 1, padding: '12px', background: !file ? '#94a3b8' : '#3b82f6', color: '#fff', borderRadius: '12px', border: 'none', fontWeight: 600, cursor: file ? 'pointer' : 'not-allowed' }}
                         >
@@ -416,7 +416,7 @@ export default function UserManagementPage() {
                             const active = filter === f;
                             const label = f === 'all' ? 'All Users' : f === 'active' ? 'Active Users' : 'Inactive Users';
                             const color = active ? '#3b82f6' : '#64748b';
-                            
+
                             return (
                                 <button
                                     key={f}
@@ -443,9 +443,9 @@ export default function UserManagementPage() {
                     </div>
 
                     <div style={{ display: 'flex', gap: '10px', paddingBottom: '8px' }}>
-                        <button 
+                        <button
                             onClick={() => userAdminService.downloadTemplate()}
-                            style={{ 
+                            style={{
                                 display: 'flex', alignItems: 'center', gap: '8px',
                                 padding: '8px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px',
                                 fontSize: '13px', fontWeight: 500, color: '#4b5563', cursor: 'pointer',
@@ -456,9 +456,9 @@ export default function UserManagementPage() {
                         >
                             <Download size={14} /> Download Template
                         </button>
-                        <button 
+                        <button
                             onClick={() => setActiveTab('bulk')}
-                            style={{ 
+                            style={{
                                 display: 'flex', alignItems: 'center', gap: '8px',
                                 padding: '8px 14px', background: '#fff', border: '1px solid #3b82f6', borderRadius: '8px',
                                 fontSize: '13px', fontWeight: 600, color: '#3b82f6', cursor: 'pointer',
@@ -469,9 +469,9 @@ export default function UserManagementPage() {
                         >
                             <Upload size={14} /> Bulk Upload
                         </button>
-                        <button 
+                        <button
                             onClick={() => setActiveTab('add')}
-                            style={{ 
+                            style={{
                                 display: 'flex', alignItems: 'center', gap: '8px',
                                 padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '8px',
                                 fontSize: '13px', fontWeight: 600, color: '#fff', cursor: 'pointer',
@@ -496,7 +496,7 @@ export default function UserManagementPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '260px', color: '#94a3b8' }}>
                             <AlertCircle size={44} style={{ opacity: 0.35, marginBottom: '14px' }} />
                             <p style={{ fontSize: '15px', fontWeight: 600, color: '#64748b', margin: '0 0 4px' }}>No users found</p>
-                            <p style={{ fontSize: '13px', margin: 0 }}>There are no users matching your criteria.</p>
+                            <p style={{ fontSize: '13px', margin: 0 }}>There are no users  .</p>
                         </div>
                     ) : (
                         <div style={{ animation: 'fadeIn 0.2s ease-out' }}>

@@ -408,7 +408,7 @@ function StatisticsContent() {
                         <Globe size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
                         <input
                             value={filterIp}
-                            onChange={e => { setFilterIp(e.target.value); if(e.target.value) { setFilterUser('all'); setUserSearchQuery(''); } }}
+                            onChange={e => { setFilterIp(e.target.value); if(e.target.value) { setFilterUser('all'); setUserSearch(''); } }}
                             placeholder="Search IP address..."
                             style={{
                                 border: 'none', outline: 'none', background: 'transparent',

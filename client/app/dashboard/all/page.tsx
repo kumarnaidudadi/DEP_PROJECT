@@ -332,7 +332,7 @@ function AllApplicationsContent() {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '260px', color: '#94a3b8' }}>
                         <FileText size={44} style={{ opacity: 0.35, marginBottom: '14px' }} />
                         <p style={{ fontSize: '15px', fontWeight: 600, color: '#64748b', margin: '0 0 4px' }}>No applications found</p>
-                        <p style={{ fontSize: '13px', margin: 0 }}>There are no {appTab} applications matching your criteria.</p>
+                        <p style={{ fontSize: '13px', margin: 0 }}>There are no {appTab} applications  .</p>
                     </div>
                 ) : (
                     <div style={{

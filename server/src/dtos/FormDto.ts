@@ -20,6 +20,8 @@ export interface UpdateFormStatusDto {
     approvalData?: Record<string, unknown>;
     userId: number;
     ip_address?: string | null;
+    actingOriginalUserId?: number | null;
+    actingLabel?: string;
 }
 
 
@@ -29,6 +31,8 @@ export interface ForwardFormDto {
     toUserId: number;
     note?: string;
     ip_address?: string | null;
+    actingOriginalUserId?: number | null;
+    actingLabel?: string;
 }
 
 

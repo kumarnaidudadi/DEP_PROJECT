@@ -108,7 +108,11 @@ function sanitizeCommentBase(c: any): any {
                 roles: c.user.user_roles?.map((ur: any) => ur.roles?.name).filter(Boolean) || [],
               }
             : null,
-        form_history: c.form_history ? { action: c.form_history.action } : null,
+        form_history: c.form_history ? { 
+            action: c.form_history.action,
+            acting_users: c.form_history.acting_users ?? null,
+            acting_role_label: c.form_history.acting_role_label ?? null,
+        } : null,
     };
 }
 
@@ -134,7 +138,13 @@ async function fetchComments(formId: number, userId?: number, isAdmin: boolean =
         orderBy: { created_at: 'asc' },
         include: {
             user: { select: selectCommenter() },
-            form_history: { select: { action: true } },
+            form_history: { 
+                select: { 
+                    action: true,
+                    acting_users: { select: { id: true, first_name: true, last_name: true } },
+                    acting_role_label: true
+                } 
+            },
         },
     });
 
@@ -269,7 +279,13 @@ export const addComment = async (
             },
             include: {
                 user: { select: selectCommenter() },
-                form_history: { select: { action: true } },
+                form_history: { 
+                    select: { 
+                        action: true,
+                        acting_users: { select: { id: true, first_name: true, last_name: true } },
+                        acting_role_label: true
+                    } 
+                },
             },
         });
 
@@ -322,11 +338,23 @@ export const editComment = async (
             },
             include: {
                 user: { select: selectCommenter() },
-                form_history: { select: { action: true } },
+                form_history: { 
+                    select: { 
+                        action: true,
+                        acting_users: { select: { id: true, first_name: true, last_name: true } },
+                        acting_role_label: true
+                    } 
+                },
                 replies: {
                     include: {
                         user: { select: selectCommenter() },
-                        form_history: { select: { action: true } },
+                        form_history: { 
+                            select: { 
+                                action: true,
+                                acting_users: { select: { id: true, first_name: true, last_name: true } },
+                                acting_role_label: true
+                            } 
+                        },
                     },
                 },
             },

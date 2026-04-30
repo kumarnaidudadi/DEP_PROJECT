@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -7,17 +8,17 @@ datasource db {
 }
 
 model roles {
-  id               Int             @id @default(autoincrement())
+  id               Int                @id @default(autoincrement())
   name             String             @unique
+  description      String?
   hierarchy_level  Int?
   created_at       DateTime?          @default(now()) @db.Timestamp(6)
-  description      String?
   role_permissions role_permissions[]
   user_roles       user_roles[]
 }
 
 model user_roles {
-  id         Int    @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   user_id    Int?
   role_id    Int?
   created_at DateTime? @default(now()) @db.Timestamp(6)
@@ -28,43 +29,46 @@ model user_roles {
 }
 
 model users {
-  id                  Int                @id @default(autoincrement())
-  email               String                @unique
-  password            String
-  department_id       Int?
-  created_at          DateTime?             @default(now()) @db.Timestamp(6)
-  updated_at          DateTime?             @default(now()) @db.Timestamp(6)
-  auth_provider       String?
-  emp_code            String?
-  first_name          String?
-  is_active           Boolean?              @default(true)
-  joining_date        DateTime?
-  last_name           String?
-  middle_name         String?
-  otp_code            String?
-  otp_expiry          DateTime?
-  otp_attempts        Int?                  @default(0)
-  signature_url       String?
-  applied_forms       applied_forms[]
-  department_heads    department_heads[]
-  form_approvals      form_approvals[]
-  forwards_sent       form_forwards[]       @relation("ForwardFrom")
-  forwards_received   form_forwards[]       @relation("ForwardTo")
-  form_history        form_history[]
-  form_status_history form_status_history[]
-  form_types          form_types[]
-  forms               forms[]
-  office_orders       office_orders[]
-  user_roles          user_roles[]
-  comments               form_comments[]        @relation("CommentSender")
-  received_comments      form_comments[]        @relation("CommentReceiver")
-  user_activity_logs     user_activity_logs[]
-  reactivation_requests  reactivation_requests[] @relation("UserReactivationRequests")
-  reviewed_requests      reactivation_requests[] @relation("ReviewerReactivationRequests")
+  id                    Int                     @id @default(autoincrement())
+  first_name            String?
+  middle_name           String?
+  last_name             String?
+  email                 String                  @unique
+  password              String
+  otp_code              String?
+  otp_expiry            DateTime?
+  auth_provider         String?
+  is_active             Boolean?                @default(true)
+  created_at            DateTime?               @default(now()) @db.Timestamp(6)
+  updated_at            DateTime?               @default(now()) @db.Timestamp(6)
+  department_id         Int?
+  signature_url         String?
+  emp_code              String?
+  joining_date          DateTime?
+  otp_attempts          Int?                    @default(0)
+  requests_sent         acting_role_requests[]  @relation("ActingRequester")
+  requests_received     acting_role_requests[]  @relation("ActingTarget")
+  applied_forms         applied_forms[]
+  department_heads      department_heads[]
+  form_approvals        form_approvals[]
+  comments              form_comments[]         @relation("CommentSender")
+  received_comments     form_comments[]         @relation("CommentReceiver")
+  forwards_sent         form_forwards[]         @relation("ForwardFrom")
+  forwards_received     form_forwards[]         @relation("ForwardTo")
+  acting_history        form_history[]          @relation("FormHistoryActing")
+  form_history          form_history[]
+  form_status_history   form_status_history[]
+  form_types            form_types[]
+  forms                 forms[]
+  office_orders         office_orders[]
+  reviewed_requests     reactivation_requests[] @relation("ReviewerReactivationRequests")
+  reactivation_requests reactivation_requests[] @relation("UserReactivationRequests")
+  user_activity_logs    user_activity_logs[]
+  user_roles            user_roles[]
 }
 
 model department_heads {
-  id            Int       @id @default(autoincrement())
+  id            Int          @id @default(autoincrement())
   department_id Int?
   user_id       Int?
   created_at    DateTime?    @default(now()) @db.Timestamp(6)
@@ -75,75 +79,82 @@ model department_heads {
 }
 
 model departments {
-  id               Int             @id @default(autoincrement())
+  id               Int                @id @default(autoincrement())
   name             String             @unique
   created_at       DateTime?          @default(now()) @db.Timestamp(6)
   department_heads department_heads[]
 }
 
 model form_types {
-  id             Int          @id @default(autoincrement())
+  id             Int             @id @default(autoincrement())
   name           String          @unique
   description    String?
   schema         Json            @default("{}") @map("schema_definition")
-  created_by     Int?
-  created_at     DateTime?       @default(now()) @db.Timestamp(6)
-  updated_at     DateTime?       @default(now()) @db.Timestamp(6)
-  approval_rules Json?           @default("{}")
   is_active      Boolean         @default(true)
+  approval_rules Json?           @default("{}")
+  created_at     DateTime?       @default(now()) @db.Timestamp(6)
+  created_by     Int?
+  updated_at     DateTime?       @default(now()) @db.Timestamp(6)
   ref_prefix     String?         @unique @db.Char(4)
+  status         String?         @default("published")
   applied_forms  applied_forms[]
   users          users?          @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   forms          forms[]
-  workflows      workflows[]
+  workflows      workflows[]     @relation("form_typesToworkflows")
 }
 
 model office_orders {
-  id              Int         @id @default(autoincrement())
-  applied_form_id Int?
+  id              Int            @id @default(autoincrement())
   order_number    String?
-  generated_by    Int?
-  generated_at    DateTime?      @default(now()) @db.Timestamp(6)
+  applied_form_id Int?
   document_url    String?
+  generated_at    DateTime?      @default(now()) @db.Timestamp(6)
+  generated_by    Int?
   applied_forms   applied_forms? @relation(fields: [applied_form_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users           users?         @relation(fields: [generated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model applied_forms {
-  id                     Int          @id @default(autoincrement())
+  id                     Int             @id @default(autoincrement())
   form_type_id           Int?
   applicant_id           Int?
   form_data              Json
   status                 String?         @default("pending")
   current_approval_level Int?            @default(1)
-  reference_number       String?         @unique
   submitted_at           DateTime?       @default(now()) @db.Timestamp(6)
   updated_at             DateTime?       @default(now()) @db.Timestamp(6)
+  reference_number       String?         @unique
   users                  users?          @relation(fields: [applicant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   form_types             form_types?     @relation(fields: [form_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  comments               form_comments[]
   form_forwards          form_forwards[]
   form_history           form_history[]
   office_orders          office_orders[]
-  comments               form_comments[]
 }
 
 model form_history {
-  id              Int         @id @default(autoincrement())
-  applied_form_id Int?
-  changed_by      Int?
-  old_data        Json?
-  new_data        Json?
-  action          String?
-  remarks         String?
-  ip_address      String?     @db.VarChar(45)
-  created_at      DateTime?      @default(now()) @db.Timestamp(6)
-  applied_forms   applied_forms? @relation(fields: [applied_form_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  users           users?         @relation(fields: [changed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  comments        form_comments[]
+  id                  Int             @id @default(autoincrement())
+  applied_form_id     Int?
+  changed_by          Int?
+  old_data            Json?
+  new_data            Json?
+  action              String?
+  remarks             String?
+  created_at          DateTime?       @default(now()) @db.Timestamp(6)
+  ip_address          String?         @db.VarChar(45)
+  acting_on_behalf_of Int?
+  acting_role_label   String?         @db.VarChar(255)
+  comments            form_comments[]
+  acting_users        users?          @relation("FormHistoryActing", fields: [acting_on_behalf_of], references: [id], onUpdate: NoAction)
+  applied_forms       applied_forms?  @relation(fields: [applied_form_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users               users?          @relation(fields: [changed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([acting_on_behalf_of], map: "idx_form_history_acting")
+  @@index([ip_address], map: "idx_form_history_ip")
 }
 
 model form_forwards {
-  id            Int        @id @default(autoincrement())
+  id            Int           @id @default(autoincrement())
   form_id       Int
   forwarded_by  Int
   forwarded_to  Int
@@ -159,23 +170,23 @@ model form_forwards {
 }
 
 model form_approvals {
-  id             Int    @id @default(autoincrement())
+  id             Int       @id @default(autoincrement())
   form_id        Int?
+  status         String?   @map("decision")
+  approved_at    DateTime? @default(now()) @map("decided_at") @db.Timestamp(6)
+  comments       String?   @map("approval_data")
   approver_id    Int?
   approval_level Int?      @map("stage")
-  status         String?   @map("decision")
-  comments       String?   @map("approval_data")
-  approved_at    DateTime? @default(now()) @map("decided_at") @db.Timestamp(6)
   users          users?    @relation(fields: [approver_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   forms          forms?    @relation(fields: [form_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model form_status_history {
-  id         Int    @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   form_id    Int?
-  changed_by Int?
   old_status String?
   new_status String?
+  changed_by Int?
   changed_at DateTime? @default(now()) @db.Timestamp(6)
   comments   String?
   users      users?    @relation(fields: [changed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -183,22 +194,22 @@ model form_status_history {
 }
 
 model forms {
-  id                     Int                @id @default(autoincrement())
+  id                     Int                   @id @default(autoincrement())
   form_type_id           Int?
-  applicant_id           Int?               @map("submitted_by")
-  form_data              Json
+  applicant_id           Int?                  @map("submitted_by")
   status                 String?               @default("pending") @map("current_status")
-  current_approval_level Int?                  @default(1)
   submitted_at           DateTime?             @default(now()) @db.Timestamp(6)
   updated_at             DateTime?             @default(now()) @db.Timestamp(6)
+  form_data              Json
+  current_approval_level Int?                  @default(1)
   form_approvals         form_approvals[]
   form_status_history    form_status_history[]
-  users                  users?                @relation(fields: [applicant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   form_types             form_types?           @relation(fields: [form_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                  users?                @relation(fields: [applicant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model permissions {
-  id               Int             @id @default(autoincrement())
+  id               Int                @id @default(autoincrement())
   name             String             @unique
   description      String?
   role_permissions role_permissions[]
@@ -214,18 +225,17 @@ model role_permissions {
 }
 
 model workflows {
-  id          Int       @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   name        String       @unique
   description String?
   created_at  DateTime?    @default(now()) @db.Timestamp(6)
-  form_types  form_types[]
+  form_types  form_types[] @relation("form_typesToworkflows")
 }
 
 model form_comments {
   id                Int             @id @default(autoincrement())
   applied_form_id   Int
   commented_by      Int?
-  receiver_id       Int?            // direct recipient of this comment (pairwise visibility)
   form_history_id   Int?
   parent_comment_id Int?
   comment_type      String          @default("general")
@@ -234,34 +244,60 @@ model form_comments {
   is_deleted        Boolean         @default(false)
   created_at        DateTime?       @default(now()) @db.Timestamp(6)
   updated_at        DateTime?       @default(now()) @db.Timestamp(6)
+  receiver_id       Int?
+  applied_form      applied_forms   @relation(fields: [applied_form_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "form_comments_applied_form_fkey")
+  user              users?          @relation("CommentSender", fields: [commented_by], references: [id], onUpdate: NoAction)
+  form_history      form_history?   @relation(fields: [form_history_id], references: [id], onUpdate: NoAction, map: "form_comments_history_fkey")
+  parent            form_comments?  @relation("CommentReplies", fields: [parent_comment_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "form_comments_parent_fkey")
+  replies           form_comments[] @relation("CommentReplies")
+  receiver          users?          @relation("CommentReceiver", fields: [receiver_id], references: [id], onUpdate: NoAction)
 
-  applied_form  applied_forms   @relation(fields: [applied_form_id], references: [id], onDelete: Cascade)
-  user          users?          @relation("CommentSender", fields: [commented_by], references: [id], onDelete: SetNull)
-  receiver      users?          @relation("CommentReceiver", fields: [receiver_id], references: [id], onDelete: SetNull)
-  form_history  form_history?   @relation(fields: [form_history_id], references: [id], onDelete: SetNull)
-  parent        form_comments?  @relation("CommentReplies", fields: [parent_comment_id], references: [id], onDelete: Cascade)
-  replies       form_comments[] @relation("CommentReplies")
+  @@index([applied_form_id, created_at(sort: Desc)], map: "idx_form_comments_form")
+  @@index([form_history_id], map: "idx_form_comments_history", where: raw("(form_history_id IS NOT NULL)"))
+  @@index([parent_comment_id], map: "idx_form_comments_parent", where: raw("(parent_comment_id IS NOT NULL)"))
+  @@index([receiver_id], map: "idx_form_comments_receiver")
+  @@index([commented_by], map: "idx_form_comments_sender")
 }
 
 model user_activity_logs {
-  id            Int       @id @default(autoincrement())
-  user_id       Int?
-  reason        String?
-  action        String?
-  triggered_by  String?
-  created_at    DateTime? @default(now()) @db.Timestamp(6)
-  users         users?    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-}
-
-model reactivation_requests {
   id           Int       @id @default(autoincrement())
   user_id      Int?
   reason       String?
-  status       String?   @default("pending")
-  admin_note   String?
+  action       String?
+  triggered_by String?
   created_at   DateTime? @default(now()) @db.Timestamp(6)
-  reviewed_at  DateTime? @db.Timestamp(6)
-  reviewed_by  Int?
-  users        users?    @relation("UserReactivationRequests", fields: [user_id], references: [id], onDelete: Cascade)
-  reviewer     users?    @relation("ReviewerReactivationRequests", fields: [reviewed_by], references: [id], onDelete: SetNull)
+  users        users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model reactivation_requests {
+  id          Int       @id @default(autoincrement())
+  user_id     Int?
+  reason      String?
+  status      String?   @default("pending")
+  admin_note  String?
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  reviewed_at DateTime? @db.Timestamp(6)
+  reviewed_by Int?
+  reviewer    users?    @relation("ReviewerReactivationRequests", fields: [reviewed_by], references: [id], onUpdate: NoAction)
+  users       users?    @relation("UserReactivationRequests", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model acting_role_requests {
+  id             Int       @id @default(autoincrement())
+  requester_id   Int
+  target_user_id Int
+  acting_role    String    @db.VarChar(255)
+  from_date      DateTime  @db.Date
+  until_date     DateTime  @db.Date
+  status         String    @default("pending") @db.VarChar(50)
+  requested_at   DateTime  @default(now()) @db.Timestamp(6)
+  responded_at   DateTime? @db.Timestamp(6)
+  revoked_at     DateTime? @db.Timestamp(6)
+  requester      users     @relation("ActingRequester", fields: [requester_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  target_user    users     @relation("ActingTarget", fields: [target_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([requester_id], map: "idx_acting_requests_requester")
+  @@index([target_user_id], map: "idx_acting_requests_target")
+  @@index([from_date, until_date], map: "idx_acting_requests_dates")
+  @@index([status], map: "idx_acting_requests_status")
 }

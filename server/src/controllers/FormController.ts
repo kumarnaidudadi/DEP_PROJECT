@@ -8,6 +8,7 @@ import { AuthenticatedRequest } from '../middleware/authMiddleware';
 import { IFormService } from '../services/IFormService';
 import { IPdfService } from '../services/IPdfService';
 import { extractIp } from '../utils/ipHelper';
+import prisma from '../prisma';
 
 export class FormController {
     // Dependency Injection: receives service interfaces, not concrete classes
@@ -88,8 +89,19 @@ export class FormController {
     // ── Forms ──────────────────────────────────────────────────────────────
 
     getForms = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-        const userId = req.user?.userId;
+        let userId = req.user?.userId;
         if (!userId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+
+        if (req.query.actingForUserId) {
+            const actingFor = Number(req.query.actingForUserId);
+            // Verify acting assignment
+            const actingRoles = await prisma.acting_role_requests.findMany({
+                where: { target_user_id: userId, requester_id: actingFor, status: 'accepted', from_date: { lte: new Date() }, until_date: { gte: new Date() } }
+            });
+            if (actingRoles.length > 0) {
+                userId = actingFor;
+            }
+        }
 
         try {
             const forms = await this.formService.getForms(userId, req.user?.roles || []);
@@ -161,10 +173,25 @@ export class FormController {
 
     updateFormStatus = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         const formId = Number(req.params.id);
-        const { decision, remarks, approvalData } = req.body;
-        const userId = req.user?.userId;
+        const { decision, remarks, approvalData, actingForUserId } = req.body;
+        let userId = req.user?.userId;
+        let actingLabel = '';
+        let actingOriginalUserId = null;
 
         if (!userId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+        
+        if (actingForUserId) {
+            const actingFor = Number(actingForUserId);
+            const actingRoles = await prisma.acting_role_requests.findMany({
+                where: { target_user_id: userId, requester_id: actingFor, status: 'accepted', from_date: { lte: new Date() }, until_date: { gte: new Date() } }
+            });
+            if (actingRoles.length > 0) {
+                actingOriginalUserId = userId; // The physical user (Actor)
+                actingLabel = actingRoles[0].acting_role;
+                userId = actingFor; // Attribute action to the Requester (e.g. HOD)
+            }
+        }
+
         if (!decision || !['APPROVED', 'REJECTED'].includes(decision)) {
             res.status(400).json({ error: 'decision must be APPROVED or REJECTED' });
             return;
@@ -174,6 +201,8 @@ export class FormController {
             const form = await this.formService.updateFormStatus({
                 formId, decision, remarks, approvalData, userId,
                 ip_address: extractIp(req),
+                actingOriginalUserId,
+                actingLabel
             });
             res.json(form);
         } catch (e: any) {
@@ -204,10 +233,25 @@ export class FormController {
 
     forwardForm = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
         const formId = Number(req.params.id);
-        const userId = req.user?.userId;
-        const { toUserId, note } = req.body;
+        let userId = req.user?.userId;
+        const { toUserId, note, actingForUserId } = req.body;
+        let actingLabel = '';
+        let actingOriginalUserId = null;
 
         if (!userId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+        
+        if (actingForUserId) {
+            const actingFor = Number(actingForUserId);
+            const actingRoles = await prisma.acting_role_requests.findMany({
+                where: { target_user_id: userId, requester_id: actingFor, status: 'accepted', from_date: { lte: new Date() }, until_date: { gte: new Date() } }
+            });
+            if (actingRoles.length > 0) {
+                actingOriginalUserId = userId; // The physical user (Actor)
+                actingLabel = actingRoles[0].acting_role;
+                userId = actingFor; // Attribute action to the Requester (e.g. HOD)
+            }
+        }
+
         if (!toUserId) { res.status(400).json({ error: 'toUserId is required' }); return; }
 
         try {
@@ -217,6 +261,8 @@ export class FormController {
                 toUserId: Number(toUserId),
                 note: note || '',
                 ip_address: extractIp(req),
+                actingOriginalUserId,
+                actingLabel
             });
             res.json(result);
         } catch (e: any) {
