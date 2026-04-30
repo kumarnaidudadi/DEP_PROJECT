@@ -18,6 +18,11 @@ interface TimelineEvent {
         user_roles?: Array<{ roles?: { name: string } }>;
     };
     remarks?: string;
+    acting_users?: {
+        first_name?: string;
+        last_name?: string;
+    };
+    acting_role_label?: string;
 }
 
 interface ActivitySidebarProps {
@@ -171,23 +176,27 @@ export default function ActivitySidebar({
                                                             </div>
                                                         </div>
                                                         {item.users && (
-                                                            <div style={{ fontSize: '13px', fontWeight: 600, color: '#333', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                                <span>{item.users.first_name} {item.users.last_name}</span>
-                                                                {getPrimaryRole(item.users) && (
-                                                                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500, background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
-                                                                        {getPrimaryRole(item.users)}
+                                                            <div style={{ fontSize: '12px', fontWeight: 600, color: '#1e293b', marginTop: '6px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                                                                <span style={{ whiteSpace: 'nowrap' }}>{[item.users.first_name, item.users.last_name].filter(Boolean).join(' ')}</span>
+                                                                
+                                                                {item.acting_role_label && (
+                                                                    <span style={{ 
+                                                                        fontSize: '10px', color: '#92400e', fontWeight: 700, 
+                                                                        background: '#fef3c7', padding: '1px 6px', borderRadius: '6px', 
+                                                                        border: '1px solid #fde68a', textTransform: 'capitalize',
+                                                                        display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                                                        whiteSpace: 'nowrap'
+                                                                    }}>
+                                                                        <span style={{ opacity: 0.7 }}>Acting {item.acting_role_label.replace(/Acting\s+/i, '')} by</span>
+                                                                        <span>{[item.acting_users?.first_name, item.acting_users?.last_name].filter(Boolean).join(' ')}</span>
                                                                     </span>
                                                                 )}
+
                                                                 {item.target_user && (
-                                                                    <>
-                                                                        <span style={{ fontSize: '11px', color: '#94a3b8', margin: '0 2px', fontWeight: 500 }}>→</span>
-                                                                        <span>{item.target_user.first_name} {item.target_user.last_name}</span>
-                                                                        {getPrimaryRole(item.target_user) && (
-                                                                            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500, background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
-                                                                                {getPrimaryRole(item.target_user)}
-                                                                            </span>
-                                                                        )}
-                                                                    </>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                        <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>→</span>
+                                                                        <span style={{ whiteSpace: 'nowrap' }}>{[item.target_user.first_name, item.target_user.last_name].filter(Boolean).join(' ')}</span>
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         )}

@@ -4,6 +4,7 @@
 import React from 'react';
 import { Upload, User, Mail, Briefcase, Building2, Hash, CalendarDays, ShieldCheck, BadgeCheck } from 'lucide-react';
 import { Profile } from '@/types';
+import ActingRoleSection from '../profile/ActingRoleSection';
 
 interface Props {
     user: any;
@@ -196,6 +197,9 @@ export default function ProfileView({ user, profile, sigUploading, onSigUpload, 
                     </div>
                 )}
             </div>
+
+            {/* ── Acting Role Section ──────────────────────────────────────── */}
+            <ActingRoleSection currentUser={user} />
 
         </div>
     );

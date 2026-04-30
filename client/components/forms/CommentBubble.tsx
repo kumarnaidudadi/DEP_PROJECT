@@ -139,6 +139,18 @@ function CommentCard({
                             {comment.is_edited && (
                                 <span style={{ fontSize: '10px', color: '#9ca3af', fontStyle: 'italic' }}>edited</span>
                             )}
+                            {comment.form_history?.acting_role_label && (
+                                <span style={{ 
+                                    fontSize: '9px', color: '#92400e', fontWeight: 700, 
+                                    background: '#fef3c7', padding: '1px 6px', borderRadius: '4px', 
+                                    border: '1px solid #fde68a', textTransform: 'capitalize',
+                                    display: 'inline-flex', alignItems: 'center', gap: '3px',
+                                    whiteSpace: 'nowrap'
+                                }}>
+                                    <span style={{ opacity: 0.7 }}>Acting {comment.form_history.acting_role_label.replace(/Acting\s+/i, '')} by</span>
+                                    <span>{[comment.form_history.acting_users?.first_name, comment.form_history.acting_users?.last_name].filter(Boolean).join(' ')}</span>
+                                </span>
+                            )}
                         </div>
                         <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>
                             {comment.commenter?.roles?.[0] || 'User'}

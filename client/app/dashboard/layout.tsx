@@ -8,11 +8,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useForms } from '@/hooks/useForms';
 import { getApplicationStatus, getApplicationSubmitterId, getLatestForward } from '@/types';
 import { Menu, X } from 'lucide-react';
+import api from '@/lib/api';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { user, userRoles, logout } = useAuth();
     const { applications, fetchApplications } = useForms();
     const [isMobileOpen, setIsMobileOpen] = useState(false);
+    const [actingRoles, setActingRoles] = useState<any[]>([]);
 
     useEffect(() => {
         fetchApplications();
@@ -22,8 +24,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         };
 
         window.addEventListener('applications-updated', handleUpdate);
+        
+        const fetchActingRoles = async () => {
+            try {
+                const res = await api.get('/acting-roles/active');
+                setActingRoles(res.data);
+            } catch (err) {
+                console.error('Failed to load acting roles', err);
+            }
+        };
+        if (user) {
+            fetchActingRoles();
+        }
+
         return () => window.removeEventListener('applications-updated', handleUpdate);
-    }, [fetchApplications]);
+    }, [fetchApplications, user]);
 
     // Close mobile sidebar on route change
     useEffect(() => {
@@ -32,7 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return () => window.removeEventListener('popstate', handleRouteChange);
     }, []);
 
-    // Determine if user can approve (for pending badge)
+    // Determine if user is a native approver (not Instructor/Staff)
     const storedRoles = userRoles.map(r => (typeof r === 'string' ? r.toUpperCase() : ''));
     const NON_APPROVER_ROLES = ['STAFF', 'INSTRUCTOR'];
     const canApprove = storedRoles.length > 0 && !storedRoles.every(r => NON_APPROVER_ROLES.includes(r));
@@ -61,6 +76,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 onLogout={logout}
                 isMobileOpen={isMobileOpen}
                 onCloseMobile={() => setIsMobileOpen(false)}
+                actingRoles={actingRoles}
             />
             
             <div className="flex-1 flex flex-col overflow-hidden relative">

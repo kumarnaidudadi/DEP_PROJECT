@@ -230,6 +230,9 @@ export class FormService implements IFormService {
             : 'User';
         const toName = [toUser.first_name, toUser.last_name].filter(Boolean).join(' ') || 'User';
 
+        const actingContextText = dto.actingLabel ? ` (Acting ${dto.actingLabel.replace('Acting ', '')} by ${fromName})` : '';
+        const displayFromName = dto.actingLabel ? fromName : fromName; // just for clarity
+        
         await this.formRepo.createActionComment({
             historyData: {
                 applied_form_id: Number(dto.formId),
@@ -239,11 +242,13 @@ export class FormService implements IFormService {
                 new_data: { status: 'forwarded', forwarded_to: dto.toUserId },
                 remarks: dto.note || '',
                 ip_address: dto.ip_address ?? null,
+                acting_on_behalf_of: dto.actingOriginalUserId ?? null,
+                acting_role_label: dto.actingLabel ?? null,
             },
             commentType: 'forward',
             contentText: dto.note
-                ? `${fromName} forwarded to ${toName}: "${dto.note}"`
-                : `${fromName} forwarded to ${toName}.`,
+                ? `${fromName}${actingContextText} forwarded to ${toName}: "${dto.note}"`
+                : `${fromName}${actingContextText} forwarded to ${toName}.`,
             commentedBy: Number(dto.fromUserId),
             receiverId: Number(dto.toUserId),  // forward comment: visible to sender + recipient
         });
@@ -328,6 +333,8 @@ export class FormService implements IFormService {
                 ? [rejector.first_name, rejector.last_name].filter(Boolean).join(' ') || 'User'
                 : 'User';
 
+            const actingContextText = dto.actingLabel ? ` (Acting ${dto.actingLabel.replace('Acting ', '')} by ${rejectorName})` : '';
+
             await this.formRepo.createActionComment({
                 historyData: {
                     applied_form_id: Number(dto.formId),
@@ -337,11 +344,13 @@ export class FormService implements IFormService {
                     new_data: { status: 'rejected' },
                     remarks: dto.remarks || '',
                     ip_address: dto.ip_address ?? null,
+                    acting_on_behalf_of: dto.actingOriginalUserId ?? null,
+                    acting_role_label: dto.actingLabel ?? null,
                 },
                 commentType: 'rejection',
                 contentText: dto.remarks
-                    ? `${rejectorName} rejected: "${dto.remarks}"`
-                    : `${rejectorName} rejected this application.`,
+                    ? `${rejectorName}${actingContextText} rejected: "${dto.remarks}"`
+                    : `${rejectorName}${actingContextText} rejected this application.`,
                 commentedBy: Number(dto.userId),
                 receiverId: Number(form.applicant_id),
             });
@@ -391,6 +400,8 @@ export class FormService implements IFormService {
                 ? [approver.first_name, approver.last_name].filter(Boolean).join(' ') || 'User'
                 : 'User';
 
+            const actingContextText = dto.actingLabel ? ` (Acting ${dto.actingLabel.replace('Acting ', '')} by ${approverName})` : '';
+
             await this.formRepo.createActionComment({
                 historyData: {
                     applied_form_id: Number(dto.formId),
@@ -400,11 +411,13 @@ export class FormService implements IFormService {
                     new_data: { status: 'approved' },
                     remarks: dto.remarks || '',
                     ip_address: dto.ip_address ?? null,
+                    acting_on_behalf_of: dto.actingOriginalUserId ?? null,
+                    acting_role_label: dto.actingLabel ?? null,
                 },
                 commentType: 'approval',
                 contentText: dto.remarks
-                    ? `${approverName} approved: "${dto.remarks}"`
-                    : `${approverName} approved this application.`,
+                    ? `${approverName}${actingContextText} approved: "${dto.remarks}"`
+                    : `${approverName}${actingContextText} approved this application.`,
                 commentedBy: Number(dto.userId),
                 receiverId: Number(form.applicant_id),
             });
@@ -429,6 +442,8 @@ export class FormService implements IFormService {
                     new_data: { status: 'partially_approved' },
                     remarks: dto.remarks || '',
                     ip_address: dto.ip_address ?? null,
+                    acting_on_behalf_of: dto.actingOriginalUserId ?? null,
+                    acting_role_label: dto.actingLabel ?? null,
                 },
                 commentType: 'approval',
                 contentText: dto.remarks

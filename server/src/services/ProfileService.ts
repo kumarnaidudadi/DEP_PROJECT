@@ -37,6 +37,9 @@ export class ProfileService implements IProfileService {
             display_name: [user.first_name, user.last_name].filter(Boolean).join(' ') || '',
             roles: user.user_roles.map((ur: any) => ur.roles.name),
             department: departmentName,
+            emp_code: user.emp_code,
+            joining_date: user.joining_date,
+            signature_url: user.signature_url,
         };
     }
 

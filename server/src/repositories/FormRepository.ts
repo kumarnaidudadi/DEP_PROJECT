@@ -26,7 +26,10 @@ export class FormRepository implements IFormRepository {
                     orderBy: { forwarded_at: 'asc' }
                 },
                 form_history: {
-                    include: { users: { select: { id: true, first_name: true, last_name: true, email: true, user_roles: { include: { roles: { select: { name: true } } } } } } },
+                    include: { 
+                        users: { select: { id: true, first_name: true, last_name: true, email: true, user_roles: { include: { roles: { select: { name: true } } } } } },
+                        acting_users: { select: { id: true, first_name: true, last_name: true, email: true } }
+                    },
                     orderBy: { created_at: 'desc' }
                 },
                 office_orders: true
@@ -52,7 +55,10 @@ export class FormRepository implements IFormRepository {
                 form_history: {
                     orderBy: { created_at: 'desc' },
                     take: 3,
-                    include: { users: { select: { id: true, first_name: true, last_name: true } } }
+                    include: { 
+                        users: { select: { id: true, first_name: true, last_name: true } },
+                        acting_users: { select: { id: true, first_name: true, last_name: true } }
+                    }
                 },
                 office_orders: true
             },
@@ -338,6 +344,8 @@ export class FormRepository implements IFormRepository {
             new_data?: object;
             remarks?: string;
             ip_address?: string | null;
+            acting_on_behalf_of?: number | null;
+            acting_role_label?: string | null;
         };
         commentType: string;
         contentText: string;
@@ -357,6 +365,10 @@ export class FormRepository implements IFormRepository {
                     users: historyData.changed_by
                         ? { connect: { id: historyData.changed_by } }
                         : undefined,
+                    acting_users: historyData.acting_on_behalf_of
+                        ? { connect: { id: historyData.acting_on_behalf_of } }
+                        : undefined,
+                    acting_role_label: historyData.acting_role_label ?? null,
                     action: historyData.action ?? null,
                     remarks: historyData.remarks ?? null,
                     ip_address: historyData.ip_address ?? null,

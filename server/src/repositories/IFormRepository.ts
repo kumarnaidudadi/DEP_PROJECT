@@ -51,6 +51,8 @@ export interface IFormRepository {
             new_data?: object;
             remarks?: string;
             ip_address?: string | null;   // client IP for audit trail
+            acting_on_behalf_of?: number | null;
+            acting_role_label?: string | null;
         };
         commentType: string;
         contentText: string;

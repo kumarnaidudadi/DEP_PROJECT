@@ -7,7 +7,7 @@ import { useState, useCallback } from 'react';
 import { FormType, Application, UserSearchResult } from '@/types';
 import * as formSvc from '@/services/formService';
 
-export function useForms() {
+export function useForms(actingForUserId?: number) {
     const [formTypes, setFormTypes] = useState<FormType[]>([]);
     const [applications, setApplications] = useState<Application[]>([]);
     const [loading, setLoading] = useState(false);
@@ -27,14 +27,14 @@ export function useForms() {
     const fetchApplications = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await formSvc.getForms();
+            const data = await formSvc.getForms(actingForUserId);
             setApplications(data);
         } catch (e) {
             console.error('Failed to fetch applications', e);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [actingForUserId]);
 
     const submitForm = useCallback(async (
         formTypeId: number,
@@ -64,24 +64,24 @@ export function useForms() {
         remarks: string,
         approvalData: Record<string, any>
     ): Promise<Application> => {
-        const result = await formSvc.updateFormStatus(formId, decision, remarks, approvalData);
+        const result = await formSvc.updateFormStatus(formId, decision, remarks, approvalData, actingForUserId);
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new Event('applications-updated'));
         }
         return result;
-    }, []);
+    }, [actingForUserId]);
 
     const forwardForm = useCallback(async (
         formId: number,
         toUserId: number,
         note?: string
     ): Promise<Application> => {
-        const result = await formSvc.forwardForm(formId, toUserId, note);
+        const result = await formSvc.forwardForm(formId, toUserId, note, actingForUserId);
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new Event('applications-updated'));
         }
         return result;
-    }, []);
+    }, [actingForUserId]);
 
     const searchUsers = useCallback(async (query: string, formId?: number): Promise<UserSearchResult[]> => {
         return formSvc.searchUsers(query, formId);

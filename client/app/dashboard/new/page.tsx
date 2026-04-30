@@ -12,7 +12,7 @@ import { FormType } from '@/types';
 
 function FormIcon({ active }: { active: boolean }) {
     const bg = active ? '#dbeafe' : '#f1f5f9';
-    const c  = active ? '#2563eb' : '#64748b';
+    const c = active ? '#2563eb' : '#64748b';
     return (
         <div style={{
             width: 42, height: 42, borderRadius: '10px', flexShrink: 0,
@@ -138,7 +138,7 @@ function NewApplicationListContent() {
                         </button>
                     </div>
                 )}
-                
+
             </div>
 
             {/* ── List ───────────────────────────────────────────────────────── */}
@@ -151,7 +151,7 @@ function NewApplicationListContent() {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '260px', color: '#94a3b8' }}>
                         <FileText size={44} style={{ opacity: 0.35, marginBottom: '14px' }} />
                         <p style={{ fontSize: '15px', fontWeight: 600, color: '#64748b', margin: '0 0 4px' }}>No forms found</p>
-                        <p style={{ fontSize: '13px', margin: 0 }}>There are no {isAdmin ? adminTab : 'available'} forms matching your criteria.</p>
+                        <p style={{ fontSize: '13px', margin: 0 }}>There are no {isAdmin ? adminTab : 'available'} forms  .</p>
                     </div>
                 ) : (
                     <div style={{
@@ -162,7 +162,7 @@ function NewApplicationListContent() {
                     }}>
                         {formsToShow.map((ft, idx) => {
                             const isHovered = hoveredId === ft.id;
-                            const isLast    = idx === formsToShow.length - 1;
+                            const isLast = idx === formsToShow.length - 1;
                             return (
                                 <div
                                     key={ft.id}

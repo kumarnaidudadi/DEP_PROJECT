@@ -18,7 +18,7 @@ export class EmailService implements IEmailService {
         });
     }
 
-    async sendEmailNotification(eventType: 'REQUEST_ASSIGNED' | 'REQUEST_COMPLETED' | 'REQUEST_REJECTED', recipient: string, metadata: EmailMetadata): Promise<void> {
+    async sendEmailNotification(eventType: 'REQUEST_ASSIGNED' | 'REQUEST_COMPLETED' | 'REQUEST_REJECTED' | 'ACTING_ROLE_REQUESTED' | 'ACTING_ROLE_ACCEPTED' | 'ACTING_ROLE_REJECTED' | 'ACTING_ROLE_EXPIRING', recipient: string, metadata: EmailMetadata): Promise<void> {
         if (!recipient) return;
 
         let subject = '';
@@ -63,6 +63,51 @@ export class EmailService implements IEmailService {
                     <li><strong>Status:</strong> ${metadata.status}</li>
                 </ul>
                 <p><a href="${metadata.actionUrl}" style="padding: 10px 20px; background-color: #dc3545; color: white; text-decoration: none; border-radius: 5px;">View Request Details</a></p>
+            `;
+        } else if (eventType === 'ACTING_ROLE_REQUESTED') {
+            subject = `Action Required: Acting Role Request (${metadata.actingRole?.actingRoleLabel})`;
+            htmlBody = `
+                <h2>Action Required: Acting Role Request</h2>
+                <p>You have been requested to act on behalf of ${metadata.applicantName}.</p>
+                <ul>
+                    <li><strong>Role:</strong> ${metadata.actingRole?.actingRoleLabel}</li>
+                    <li><strong>From:</strong> ${metadata.actingRole?.fromDate.toLocaleDateString()}</li>
+                    <li><strong>Until:</strong> ${metadata.actingRole?.untilDate.toLocaleDateString()}</li>
+                </ul>
+                <p><a href="${metadata.actionUrl}" style="padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">Review Request</a></p>
+            `;
+        } else if (eventType === 'ACTING_ROLE_ACCEPTED') {
+            subject = `Update: Acting Role Request Accepted (${metadata.actingRole?.actingRoleLabel})`;
+            htmlBody = `
+                <h2>Acting Role Request Accepted</h2>
+                <p>${metadata.actingRole?.targetName} has accepted your request to act on your behalf.</p>
+                <ul>
+                    <li><strong>Role:</strong> ${metadata.actingRole?.actingRoleLabel}</li>
+                    <li><strong>From:</strong> ${metadata.actingRole?.fromDate.toLocaleDateString()}</li>
+                    <li><strong>Until:</strong> ${metadata.actingRole?.untilDate.toLocaleDateString()}</li>
+                </ul>
+                <p><a href="${metadata.actionUrl}" style="padding: 10px 20px; background-color: #28a745; color: white; text-decoration: none; border-radius: 5px;">View Profile</a></p>
+            `;
+        } else if (eventType === 'ACTING_ROLE_REJECTED') {
+            subject = `Update: Acting Role Request Rejected (${metadata.actingRole?.actingRoleLabel})`;
+            htmlBody = `
+                <h2>Acting Role Request Rejected</h2>
+                <p>${metadata.actingRole?.targetName} has rejected your request to act on your behalf.</p>
+                <ul>
+                    <li><strong>Role:</strong> ${metadata.actingRole?.actingRoleLabel}</li>
+                </ul>
+                <p><a href="${metadata.actionUrl}" style="padding: 10px 20px; background-color: #dc3545; color: white; text-decoration: none; border-radius: 5px;">View Profile</a></p>
+            `;
+        } else if (eventType === 'ACTING_ROLE_EXPIRING') {
+            subject = `Warning: Acting Role Expiring Soon (${metadata.actingRole?.actingRoleLabel})`;
+            htmlBody = `
+                <h2>Acting Role Expiring Soon</h2>
+                <p>Your acting role assignment will expire soon.</p>
+                <ul>
+                    <li><strong>Role:</strong> ${metadata.actingRole?.actingRoleLabel}</li>
+                    <li><strong>Expiration Date:</strong> ${metadata.actingRole?.untilDate.toLocaleDateString()}</li>
+                </ul>
+                <p>If you need to extend this, please coordinate with the requester.</p>
             `;
         }
 
