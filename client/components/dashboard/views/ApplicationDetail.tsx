@@ -916,7 +916,7 @@ export default function ApplicationDetail({
                                         <div>
                                             <div style={{ fontSize: '12px', fontWeight: 600, color: isCompleted ? '#15803d' : '#374151' }}>{role.replace(/_/g, ' ')}</div>
                                             {isCompleted && approver?.from_user && (
-                                                <div style={{ fontSize: '10px', color: '#64748b' }}>{approver.from_user.first_name} {approver.from_user.last_name}</div>
+                                                <div style={{ fontSize: '10px', color: '#64748b' }}>{approver.from_user.name}</div>
                                             )}
                                             {!isCompleted && <div style={{ fontSize: '10px', color: '#f59e0b', fontWeight: 600 }}>Pending</div>}
                                         </div>
@@ -1058,7 +1058,7 @@ export default function ApplicationDetail({
                                         <div>
                                             <div style={{ fontSize: '12px', fontWeight: 600, color: isCompleted ? '#15803d' : '#374151' }}>{role.replace(/_/g, ' ')}</div>
                                             {isCompleted && approver?.from_user && (
-                                                <div style={{ fontSize: '10px', color: '#64748b' }}>{approver.from_user.first_name} {approver.from_user.last_name}</div>
+                                                <div style={{ fontSize: '10px', color: '#64748b' }}>{approver.from_user.name}</div>
                                             )}
                                             {!isCompleted && <div style={{ fontSize: '10px', color: '#f59e0b', fontWeight: 600 }}>Pending</div>}
                                         </div>
