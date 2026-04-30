@@ -44,8 +44,8 @@ export class FormRepository implements IFormRepository {
                 },
                 form_forwards: {
                     include: {
-                        from_user: { select: { id: true, first_name: true, last_name: true, email: true } },
-                        to_user: { select: { id: true, first_name: true, last_name: true, email: true } }
+                        from_user: { select: { id: true, first_name: true, last_name: true, email: true, user_roles: { include: { roles: { select: { name: true } } } } } },
+                        to_user: { select: { id: true, first_name: true, last_name: true, email: true, user_roles: { include: { roles: { select: { name: true } } } } } }
                     },
                     orderBy: { forwarded_at: 'asc' }
                 },

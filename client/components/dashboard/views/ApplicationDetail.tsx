@@ -350,13 +350,16 @@ export default function ApplicationDetail({
 
     // ── Approval workflow tracking ──────────────────────────────────────────
     const requiredRoles: string[] = app.form_types?.approval_rules?.required_roles || [];
-    const completedApprovals = (app.form_approvals || []).filter((a: any) => a.decision === 'APPROVED');
+    const completedApprovals = (app.form_forwards || []).filter((a: any) => a.action === 'approved' || a.action === 'partially_approved');
     const completedRoles: string[] = completedApprovals.flatMap((a: any) =>
-        (a.users?.user_roles || []).map((ur: any) => ur.roles?.name).filter(Boolean)
+        (a.from_user?.user_roles || []).map((ur: any) => ur.roles?.name).filter(Boolean)
     );
     const pendingRoles = requiredRoles.filter(r => !completedRoles.some(cr => cr === r));
     const alreadyForwardedIds = new Set((app.form_forwards || []).map((f: any) => Number(f.forwarded_to)));
+    const currentUserRoles = profile?.roles || [];
+    const remainingAfterMe = pendingRoles.filter(r => !currentUserRoles.includes(r));
     const hasPendingRequiredRoles = pendingRoles.length > 0;
+    const requiresNextApprover = remainingAfterMe.length > 0;
 
     // Build form data display (excluding meta)
     const formData = { ...(app.form_data || {}) };
@@ -903,7 +906,7 @@ export default function ApplicationDetail({
                             requiredRoles.map((role, i) => {
                                 const isCompleted = completedRoles.includes(role);
                                 const approver = completedApprovals.find((a: any) =>
-                                    (a.users?.user_roles || []).some((ur: any) => ur.roles?.name === role)
+                                    (a.from_user?.user_roles || []).some((ur: any) => ur.roles?.name === role)
                                 );
                                 return (
                                     <div key={role} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
@@ -912,8 +915,8 @@ export default function ApplicationDetail({
                                         </div>
                                         <div>
                                             <div style={{ fontSize: '12px', fontWeight: 600, color: isCompleted ? '#15803d' : '#374151' }}>{role.replace(/_/g, ' ')}</div>
-                                            {isCompleted && approver?.users && (
-                                                <div style={{ fontSize: '10px', color: '#64748b' }}>{approver.users.name || approver.users.first_name}</div>
+                                            {isCompleted && approver?.from_user && (
+                                                <div style={{ fontSize: '10px', color: '#64748b' }}>{approver.from_user.first_name} {approver.from_user.last_name}</div>
                                             )}
                                             {!isCompleted && <div style={{ fontSize: '10px', color: '#f59e0b', fontWeight: 600 }}>Pending</div>}
                                         </div>
@@ -928,12 +931,12 @@ export default function ApplicationDetail({
                     <div style={{ flex: 1, display: 'flex', gap: '16px' }}>
                         {/* Controls: warning + search + selected chip + note + buttons */}
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                            {hasPendingRequiredRoles && !nextApproverUser && (
+                            {requiresNextApprover && !nextApproverUser && (
                                 <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '10px', padding: '10px 12px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
                                     <span style={{ fontSize: '14px', flexShrink: 0 }}>⚠️</span>
                                     <div>
                                         <div style={{ fontSize: '11px', fontWeight: 700, color: '#92400e' }}>Pending Approval Roles</div>
-                                        <div style={{ fontSize: '11px', color: '#b45309', marginTop: '2px' }}>Still needed: <strong>{pendingRoles.join(', ')}</strong>. Consider forwarding instead.</div>
+                                        <div style={{ fontSize: '11px', color: '#b45309', marginTop: '2px' }}>Still needed: <strong>{remainingAfterMe.join(', ')}</strong>. Consider forwarding instead.</div>
                                     </div>
                                 </div>
                             )}
@@ -988,10 +991,12 @@ export default function ApplicationDetail({
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <button onClick={() => setShowApproveFlow(false)} style={{ flex: 1, padding: '10px', borderRadius: '9px', border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontWeight: 600, cursor: 'pointer', fontSize: '12px' }}>Cancel</button>
-                                <button disabled={actionLoading} onClick={async () => { await onDecision('APPROVED', nextApproverUser?.id, nextApproverNote); setShowApproveFlow(false); }}
-                                    style={{ flex: 2, padding: '10px', borderRadius: '9px', border: 'none', background: 'linear-gradient(135deg,#16a34a,#15803d)', color: '#fff', fontWeight: 600, cursor: actionLoading ? 'not-allowed' : 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(22,163,74,0.25)' }}>
+                                <button disabled={actionLoading || (requiresNextApprover && !nextApproverUser)} 
+                                    onClick={async () => { await onDecision('APPROVED', nextApproverUser?.id, nextApproverNote); setShowApproveFlow(false); }}
+                                    title={(requiresNextApprover && !nextApproverUser) ? "You must select a next approver" : ""}
+                                    style={{ flex: 2, padding: '10px', borderRadius: '9px', border: 'none', background: (requiresNextApprover && !nextApproverUser) ? '#94a3b8' : 'linear-gradient(135deg,#16a34a,#15803d)', color: '#fff', fontWeight: 600, cursor: (actionLoading || (requiresNextApprover && !nextApproverUser)) ? 'not-allowed' : 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: (requiresNextApprover && !nextApproverUser) ? 'none' : '0 4px 12px rgba(22,163,74,0.25)' }}>
                                     {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-                                    {actionLoading ? 'Processing...' : 'Confirm Approval'}
+                                    {actionLoading ? 'Processing...' : (requiresNextApprover ? 'Confirm My Approval & Forward' : 'Confirm Approval')}
                                 </button>
                             </div>
                         </div>
@@ -1043,7 +1048,7 @@ export default function ApplicationDetail({
                             requiredRoles.map((role, i) => {
                                 const isCompleted = completedRoles.includes(role);
                                 const approver = completedApprovals.find((a: any) =>
-                                    (a.users?.user_roles || []).some((ur: any) => ur.roles?.name === role)
+                                    (a.from_user?.user_roles || []).some((ur: any) => ur.roles?.name === role)
                                 );
                                 return (
                                     <div key={role} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
@@ -1052,8 +1057,8 @@ export default function ApplicationDetail({
                                         </div>
                                         <div>
                                             <div style={{ fontSize: '12px', fontWeight: 600, color: isCompleted ? '#15803d' : '#374151' }}>{role.replace(/_/g, ' ')}</div>
-                                            {isCompleted && approver?.users && (
-                                                <div style={{ fontSize: '10px', color: '#64748b' }}>{approver.users.name || approver.users.first_name}</div>
+                                            {isCompleted && approver?.from_user && (
+                                                <div style={{ fontSize: '10px', color: '#64748b' }}>{approver.from_user.first_name} {approver.from_user.last_name}</div>
                                             )}
                                             {!isCompleted && <div style={{ fontSize: '10px', color: '#f59e0b', fontWeight: 600 }}>Pending</div>}
                                         </div>

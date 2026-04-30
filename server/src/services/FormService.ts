@@ -378,13 +378,7 @@ export class FormService implements IFormService {
             }
         }
 
-        // If the approval returns the form to the original applicant, it's always final
-        const returningToApplicant = Number(form.applicant_id) === Number(dto.userId)
-            ? false  // approver is same as applicant (edge case)
-            : true;  // someone else approved and returned it to applicant
-
-        const allRequiredMet = returningToApplicant ||
-            requiredRoles.length === 0 ||
+        const allRequiredMet = requiredRoles.length === 0 ||
             requiredRoles.every(req => approvedRoles.has(req.toUpperCase()));
 
         if (allRequiredMet) {
