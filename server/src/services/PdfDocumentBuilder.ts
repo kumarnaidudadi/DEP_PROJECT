@@ -409,7 +409,7 @@ export class PdfDocumentBuilder {
 
             let val = fd[field.id] ?? fd[field.name] ?? fd[label];
             if (val === undefined || val === null || val === '') return;
-            if (typeof val === 'string' && val.includes('/uploads/')) return;
+            if (typeof val === 'string' && val.startsWith('data:image/')) return;
 
             // Detect date_range: object with from/to keys
             let type = field.type || 'text';
@@ -426,7 +426,7 @@ export class PdfDocumentBuilder {
 
         if (!schema) {
             for (const [k, v] of Object.entries(fd || {})) {
-                if (!v || String(v).includes('/uploads/')) continue;
+                if (!v || String(v).startsWith('data:image/')) continue;
                 result.push({ label: k, value: v, type: 'text', options: [] });
             }
             return result;
@@ -443,7 +443,7 @@ export class PdfDocumentBuilder {
 
         if (result.length === 0) {
             for (const [k, v] of Object.entries(fd)) {
-                if (!v || String(v).includes('/uploads/')) continue;
+                if (!v || String(v).startsWith('data:image/')) continue;
                 let type = 'text';
                 if (typeof v === 'object' && !Array.isArray(v)) {
                     const keys = Object.keys(v as object).map(k2 => k2.toLowerCase());

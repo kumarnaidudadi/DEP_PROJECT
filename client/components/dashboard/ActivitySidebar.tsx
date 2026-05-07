@@ -177,7 +177,10 @@ export default function ActivitySidebar({
                                                         </div>
                                                         {item.users && (
                                                             <div style={{ fontSize: '12px', fontWeight: 600, color: '#1e293b', marginTop: '6px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
-                                                                <span style={{ whiteSpace: 'nowrap' }}>{[item.users.first_name, item.users.last_name].filter(Boolean).join(' ')}</span>
+                                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                                    <span style={{ whiteSpace: 'nowrap' }}>{[item.users.first_name, item.users.last_name].filter(Boolean).join(' ')}</span>
+                                                                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>{getPrimaryRole(item.users) || 'User'}</span>
+                                                                </div>
                                                                 
                                                                 {item.acting_role_label && (
                                                                     <span style={{ 
@@ -195,7 +198,10 @@ export default function ActivitySidebar({
                                                                 {item.target_user && (
                                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                                         <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 500 }}>→</span>
-                                                                        <span style={{ whiteSpace: 'nowrap' }}>{[item.target_user.first_name, item.target_user.last_name].filter(Boolean).join(' ')}</span>
+                                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                                            <span style={{ whiteSpace: 'nowrap' }}>{[item.target_user.first_name, item.target_user.last_name].filter(Boolean).join(' ')}</span>
+                                                                            <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 500 }}>{getPrimaryRole(item.target_user) || 'User'}</span>
+                                                                        </div>
                                                                     </div>
                                                                 )}
                                                             </div>

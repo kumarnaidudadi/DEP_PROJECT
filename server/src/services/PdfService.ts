@@ -141,7 +141,8 @@ export class PdfService implements IPdfService {
 
         // ── Embed signatures ───────────────────────────────────────────────
         const embedSig = async (sigUrl: string | undefined | null, targetY: number, targetX = 350, signerName = '', size?: number) => {
-            if (!sigUrl || typeof sigUrl !== 'string' || !sigUrl.includes('/uploads/')) return;
+            if (!sigUrl || typeof sigUrl !== 'string') return;
+            if (!sigUrl.startsWith('data:image/')) return;
 
             const dateStr = form.updated_at
                 ? new Date(form.updated_at).toLocaleDateString()
@@ -149,37 +150,25 @@ export class PdfService implements IPdfService {
 
             let imageDrawn = false;
             try {
-                const cleanUrl = sigUrl.split('?')[0].replace(/^\/+/, '');
-                const sigPath = path.join(__dirname, '../../', cleanUrl);
-
-                if (fs.existsSync(sigPath)) {
-                    const storedBytes = fs.readFileSync(sigPath);
-                    let sigImageBytes;
-                    try {
-                        sigImageBytes = EncryptionService.decrypt(storedBytes);
-                    } catch (decErr) {
-                        console.error('Failed to decrypt signature:', decErr);
-                        sigImageBytes = storedBytes;
+                if (sigUrl.startsWith('data:image/')) {
+                    const base64Data = sigUrl.split(',')[1];
+                    const sigImageBytes = Buffer.from(base64Data, 'base64');
+                    let sigImage;
+                    if (sigUrl.includes('image/png')) {
+                        sigImage = await pdfDoc.embedPng(sigImageBytes);
+                    } else if (sigUrl.includes('image/jpeg') || sigUrl.includes('image/jpg')) {
+                        sigImage = await pdfDoc.embedJpg(sigImageBytes);
                     }
-
-                    if (sigImageBytes) {
-                        let sigImage;
-                        if (sigPath.toLowerCase().endsWith('.png')) {
-                            sigImage = await pdfDoc.embedPng(sigImageBytes);
-                        } else if (sigPath.toLowerCase().match(/\.jpe?g$/)) {
-                            sigImage = await pdfDoc.embedJpg(sigImageBytes);
-                        }
-
-                        if (sigImage) {
-                            const scale = size ? size / 11 : 1;
-                            page.drawImage(sigImage, {
-                                x: targetX,
-                                y: height - targetY,
-                                width: 100 * scale,
-                                height: 38 * scale,
-                            });
-                            imageDrawn = true;
-                        }
+                    
+                    if (sigImage) {
+                        const scale = size ? size / 11 : 1;
+                        page.drawImage(sigImage, {
+                            x: targetX,
+                            y: height - targetY,
+                            width: 100 * scale,
+                            height: 38 * scale,
+                        });
+                        imageDrawn = true;
                     }
                 }
             } catch (e) {
@@ -215,7 +204,7 @@ export class PdfService implements IPdfService {
             const fData = form.form_data as any;
             if (fData) {
                 for (const key of Object.keys(fData)) {
-                    if (typeof fData[key] === 'string' && fData[key].includes('/uploads/')) {
+                    if (typeof fData[key] === 'string' && fData[key].startsWith('data:image/')) {
                         sigUrl = fData[key];
                         break;
                     }

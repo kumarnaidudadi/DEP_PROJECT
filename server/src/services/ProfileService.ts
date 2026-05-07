@@ -1,8 +1,6 @@
 import { IProfileService } from './IProfileService';
 import { PrismaClient } from '@prisma/client';
-import { EncryptionService } from './EncryptionService';
 import path from 'path';
-import fs from 'fs';
 
 export class ProfileService implements IProfileService {
     constructor(private prisma: PrismaClient) {}
@@ -71,36 +69,27 @@ export class ProfileService implements IProfileService {
     }
 
     async uploadSignature(userId: number, fileBuffer: Buffer, fileName: string) {
-        const uploadDir = path.join(__dirname, '../../../uploads/signatures');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
+        const base64Data = `data:image/${path.extname(fileName).slice(1) || 'png'};base64,${fileBuffer.toString('base64')}`;
+        
+        await this.prisma.users.update({
+            where: { id: userId },
+            data: { signature_url: base64Data }
+        });
 
-        const ext = path.extname(fileName);
-        const finalName = `sig-${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`;
-        const filePath = path.join(uploadDir, finalName);
-
-        const encryptedBuffer = EncryptionService.encrypt(fileBuffer);
-        fs.writeFileSync(filePath, encryptedBuffer);
-
-        return `/uploads/signatures/${finalName}`;
+        return base64Data;
     }
 
     async getSignature(userId: number) {
-        const sigDir = path.join(__dirname, '../../../uploads/signatures');
-        if (!fs.existsSync(sigDir)) return null;
-
-        const files = fs.readdirSync(sigDir);
-        if (files.length === 0) return null;
-
-        const latestFile = files.sort().reverse()[0];
-        const sigPath = path.join(sigDir, latestFile);
-
-        const encryptedBytes = fs.readFileSync(sigPath);
-        try {
-            return EncryptionService.decrypt(encryptedBytes);
-        } catch {
-            return encryptedBytes;
+        const user = await this.prisma.users.findUnique({
+            where: { id: userId },
+            select: { signature_url: true }
+        });
+        
+        if (user && user.signature_url && user.signature_url.startsWith('data:image/')) {
+            const base64Data = user.signature_url.split(',')[1];
+            return Buffer.from(base64Data, 'base64');
         }
+
+        return null;
     }
 }
