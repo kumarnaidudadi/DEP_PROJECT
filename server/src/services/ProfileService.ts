@@ -42,7 +42,7 @@ export class ProfileService implements IProfileService {
     }
 
     async getRoles() {
-        return this.prisma.roles.findMany({ select: { name: true } });
+        return this.prisma.roles.findMany({ select: { id: true, name: true } });
     }
 
     async getDepartments() {

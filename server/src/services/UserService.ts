@@ -18,20 +18,23 @@ export class UserService {
             password = await bcrypt.hash(Math.random().toString(36), 10);
         }
 
-        // Sanitize optional typed fields — empty strings must become null
-        const department_id = data.department_id !== '' && data.department_id != null
-            ? Number(data.department_id)
-            : null;
+        const department_id_raw = data.department_id !== '' && data.department_id != null ? data.department_id : null;
+        if (department_id_raw !== null && isNaN(Number(department_id_raw))) {
+            throw new Error(`Invalid Department ID provided: ${department_id_raw}`);
+        }
+        const department_id = department_id_raw ? Number(department_id_raw) : null;
+
+        const role_id_raw = data.role_id !== '' && data.role_id != null ? data.role_id : null;
+        if (role_id_raw !== null && isNaN(Number(role_id_raw))) {
+            throw new Error(`Invalid Role ID provided: ${role_id_raw}`);
+        }
+        const role_id = role_id_raw ? Number(role_id_raw) : null;
 
         const joining_date = data.joining_date && data.joining_date !== ''
             ? new Date(data.joining_date)
             : null;
 
-        const role_id = data.role_id !== '' && data.role_id != null
-            ? Number(data.role_id)
-            : null;
-
-        return this.prisma.users.create({
+        const user = await this.prisma.users.create({
             data: {
                 first_name: data.first_name || null,
                 middle_name: data.middle_name || null,
@@ -43,14 +46,33 @@ export class UserService {
                 joining_date,
                 auth_provider: data.auth_provider || 'local',
                 signature_url: data.signature_url || null,
-                is_active: true,
-                ...(role_id ? {
-                    user_roles: {
-                        create: [{ role_id }]
-                    }
-                } : {})
+                is_active: true
             }
         });
+
+        if (role_id) {
+            await this.prisma.user_roles.create({
+                data: {
+                    user_id: user.id,
+                    role_id: role_id
+                }
+            });
+
+            // If a department is selected, also consider adding them to department_heads if they have a HOD role.
+            // We check the role name:
+            const roleObj = await this.prisma.roles.findUnique({ where: { id: role_id } });
+            if (roleObj && (roleObj.name.toUpperCase().includes('HOD') || roleObj.name.toUpperCase().includes('HEAD')) && department_id) {
+                // Upsert to department_heads just in case
+                await this.prisma.department_heads.create({
+                    data: {
+                        user_id: user.id,
+                        department_id: department_id
+                    }
+                });
+            }
+        }
+
+        return user;
     }
 
 
@@ -137,7 +159,22 @@ export class UserService {
                 await this.createUser(u);
                 added++;
             } catch (err: any) {
-                failed.push({ row: u, reason: err.message });
+                let reason = err.message || 'Unknown error';
+                
+                // Parse formatting or Prisma constraint errors into readable messages
+                if (err.code === 'P2003') {
+                    if (err.meta?.field_name?.includes('department_id')) {
+                        reason = `Invalid Department ID: ${u.department_id} not found in system.`;
+                    } else if (err.meta?.field_name?.includes('role_id')) {
+                        reason = `Invalid Role ID: ${u.role_id} not found in system.`;
+                    } else {
+                        reason = 'Invalid reference (e.g. invalid role or department ID).';
+                    }
+                } else if (err.code === 'P2002') {
+                    reason = 'Duplicate entry found for unique field (e.g. Employee ID or Email).';
+                }
+
+                failed.push({ row: u, reason });
             }
         }
         return { added, failed };

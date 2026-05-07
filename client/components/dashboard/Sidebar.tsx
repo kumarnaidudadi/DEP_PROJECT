@@ -35,15 +35,15 @@ export default function Sidebar({ canApprove, pendingCount, onLogout, isMobileOp
     }, [pathname]);
 
     // ── Nav button (blue, standard) ───────────────────────────────────────────
-    const navBtn = (href: string, icon: React.ReactNode, label: string, badge?: number) => {
+    const navBtn = (href: string, icon: React.ReactNode, label: string, shortLabel: string, badge?: number) => {
         const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
         return (
             <div key={href} style={{ position: 'relative' }} className="group">
                 <button
                     onClick={() => router.push(href)}
                     style={{
-                        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        padding: '12px 0', border: 'none',
+                        width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        padding: '10px 0', border: 'none',
                         background: active ? 'rgba(59,130,246,0.1)' : 'transparent',
                         color: active ? '#3b82f6' : '#6b7280',
                         cursor: 'pointer',
@@ -53,7 +53,10 @@ export default function Sidebar({ canApprove, pendingCount, onLogout, isMobileOp
                     onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; }}
                     onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
                 >
-                    <span style={{ flexShrink: 0 }}>{icon}</span>
+                    <span style={{ flexShrink: 0, marginBottom: '4px' }}>{icon}</span>
+                    <span style={{ fontSize: '9px', fontWeight: 600, marginTop: '2px', textAlign: 'center', lineHeight: '1.1', maxWidth: '56px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {shortLabel}
+                    </span>
                     {badge && (
                         <span style={{ position: 'absolute', top: '4px', right: '12px', background: '#ef4444', color: '#fff', fontSize: '9px', fontWeight: 700, padding: '2px 5px', borderRadius: '10px' }}>
                             {badge}
@@ -78,8 +81,8 @@ export default function Sidebar({ canApprove, pendingCount, onLogout, isMobileOp
                 <button
                     onClick={() => router.push(href)}
                     style={{
-                        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        padding: '12px 0', border: 'none',
+                        width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        padding: '10px 0', border: 'none',
                         background: active ? 'rgba(124,58,237,0.12)' : 'transparent',
                         color: active ? '#7c3aed' : '#9ca3af',
                         cursor: 'pointer',
@@ -89,8 +92,11 @@ export default function Sidebar({ canApprove, pendingCount, onLogout, isMobileOp
                     onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'rgba(124,58,237,0.06)'; }}
                     onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
                 >
-                    <span style={{ flexShrink: 0 }}>
+                    <span style={{ flexShrink: 0, marginBottom: '4px' }}>
                         <Clock size={20} />
+                    </span>
+                    <span style={{ fontSize: '9px', fontWeight: 600, marginTop: '2px', textAlign: 'center', lineHeight: '1.1', maxWidth: '56px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        Acting
                     </span>
                     {/* Badge: red dot with count, same style as pending work badge */}
                     {count != null && count > 0 && (
@@ -137,34 +143,39 @@ export default function Sidebar({ canApprove, pendingCount, onLogout, isMobileOp
             {/* Nav */}
             <nav style={{ flex: 1, padding: '12px 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {/* Standard nav items */}
-                {navBtn('/dashboard/all', <FileText size={20} />, 'All Applications')}
+                {navBtn('/dashboard/all', <FileText size={20} />, 'All Applications', 'All')}
                 {/* Own pending work — only for native approvers */}
-                {canApprove && navBtn('/dashboard/pending', <ClipboardList size={20} />, 'Pending Work', pendingCount || undefined)}
+                {canApprove && navBtn('/dashboard/pending', <ClipboardList size={20} />, 'Pending Work', 'Pending', pendingCount || undefined)}
                 {/* Acting pending work — one entry per active acting role */}
                 {actingRoles.map(ar => actingNavBtn(ar))}
                 {/* Divider between work + tools */}
                 <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 12px' }} />
-                {navBtn('/dashboard/new', <FilePlus size={20} />, 'New Application')}
+                {navBtn('/dashboard/new', <FilePlus size={20} />, 'New Application', 'New')}
                 {isAdmin && (
                     <>
-                        {navBtn('/dashboard/user-management', <Users size={20} />, 'User Management')}
-                        {navBtn('/dashboard/system-logs',    <Activity size={20} />, 'System Logs')}
-                        {navBtn('/dashboard/statistics',     <BarChart2 size={20} />, 'Statistics')}
+                        {navBtn('/dashboard/user-management', <Users size={20} />, 'User Management', 'Users')}
+                        {navBtn('/dashboard/system-logs',    <Activity size={20} />, 'System Logs', 'Logs')}
+                        {navBtn('/dashboard/statistics',     <BarChart2 size={20} />, 'Statistics', 'Stats')}
                     </>
                 )}
             </nav>
 
             {/* Bottom: profile + logout */}
             <div style={{ padding: '12px 0', borderTop: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {navBtn('/dashboard/profile', <User size={20} />, 'Profile')}
+                {navBtn('/dashboard/profile', <User size={20} />, 'Profile', 'Profile')}
                 <div style={{ position: 'relative' }} className="group">
                     <button
                         onClick={() => { if (window.confirm('Are you sure you want to sign out?')) onLogout(); }}
-                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 0', border: 'none', background: 'transparent', color: '#6b7280', cursor: 'pointer', transition: 'background 0.2s', borderLeft: '3px solid transparent' }}
+                        style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10px 0', border: 'none', background: 'transparent', color: '#6b7280', cursor: 'pointer', transition: 'background 0.2s', borderLeft: '3px solid transparent' }}
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
-                        <LogOut size={20} />
+                        <span style={{ flexShrink: 0, marginBottom: '4px' }}>
+                            <LogOut size={20} />
+                        </span>
+                        <span style={{ fontSize: '9px', fontWeight: 600, marginTop: '2px', textAlign: 'center', lineHeight: '1.1', maxWidth: '56px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            Logout
+                        </span>
                     </button>
                     <div className="absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 bg-slate-800 text-white text-xs px-2.5 py-1.5 rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg border border-slate-700 pointer-events-none">
                         Sign Out
