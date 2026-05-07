@@ -34,8 +34,14 @@ export class ExcelService {
             });
             
             // basic defaults
-            if (user.department_id) user.department_id = Number(user.department_id);
-            if (user.role_id) user.role_id = Number(user.role_id);
+            if (user.department_id !== undefined && user.department_id !== '') {
+                const parsedDept = Number(user.department_id);
+                user.department_id = isNaN(parsedDept) ? user.department_id : parsedDept;
+            }
+            if (user.role_id !== undefined && user.role_id !== '') {
+                const parsedRole = Number(user.role_id);
+                user.role_id = isNaN(parsedRole) ? user.role_id : parsedRole;
+            }
             if (user.joining_date) user.joining_date = new Date(user.joining_date);
             
             users.push(user);
