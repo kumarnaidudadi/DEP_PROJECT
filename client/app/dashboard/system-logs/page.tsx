@@ -8,7 +8,7 @@ import { FileText, ArrowRight, Clock, Plus, Loader2, RefreshCw, X, ListTodo, Sea
 import StatusBadge from '@/components/dashboard/StatusBadge';
 import ActivitySidebar from '@/components/dashboard/ActivitySidebar';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 
 // ── Custom dropdown ───────────────────────────────────────────────────────────
@@ -121,6 +121,7 @@ function Dropdown({ label, value, options, onChange, minWidth = 140, alignRight 
 function SystemLogsContent() {
     const { userRoles, user } = useAuth();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [logs, setLogs] = useState<any[]>([]);
     const [refreshTick, setRefreshTick] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -128,11 +129,11 @@ function SystemLogsContent() {
     const [searchIp, setSearchIp] = useState('');
     const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
 
-    const [filterAction, setFilterAction] = useState('all');
+    const [filterAction, setFilterAction] = useState(searchParams.get('action') || 'all');
     const [filterFormType, setFilterFormType] = useState('all');
     const [filterUser, setFilterUser] = useState('all');
-    const [dateFrom, setDateFrom] = useState('');
-    const [dateTo, setDateTo] = useState('');
+    const [dateFrom, setDateFrom] = useState(searchParams.get('date') || '');
+    const [dateTo, setDateTo] = useState(searchParams.get('date') || '');
 
     const [selectedFormId, setSelectedFormId] = useState<number | null>(null);
     const [activeTab, setActiveTab] = useState<'timeline' | 'comments'>('timeline');

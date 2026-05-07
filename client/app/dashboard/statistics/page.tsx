@@ -7,7 +7,7 @@ import React, { useEffect, useRef, useState, Suspense } from 'react';
 import { 
     BarChart2, Search, CalendarDays, User, Activity, AlertCircle, 
     ChevronDown, Check, Loader2, RefreshCw, X, ShieldAlert,
-    Clock, Smartphone, Globe, Mail, Briefcase, Calendar, Users
+    Clock, Smartphone, Globe, Mail, Briefcase, Calendar, Users, ArrowRight
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
@@ -120,18 +120,25 @@ function Dropdown({ label, value, options, onChange, minWidth = 140, alignRight 
 }
 
 // ── Stat Card Component ─────────────────────────────────────────────────────
-function StatCard({ label, value, icon, color = '#3b82f6' }: { label: string; value: string | number; icon: React.ReactNode, color?: string }) {
+function StatCard({ label, value, icon, color = '#3b82f6', onClick }: { label: string; value: string | number; icon: React.ReactNode, color?: string, onClick?: () => void }) {
     return (
-        <div style={{
-            background: '#fff',
-            borderRadius: '12px',
-            padding: '20px',
-            border: '1px solid #e2e8f0',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
-        }}>
+        <div 
+            onClick={onClick}
+            style={{
+                background: '#fff',
+                borderRadius: '12px',
+                padding: '20px',
+                border: '1px solid #e2e8f0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
+                cursor: onClick ? 'pointer' : 'default',
+                transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { if (onClick) (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 16px -2px rgba(0,0,0,0.1)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.05)'; }}
+        >
             <div style={{
                 width: '48px', height: '48px', borderRadius: '10px',
                 background: `${color}15`, color: color,
@@ -140,10 +147,13 @@ function StatCard({ label, value, icon, color = '#3b82f6' }: { label: string; va
             }}>
                 {icon}
             </div>
-            <div>
+            <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.025em' }}>{label}</div>
                 <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>{value}</div>
             </div>
+            {onClick && (
+                <ArrowRight size={18} style={{ color: '#94a3b8', flexShrink: 0 }} />
+            )}
         </div>
     );
 }
@@ -170,6 +180,11 @@ function StatisticsContent() {
     const [users, setUsers] = useState<any[]>([]);
     const [stats, setStats] = useState<any>(null);
     const [viewMode, setViewMode] = useState<'general' | 'user' | 'ip'>('general');
+
+    // Hourly drill-down state
+    const [hourlyDate, setHourlyDate] = useState<string | null>(null);
+    const [hourlyData, setHourlyData] = useState<any[] | null>(null);
+    const [loadingHourly, setLoadingHourly] = useState(false);
 
     useEffect(() => {
         if (userRoles.length > 0 && !userRoles.includes('ADMIN')) {
@@ -560,9 +575,9 @@ function StatisticsContent() {
                                 <>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                                         <StatCard label="Total Applications" value={stats.totalSubmitted} icon={<Smartphone size={20} />} color="#3b82f6" />
-                                        <StatCard label="Total Approved" value={stats.totalApproved} icon={<Check size={20} />} color="#10b981" />
-                                        <StatCard label="Total Rejected/Returned" value={stats.totalRejected} icon={<X size={20} />} color="#ef4444" />
-                                        <StatCard label="Total Forwarded" value={stats.totalForwarded} icon={<RefreshCw size={20} />} color="#f59e0b" />
+                                        <StatCard label="Total Approved" value={stats.totalApproved} icon={<Check size={20} />} color="#10b981" onClick={() => router.push('/dashboard/system-logs?action=approved')} />
+                                        <StatCard label="Total Rejected/Returned" value={stats.totalRejected} icon={<X size={20} />} color="#ef4444" onClick={() => router.push('/dashboard/system-logs?action=rejected')} />
+                                        <StatCard label="Total Forwarded" value={stats.totalForwarded} icon={<RefreshCw size={20} />} color="#f59e0b" onClick={() => router.push('/dashboard/system-logs?action=forwarded')} />
                                     </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                                         <StatCard label="Total User Logins" value={stats.totalLoggedIn} icon={<User size={20} />} color="#8b5cf6" />
@@ -577,53 +592,109 @@ function StatisticsContent() {
                                             background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0',
                                             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
                                         }}>
-                                            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0' }}>
-                                                <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b', margin: 0 }}>{singleDate ? 'Activity Volume by Hour' : 'Activity Volume by Day'}</h3>
+                                            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    {hourlyDate && (
+                                                        <button
+                                                            onClick={() => { setHourlyDate(null); setHourlyData(null); }}
+                                                            style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '4px 10px', fontSize: '11px', fontWeight: 600, color: '#3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                                        >
+                                                            ← Back to Daily
+                                                        </button>
+                                                    )}
+                                                    <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                                                        {hourlyDate 
+                                                            ? `Activity Volume by Hour — ${new Date(hourlyDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}` 
+                                                            : 'Activity Volume by Day'}
+                                                    </h3>
+                                                </div>
+                                                {hourlyDate && (
+                                                    <button
+                                                        onClick={() => router.push(`/dashboard/system-logs?date=${hourlyDate}`)}
+                                                        style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '4px 12px', fontSize: '11px', fontWeight: 600, color: '#1d4ed8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                                    >
+                                                        View in System Logs <ArrowRight size={12} />
+                                                    </button>
+                                                )}
                                             </div>
-                                            <div style={{ height: '260px', display: 'flex', alignItems: 'flex-end', gap: '8px', padding: '20px' }}>
-                                                {stats.dailyBreakdown?.length > 0 ? (
-                                                    stats.dailyBreakdown.map((d: any) => {
-                                                        const maxCount = Math.max(...stats.dailyBreakdown.map((x: any) => x.count), 1);
-                                                        const height = (d.count / maxCount) * 100;
+                                            <div style={{ height: '260px', display: 'flex', padding: '20px' }}>
+                                                {loadingHourly ? (
+                                                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <Loader2 size={24} className="animate-spin" style={{ color: '#94a3b8' }} />
+                                                    </div>
+                                                ) : (() => {
+                                                    const chartData = hourlyDate && hourlyData ? hourlyData : stats.dailyBreakdown;
+                                                    const isHourlyView = !!hourlyDate;
+                                                    if (!chartData || chartData.length === 0) {
                                                         return (
-                                                            <div 
-                                                                key={d.date} 
-                                                                onClick={() => {
-                                                                    if (!d.isHourly) {
-                                                                        setSingleDate(d.date); setDateFrom(''); setDateTo('');
-                                                                    }
-                                                                }}
-                                                                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', height: '100%', cursor: d.isHourly ? 'default' : 'pointer' }}
-                                                                onMouseEnter={e => {
-                                                                    if (!d.isHourly) {
-                                                                        const bar = e.currentTarget.children[0] as HTMLElement;
-                                                                        bar.style.background = '#2563eb';
-                                                                    }
-                                                                }}
-                                                                onMouseLeave={e => {
-                                                                    if (!d.isHourly) {
-                                                                        const bar = e.currentTarget.children[0] as HTMLElement;
-                                                                        bar.style.background = '#3b82f6';
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <div style={{ 
-                                                                    width: '100%', height: `${height}%`, background: '#3b82f6', 
-                                                                    borderRadius: '4px 4px 0 0', position: 'relative',
-                                                                    transition: 'background 0.2s'
-                                                                }} title={`${d.date}: ${d.count} actions`}>
-                                                                </div>
-                                                                <div style={{ fontSize: '10px', color: '#64748b', transform: 'rotate(-45deg)', marginTop: '12px', whiteSpace: 'nowrap' }}>
-                                                                    {d.isHourly ? d.date : new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                                                                </div>
+                                                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                                                                No activity recorded
                                                             </div>
                                                         );
-                                                    })
-                                                ) : (
-                                                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px' }}>
-                                                        No activity recorded
-                                                    </div>
-                                                )}
+                                                    }
+                                                    const maxCount = Math.max(...chartData.map((x: any) => x.count), 1);
+                                                    const tickCount = 5;
+                                                    const ticks = Array.from({ length: tickCount + 1 }, (_, i) => Math.round((maxCount / tickCount) * (tickCount - i)));
+                                                    return (
+                                                        <>
+                                                            {/* Y-axis */}
+                                                            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', paddingBottom: '38px', marginRight: '8px', minWidth: '28px', alignItems: 'flex-end' }}>
+                                                                {ticks.map((t, i) => (
+                                                                    <span key={i} style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 600, lineHeight: 1 }}>{t}</span>
+                                                                ))}
+                                                            </div>
+                                                            {/* Bars */}
+                                                            <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: isHourlyView ? '2px' : '8px', height: '100%' }}>
+                                                                {chartData.map((d: any) => {
+                                                                    const height = (d.count / maxCount) * 100;
+                                                                    const clickable = !isHourlyView;
+                                                                    return (
+                                                                        <div 
+                                                                            key={d.date} 
+                                                                            onClick={async () => {
+                                                                                if (clickable) {
+                                                                                    setHourlyDate(d.date);
+                                                                                    setLoadingHourly(true);
+                                                                                    try {
+                                                                                        const res = await api.get('/statistics/general/hourly', { params: { date: d.date } });
+                                                                                        setHourlyData(res.data.hourlyBreakdown || []);
+                                                                                    } catch (err) {
+                                                                                        console.error('Failed to fetch hourly data', err);
+                                                                                        setHourlyData([]);
+                                                                                    } finally {
+                                                                                        setLoadingHourly(false);
+                                                                                    }
+                                                                                }
+                                                                            }}
+                                                                            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', height: '100%', cursor: clickable ? 'pointer' : 'default' }}
+                                                                            onMouseEnter={e => {
+                                                                                if (clickable) {
+                                                                                    const bar = e.currentTarget.children[0] as HTMLElement;
+                                                                                    bar.style.background = '#2563eb';
+                                                                                }
+                                                                            }}
+                                                                            onMouseLeave={e => {
+                                                                                const bar = e.currentTarget.children[0] as HTMLElement;
+                                                                                bar.style.background = isHourlyView ? '#8b5cf6' : '#3b82f6';
+                                                                            }}
+                                                                        >
+                                                                            <div style={{ 
+                                                                                width: '100%', height: `${height}%`, 
+                                                                                background: isHourlyView ? '#8b5cf6' : '#3b82f6', 
+                                                                                borderRadius: '4px 4px 0 0', position: 'relative',
+                                                                                transition: 'background 0.2s', minHeight: d.count > 0 ? '4px' : '0'
+                                                                            }} title={`${d.date}: ${d.count} actions`}>
+                                                                            </div>
+                                                                            <div style={{ fontSize: isHourlyView ? '8px' : '10px', color: '#64748b', transform: 'rotate(-45deg)', marginTop: '12px', whiteSpace: 'nowrap' }}>
+                                                                                {d.isHourly ? d.date : new Date(d.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
                                         

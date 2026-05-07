@@ -79,4 +79,22 @@ export class StatisticsController {
             res.status(500).json({ error: 'Failed to fetch users' });
         }
     };
+
+    // GET /api/statistics/general/hourly?date=YYYY-MM-DD
+    getHourlyBreakdown = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        const roles = req.user?.roles || [];
+        if (!roles.includes('ADMIN')) {
+            res.status(403).json({ error: 'Admin access required' });
+            return;
+        }
+        try {
+            const { date } = req.query as Record<string, string>;
+            if (!date) { res.status(400).json({ error: 'date query param is required' }); return; }
+            const data = await this.statsService.getGeneralStats({ singleDate: date });
+            res.json({ date, hourlyBreakdown: data.dailyBreakdown });
+        } catch (e: any) {
+            console.error('[StatisticsController] getHourlyBreakdown:', e.message);
+            res.status(500).json({ error: 'Failed to compute hourly breakdown' });
+        }
+    };
 }

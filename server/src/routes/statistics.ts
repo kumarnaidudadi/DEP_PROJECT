@@ -14,6 +14,7 @@ const controller = new StatisticsController(statsService);
 
 router.use(verifyToken);
 
+router.get('/general/hourly', controller.getHourlyBreakdown);
 router.get('/general', controller.getGeneralStats);
 router.get('/user/:userId', controller.getUserStats);
 router.get('/ip', controller.getIpStats);
