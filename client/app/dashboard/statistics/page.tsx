@@ -559,14 +559,14 @@ function StatisticsContent() {
                             {viewMode === 'general' && (
                                 <>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-                                        <StatCard label="Total Submissions" value={stats.totalSubmitted} icon={<Smartphone size={20} />} color="#3b82f6" />
-                                        <StatCard label="Apps Approved" value={stats.totalApproved} icon={<Check size={20} />} color="#10b981" />
-                                        <StatCard label="Apps Rejected/Ret" value={stats.totalRejected} icon={<X size={20} />} color="#ef4444" />
-                                        <StatCard label="Apps Forwarded" value={stats.totalForwarded} icon={<RefreshCw size={20} />} color="#f59e0b" />
+                                        <StatCard label="Total Applications" value={stats.totalSubmitted} icon={<Smartphone size={20} />} color="#3b82f6" />
+                                        <StatCard label="Total Approved" value={stats.totalApproved} icon={<Check size={20} />} color="#10b981" />
+                                        <StatCard label="Total Rejected/Returned" value={stats.totalRejected} icon={<X size={20} />} color="#ef4444" />
+                                        <StatCard label="Total Forwarded" value={stats.totalForwarded} icon={<RefreshCw size={20} />} color="#f59e0b" />
                                     </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-                                        <StatCard label="User Logins" value={stats.totalLoggedIn} icon={<User size={20} />} color="#8b5cf6" />
-                                        <StatCard label="New Registrations" value={stats.totalNewUsers} icon={<Mail size={20} />} color="#ec4899" />
+                                        <StatCard label="Total User Logins" value={stats.totalLoggedIn} icon={<User size={20} />} color="#8b5cf6" />
+                                        <StatCard label="Total New Registrations" value={stats.totalNewUsers} icon={<Mail size={20} />} color="#ec4899" />
                                         <StatCard label="Peak Activity Hour" value={formatHour(stats.peakHour)} icon={<Clock size={20} />} color="#64748b" />
                                         <StatCard label="Peak Hour Volume" value={stats.peakCount} icon={<Activity size={20} />} color="#06b6d4" />
                                     </div>
