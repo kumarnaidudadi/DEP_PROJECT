@@ -11,6 +11,10 @@ export class ProfileService implements IProfileService {
             include: {
                 user_roles: {
                     include: { roles: { select: { name: true } } }
+                },
+                user_activity_logs: {
+                    orderBy: { created_at: 'desc' },
+                    take: 1
                 }
             }
         });
@@ -27,6 +31,13 @@ export class ProfileService implements IProfileService {
             departmentName = dept?.name || null;
         }
 
+        const [submitted, forwarded, approved, rejected] = await Promise.all([
+            this.prisma.applied_forms.count({ where: { applicant_id: Number(userId) } }),
+            this.prisma.form_forwards.count({ where: { forwarded_by: Number(userId) } }),
+            this.prisma.form_approvals.count({ where: { approver_id: Number(userId), status: 'approved' } }),
+            this.prisma.form_approvals.count({ where: { approver_id: Number(userId), status: 'rejected' } })
+        ]);
+
         return {
             id: Number(user.id),
             name: [user.first_name, user.last_name].filter(Boolean).join(' ') || '',
@@ -38,6 +49,9 @@ export class ProfileService implements IProfileService {
             emp_code: user.emp_code,
             joining_date: user.joining_date,
             signature_url: user.signature_url,
+            is_active: user.is_active,
+            last_active: user.user_activity_logs?.[0]?.created_at || null,
+            stats: { submitted, forwarded, approved, rejected }
         };
     }
 

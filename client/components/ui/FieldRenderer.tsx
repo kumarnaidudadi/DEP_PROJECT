@@ -141,7 +141,7 @@ export default function FieldRenderer({
                             borderRadius: '6px', fontSize: '11px', fontWeight: 600,
                             border: '1px solid #d1fae5',
                         }}>
-                            <ShieldCheck size={12} /> Signature on file
+                            <ShieldCheck size={12} /> Signature saved
                         </div>
                     </label>
                 </div>

@@ -2,13 +2,13 @@
 // ─── ProfileView ───────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { Upload, User, Mail, Briefcase, Building2, Hash, CalendarDays, ShieldCheck, BadgeCheck } from 'lucide-react';
+import { Upload, User, Mail, Briefcase, Building2, Hash, CalendarDays, ShieldCheck, BadgeCheck, Activity, Send, CheckCircle, XCircle } from 'lucide-react';
 import { Profile } from '@/types';
 import ActingRoleSection from '../profile/ActingRoleSection';
 
 interface Props {
     user: any;
-    profile: Profile | null;
+    profile: Profile | any;
     sigUploading: boolean;
     onSigUpload: (file: File) => void;
     decryptedSigUrl?: string | null;
@@ -60,79 +60,122 @@ function InfoCard({
 export default function ProfileView({ user, profile, sigUploading, onSigUpload, decryptedSigUrl }: Props) {
     const displayName = profile?.display_name || user?.name || '—';
     const initials = getInitials(displayName);
-    const primaryRole = profile?.roles?.[0] || null;
+    const primaryRole = profile?.roles?.[0] || '—';
+
+    // Stats variables
+    const stats = profile?.stats || { submitted: 0, forwarded: 0, approved: 0, rejected: 0 };
+    
+    // Status text color
+    const isActive = profile?.is_active ?? true;
 
     return (
-        <div style={{ padding: '32px 40px', maxWidth: '680px', margin: '0 auto' }}>
+        <div style={{ padding: '32px 40px', width: '100%', margin: '0', background: '#f4f7f9', minHeight: '100vh', boxSizing: 'border-box' }}>
 
             {/* ── Header card ─────────────────────────────────────────────── */}
             <div style={{
-                background: 'linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%)',
-                borderRadius: '16px', padding: '28px 32px', marginBottom: '20px',
-                display: 'flex', alignItems: 'center', gap: '24px',
-                boxShadow: '0 8px 32px rgba(37,99,235,0.25)',
+                background: '#ffffff', borderRadius: '12px', padding: '24px 32px', marginBottom: '20px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1px solid #e5e7eb'
             }}>
-                {/* Avatar */}
-                <div style={{
-                    width: '72px', height: '72px', borderRadius: '50%',
-                    background: 'rgba(255,255,255,0.2)',
-                    border: '3px solid rgba(255,255,255,0.4)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '22px', fontWeight: 800, color: '#fff', flexShrink: 0,
-                    backdropFilter: 'blur(8px)',
-                }}>
-                    {initials || <User size={28} />}
-                </div>
-
-                {/* Name + role pill */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '22px', fontWeight: 800, color: '#fff', marginBottom: '6px', wordBreak: 'break-word' }}>
-                        {displayName}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    {/* Avatar */}
+                    <div style={{
+                        width: '64px', height: '64px', borderRadius: '50%',
+                        background: '#eff6ff', color: '#2563eb',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '24px', fontWeight: 700, flexShrink: 0
+                    }}>
+                        {initials || <User size={28} />}
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                        {profile?.roles?.map(role => (
-                            <span key={role} style={{
-                                display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                background: 'rgba(255,255,255,0.18)', color: '#e0f2fe',
-                                fontSize: '11px', fontWeight: 600, padding: '3px 10px',
-                                borderRadius: '20px', border: '1px solid rgba(255,255,255,0.25)',
-                            }}>
-                                <ShieldCheck size={10} /> {role}
+
+                    {/* Info */}
+                    <div>
+                        <div style={{ fontSize: '20px', fontWeight: 800, color: '#1f2937', marginBottom: '6px' }}>
+                            {displayName}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '16px', fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Mail size={14} /> {profile?.email || user?.email || '—'}
                             </span>
-                        ))}
-                        {(!profile?.roles || profile.roles.length === 0) && (
-                            <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>No roles assigned</span>
-                        )}
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Briefcase size={14} /> {primaryRole}
+                            </span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Activity size={14} /> Status: <span style={{ color: isActive ? '#10b981' : '#ef4444', fontWeight: 600 }}>{isActive ? 'Active' : 'Inactive'}</span>
+                            </span>
+                            {profile?.emp_code && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Hash size={14} /> {profile.emp_code}
+                                </span>
+                            )}
+                            {profile?.department && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Building2 size={14} /> {profile.department}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                {/* Verified badge */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#86efac', fontSize: '12px', fontWeight: 600, flexShrink: 0 }}>
-                    <BadgeCheck size={18} />
-                    Active
+                {/* Last Active */}
+                <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                        LAST ACTIVE
+                    </div>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#1f2937' }}>
+                        {profile?.last_active ? (
+                            new Date(profile.last_active).toLocaleString('en-GB', {
+                                day: '2-digit', month: 'short', year: 'numeric',
+                                hour: '2-digit', minute: '2-digit', hour12: true
+                            }).replace(',', ' at').toUpperCase()
+                        ) : '—'}
+                    </div>
                 </div>
             </div>
 
-            {/* ── Identity section ────────────────────────────────────────── */}
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', paddingLeft: '2px' }}>
-                Identity
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
-                <InfoCard icon={<User size={16} />} label="Full Name" value={displayName} accent />
-                <InfoCard icon={<Mail size={16} />} label="Email" value={profile?.email || user?.email || '—'} />
-                <InfoCard icon={<Hash size={16} />} label="Employee Code" value={profile?.emp_code || '—'} />
-                <InfoCard icon={<CalendarDays size={16} />} label="Joining Date" value={profile?.joining_date
-                    ? new Date(profile.joining_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-                    : '—'} />
-            </div>
+            {/* ── Stats Row ────────────────────────────────────────────────── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
+                
+                <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', border: '1px solid #e5e7eb', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Send size={20} />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>SUBMITTED</div>
+                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#1f2937', lineHeight: '1.2' }}>{stats.submitted}</div>
+                    </div>
+                </div>
 
-            {/* ── Organisation section ─────────────────────────────────────── */}
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px', paddingLeft: '2px' }}>
-                Organisation
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
-                <InfoCard icon={<Building2 size={16} />} label="Department" value={profile?.department || '—'} />
-                <InfoCard icon={<Briefcase size={16} />} label="Designation" value={primaryRole || '—'} />
+                <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', border: '1px solid #e5e7eb', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: '#fff7ed', color: '#f97316', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Activity size={20} />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>FORWARDED</div>
+                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#1f2937', lineHeight: '1.2' }}>{stats.forwarded}</div>
+                    </div>
+                </div>
+
+                <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', border: '1px solid #e5e7eb', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: '#f0fdf4', color: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <CheckCircle size={20} />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>APPROVED</div>
+                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#1f2937', lineHeight: '1.2' }}>{stats.approved}</div>
+                    </div>
+                </div>
+
+                <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', border: '1px solid #e5e7eb', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <XCircle size={20} />
+                    </div>
+                    <div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REJECTED</div>
+                        <div style={{ fontSize: '24px', fontWeight: 800, color: '#1f2937', lineHeight: '1.2' }}>{stats.rejected}</div>
+                    </div>
+                </div>
+
             </div>
 
             {/* ── Signature section ────────────────────────────────────────── */}
@@ -154,7 +197,7 @@ export default function ProfileView({ user, profile, sigUploading, onSigUpload, 
                         </div>
                         <div>
                             <div style={{ fontSize: '13px', fontWeight: 600, color: '#16a34a', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '4px' }}>
-                                <BadgeCheck size={14} /> Signature on file
+                                <BadgeCheck size={14} /> Signature saved
                             </div>
                             <label style={{
                                 display: 'inline-flex', alignItems: 'center', gap: '6px',
