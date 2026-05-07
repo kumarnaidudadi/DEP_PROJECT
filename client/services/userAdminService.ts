@@ -16,6 +16,8 @@ export interface InactiveUser {
     email: string;
     emp_code: string;
     is_active: boolean;
+    departments?: { id: number; name: string };
+    user_roles?: { roles: { id: number; name: string } }[];
     user_activity_logs: UserActivityLog[];
 }
 

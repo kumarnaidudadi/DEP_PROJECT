@@ -154,7 +154,10 @@ export default function UserManagementPage() {
 
     const filteredUsers = users.filter(u => {
         const matchesFilter = filter === 'all' || (filter === 'active' ? u.is_active : !u.is_active);
-        const matchesSearch = (u.first_name + ' ' + u.last_name + ' ' + u.email + ' ' + (u.emp_code || '')).toLowerCase().includes(searchQuery.toLowerCase());
+        const roleName = u.user_roles?.[0]?.roles?.name || '';
+        const deptName = u.departments?.name || '';
+        const searchContent = `${u.first_name} ${u.last_name} ${u.email} ${u.emp_code || ''} ${roleName} ${deptName}`.toLowerCase();
+        const matchesSearch = searchContent.includes(searchQuery.toLowerCase());
         return matchesFilter && matchesSearch;
     });
 
@@ -171,6 +174,8 @@ export default function UserManagementPage() {
                     <thead style={{ position: 'sticky', top: 0, zIndex: 20 }}>
                         <tr style={{ background: '#f8fafc' }}>
                             <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>User</th>
+                            <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Role</th>
+                            <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Department</th>
                             <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Email</th>
                             <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Employee ID</th>
                             <th style={{ padding: '14px 20px', fontWeight: 600, color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Status</th>
@@ -192,6 +197,16 @@ export default function UserManagementPage() {
                                 <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9' }}>
                                     <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
                                         {user.first_name} {user.last_name}
+                                    </div>
+                                </td>
+                                <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9' }}>
+                                    <div style={{ fontSize: '13px', color: '#475569' }}>
+                                        {user.user_roles?.[0]?.roles?.name || '---'}
+                                    </div>
+                                </td>
+                                <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9' }}>
+                                    <div style={{ fontSize: '13px', color: '#475569' }}>
+                                        {user.departments?.name || '---'}
                                     </div>
                                 </td>
                                 <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9' }}>
@@ -246,7 +261,7 @@ export default function UserManagementPage() {
         <div style={{ position: 'relative' }}>
             <button
                 onClick={() => setActiveTab('list')}
-                style={{ position: 'absolute', top: '-70px', left: '0', background: 'none', border: 'none', color: '#3b82f6', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                style={{ position: 'absolute', top: '-70px', left: '0', background: 'none', border: 'none', color: '#2563eb', fontSize: '13px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
                 ← Back to User Directory
             </button>
@@ -254,55 +269,55 @@ export default function UserManagementPage() {
                 <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', marginBottom: '24px' }}>Create New User</h2>
                 <form onSubmit={handleAddUser} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                     <div style={{ gridColumn: 'span 1' }}>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>First Name *</label>
-                        <input type="text" required value={formData.first_name} onChange={e => setFormData({ ...formData, first_name: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>First Name *</label>
+                        <input type="text" required value={formData.first_name} onChange={e => setFormData({ ...formData, first_name: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', color: '#0f172a', fontSize: '14px' }} />
                     </div>
                     <div style={{ gridColumn: 'span 1' }}>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Last Name *</label>
-                        <input type="text" required value={formData.last_name} onChange={e => setFormData({ ...formData, last_name: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Last Name *</label>
+                        <input type="text" required value={formData.last_name} onChange={e => setFormData({ ...formData, last_name: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', color: '#0f172a', fontSize: '14px' }} />
                     </div>
                     <div style={{ gridColumn: 'span 2' }}>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Email Address *</label>
-                        <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Email Address *</label>
+                        <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', color: '#0f172a', fontSize: '14px' }} />
                     </div>
                     <div style={{ gridColumn: 'span 1' }}>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Password <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label>
-                        <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Password <span style={{ color: '#64748b', fontWeight: 400 }}>(optional)</span></label>
+                        <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', color: '#0f172a', fontSize: '14px' }} />
                     </div>
                     <div style={{ gridColumn: 'span 1' }}>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Employee Code</label>
-                        <input type="text" value={formData.emp_code} onChange={e => setFormData({ ...formData, emp_code: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Employee Code</label>
+                        <input type="text" value={formData.emp_code} onChange={e => setFormData({ ...formData, emp_code: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', color: '#0f172a', fontSize: '14px' }} />
                     </div>
                     <div style={{ gridColumn: 'span 1' }}>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Department <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Department <span style={{ color: '#64748b', fontWeight: 400 }}>(optional)</span></label>
                         <select
                             value={formData.department_id}
                             onChange={e => setFormData({ ...formData, department_id: e.target.value })}
-                            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '14px', color: formData.department_id ? '#0f172a' : '#94a3b8' }}
+                            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', fontSize: '14px', color: formData.department_id ? '#0f172a' : '#64748b' }}
                         >
-                            <option value="">-- No Department --</option>
-                            {departments.map(d => (
-                                <option key={d.id} value={d.id}>{d.name}</option>
+                            <option key="none" value="">-- No Department --</option>
+                            {departments.map((d, idx) => (
+                                <option key={`dept-${d.id}-${idx}`} value={d.id}>{d.name}</option>
                             ))}
                         </select>
                     </div>
                     <div style={{ gridColumn: 'span 1' }}>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Designation / Role *</label>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Designation / Role *</label>
                         <select
                             required
                             value={formData.role_id}
                             onChange={e => setFormData({ ...formData, role_id: e.target.value })}
-                            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', fontSize: '14px', color: formData.role_id ? '#0f172a' : '#94a3b8' }}
+                            style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', fontSize: '14px', color: formData.role_id ? '#0f172a' : '#64748b' }}
                         >
-                            <option value="">-- Select Role --</option>
-                            {roles.map(r => (
-                                <option key={r.id} value={r.id}>{r.name}</option>
+                            <option key="default" value="">-- Select Role --</option>
+                            {roles.map((r, idx) => (
+                                <option key={`role-${r.id}-${idx}`} value={r.id}>{r.name}</option>
                             ))}
                         </select>
                     </div>
                     <div style={{ gridColumn: 'span 1' }}>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Joining Date <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span></label>
-                        <input type="date" value={formData.joining_date} onChange={e => setFormData({ ...formData, joining_date: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>Joining Date <span style={{ color: '#64748b', fontWeight: 400 }}>(optional)</span></label>
+                        <input type="date" value={formData.joining_date} onChange={e => setFormData({ ...formData, joining_date: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', color: '#0f172a', fontSize: '14px' }} />
                     </div>
                     <div style={{ gridColumn: 'span 2', marginTop: '12px' }}>
                         <button

@@ -58,6 +58,10 @@ export class UserService {
         return this.prisma.users.findMany({
             where: { is_active: false },
             include: {
+                departments: true,
+                user_roles: {
+                    include: { roles: true }
+                },
                 user_activity_logs: {
                     orderBy: { created_at: 'desc' },
                     take: 1
@@ -69,6 +73,10 @@ export class UserService {
     async getAllUsers(): Promise<any[]> {
         return this.prisma.users.findMany({
             include: {
+                departments: true,
+                user_roles: {
+                    include: { roles: true }
+                },
                 user_activity_logs: {
                     orderBy: { created_at: 'desc' },
                     take: 1

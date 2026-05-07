@@ -65,6 +65,7 @@ model users {
   reactivation_requests reactivation_requests[] @relation("UserReactivationRequests")
   user_activity_logs    user_activity_logs[]
   user_roles            user_roles[]
+  departments           departments?            @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model department_heads {
@@ -83,6 +84,7 @@ model departments {
   name             String             @unique
   created_at       DateTime?          @default(now()) @db.Timestamp(6)
   department_heads department_heads[]
+  users            users[]
 }
 
 model form_types {
@@ -95,9 +97,6 @@ model form_types {
   created_at     DateTime?       @default(now()) @db.Timestamp(6)
   created_by     Int?
   updated_at     DateTime?       @default(now()) @db.Timestamp(6)
-  approval_rules Json?           @default("{}")
-  is_active      Boolean         @default(true)
-  status         String?         @default("published")
   ref_prefix     String?         @unique @db.Char(4)
   status         String?         @default("published")
   applied_forms  applied_forms[]
