@@ -201,6 +201,15 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
     const processedApps = applications.filter(a => {
         const status = getApplicationStatus(a);
         if (getApplicationSubmitterId(a) === effectiveUserId) return false;
+
+        // If acting, only show forms processed by THIS specific acting user
+        if (isActing) {
+            return (a.form_history || []).some((h: any) => 
+                Number(h.changed_by) === Number(user?.id) &&
+                Number(h.acting_on_behalf_of) === Number(effectiveUserId)
+            );
+        }
+
         return (a.form_forwards || []).some((fwd: any) =>
             Number(fwd.forwarded_by) === effectiveUserId &&
             ['approved', 'rejected'].includes(String(fwd.action || '').toLowerCase())

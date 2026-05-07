@@ -64,7 +64,7 @@ export default function ProfileView({ user, profile, sigUploading, onSigUpload, 
 
     // Stats variables
     const stats = profile?.stats || { submitted: 0, forwarded: 0, approved: 0, rejected: 0 };
-    
+
     // Status text color
     const isActive = profile?.is_active ?? true;
 
@@ -135,7 +135,7 @@ export default function ProfileView({ user, profile, sigUploading, onSigUpload, 
 
             {/* ── Stats Row ────────────────────────────────────────────────── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
-                
+
                 <div style={{ background: '#fff', borderRadius: '12px', padding: '20px', border: '1px solid #e5e7eb', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <div style={{ width: '48px', height: '48px', borderRadius: '10px', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Send size={20} />

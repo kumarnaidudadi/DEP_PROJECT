@@ -53,6 +53,7 @@ function CreateFormInner() {
     const [formFields, setFormFields] = useState<BuilderField[]>([createBuilderField()]);
     const [approvalRoles, setApprovalRoles] = useState<string[]>([]);
     const [firstRoutingRole, setFirstRoutingRole] = useState<string | null>(null);
+    const [applicantFieldsLimit, setApplicantFieldsLimit] = useState<number | null>(null);
     const [creating, setCreating] = useState(false);
     const [createSuccess, setCreateSuccess] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
@@ -139,6 +140,8 @@ function CreateFormInner() {
         const loadedFirstRoutingRole = (ft.approval_rules as any)?.first_routing_role || null;
         setApprovalRoles(nextApprovalRoles);
         setFirstRoutingRole(loadedFirstRoutingRole);
+        const loadedLimit = (ft.approval_rules as any)?.applicant_fields_limit ?? null;
+        setApplicantFieldsLimit(typeof loadedLimit === 'number' ? loadedLimit : null);
         const loadedPrefix = ft.ref_prefix || (ft as any).ref_prefix || '';
         setRefPrefix(loadedPrefix);
         setInitialSnapshot(serializeBuilderState(ft.name, ft.description || '', loadedPrefix, loadedFields.length ? loadedFields : [createBuilderField()], nextApprovalRoles, loadedFirstRoutingRole));
@@ -168,7 +171,11 @@ function CreateFormInner() {
                     data: mappedFields,
                     approval_roles: approvalRoles 
                 },
-                approval_rules: { required_roles: approvalRoles, first_routing_role: firstRoutingRole },
+                approval_rules: { 
+                    required_roles: approvalRoles, 
+                    first_routing_role: firstRoutingRole,
+                    ...(applicantFieldsLimit != null ? { applicant_fields_limit: applicantFieldsLimit } : {})
+                },
                 ref_prefix: refPrefix.trim() || undefined,
                 status: status,
             };
@@ -183,6 +190,7 @@ function CreateFormInner() {
             setFormFields(resetFields);
             setApprovalRoles(resetRoles);
             setFirstRoutingRole(null);
+            setApplicantFieldsLimit(null);
             setInitialSnapshot(serializeBuilderState('', '', '', resetFields, resetRoles, null));
             if (redirectAfterSave) {
                 setTimeout(() => { setCreateSuccess(false); router.push('/dashboard/new'); }, 2000);
@@ -201,7 +209,7 @@ function CreateFormInner() {
             }
             return false;
         } finally { setCreating(false); }
-    }, [approvalRoles, editId, formFields, newFormDesc, newFormName, refPrefix, firstRoutingRole, router]);
+    }, [approvalRoles, editId, formFields, newFormDesc, newFormName, refPrefix, firstRoutingRole, applicantFieldsLimit, router]);
 
     const handleAttemptLeave = React.useCallback(async () => {
         if (!isDirty || allowNavigationRef.current) return true;
@@ -281,6 +289,7 @@ function CreateFormInner() {
                 formFields={formFields}
                 approvalRoles={approvalRoles} 
                 firstRoutingRole={firstRoutingRole}
+                applicantFieldsLimit={applicantFieldsLimit}
                 availableRoles={availableRoles}
                 creating={creating} createSuccess={createSuccess}
                 saveError={saveError}
@@ -290,6 +299,7 @@ function CreateFormInner() {
                 onFieldsChange={setFormFields}
                 onApprovalRolesChange={setApprovalRoles}
                 onFirstRoutingRoleChange={setFirstRoutingRole}
+                onApplicantFieldsLimitChange={setApplicantFieldsLimit}
                 onSave={handleSave}
                 onCancel={handleCancel}
             />

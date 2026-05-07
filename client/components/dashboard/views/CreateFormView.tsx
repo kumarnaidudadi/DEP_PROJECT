@@ -96,12 +96,14 @@ interface Props {
     saveError?: string | null;
     prefixError?: string | null;
     firstRoutingRole: string | null;
+    applicantFieldsLimit: number | null;
     onNameChange: (v: string) => void;
     onDescChange: (v: string) => void;
     onRefPrefixChange: (v: string) => void;
     onFieldsChange: (fields: BuilderField[]) => void;
     onApprovalRolesChange: (roles: string[]) => void;
     onFirstRoutingRoleChange: (r: string | null) => void;
+    onApplicantFieldsLimitChange: (n: number | null) => void;
     onSave: (status: 'published' | 'drafted') => void;
     onCancel: () => void;
 }
@@ -111,7 +113,9 @@ interface Props {
 export default function CreateFormView({
     isEdit, newFormName, newFormDesc, refPrefix, formFields, approvalRoles, availableRoles,
     creating, createSuccess, saveError, prefixError,
-    firstRoutingRole, onNameChange, onDescChange, onRefPrefixChange, onFieldsChange, onApprovalRolesChange, onFirstRoutingRoleChange,
+    firstRoutingRole, applicantFieldsLimit,
+    onNameChange, onDescChange, onRefPrefixChange, onFieldsChange, onApprovalRolesChange,
+    onFirstRoutingRoleChange, onApplicantFieldsLimitChange,
     onSave, onCancel,
 }: Props) {
     const [draggedIdx, setDraggedIdx] = React.useState<number | null>(null);
@@ -418,6 +422,29 @@ export default function CreateFormView({
                                 <option key={role} value={role}>{role.replace(/_/g, ' ')}</option>
                             ))}
                         </select>
+                    </div>
+
+                    <div style={{ marginTop: '20px', borderTop: '1px solid #e5e7eb', paddingTop: '16px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>Applicant Fill Limit</div>
+                        <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.4' }}>
+                            Fields beyond this number are <strong>not intended for the applicant</strong> — they will see a caution warning when filling them. Leave blank for no restriction.
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <input
+                                type="number"
+                                min="1"
+                                max={formFields.length || 999}
+                                placeholder={`e.g. ${Math.ceil(formFields.length / 2) || 5}`}
+                                value={applicantFieldsLimit ?? ''}
+                                onChange={e => onApplicantFieldsLimitChange(e.target.value === '' ? null : Number(e.target.value))}
+                                style={{ ...inputStyle, maxWidth: '120px' }}
+                            />
+                            <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+                                {applicantFieldsLimit
+                                    ? `Applicant fills fields 1–${applicantFieldsLimit}. Fields ${applicantFieldsLimit + 1}+ will show a caution warning.`
+                                    : 'No limit set — applicant may fill all fields.'}
+                            </span>
+                        </div>
                     </div>
                 </div>
 

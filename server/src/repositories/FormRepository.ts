@@ -54,7 +54,7 @@ export class FormRepository implements IFormRepository {
                 },
                 form_history: {
                     orderBy: { created_at: 'desc' },
-                    take: 3,
+                    take: 10,
                     include: { 
                         users: { select: { id: true, first_name: true, last_name: true } },
                         acting_users: { select: { id: true, first_name: true, last_name: true } }

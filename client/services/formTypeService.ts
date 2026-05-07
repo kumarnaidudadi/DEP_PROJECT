@@ -8,7 +8,7 @@ export interface FormTypePayload {
     name: string;
     description: string;
     schema: Record<string, any>;
-    approval_rules?: { required_roles: string[], first_routing_role?: string | null };
+    approval_rules?: { required_roles: string[], first_routing_role?: string | null, applicant_fields_limit?: number | null };
     is_active?: boolean;
     ref_prefix?: string;
     status?: string;
