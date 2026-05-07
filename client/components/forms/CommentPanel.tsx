@@ -9,9 +9,7 @@ import CommentBubble from './CommentBubble';
 import CommentInput from './CommentInput';
 import { FormComment, CommentType, COMMENT_TYPE_CONFIG } from '@/types/comments';
 
-const FILTER_TYPES: Array<CommentType | 'all'> = [
-    'all', 'general', 'forward', 'approval', 'rejection', 'return', 'recall',
-];
+
 
 interface Props {
     formId: number;
@@ -26,7 +24,7 @@ export default function CommentPanel({
 }: Props) {
     const { comments, isLoading, error, addComment, editComment, deleteComment, refetch } = useFormComments(formId);
 
-    const [filterType, setFilterType] = useState<CommentType | 'all'>('all');
+
     const [replyTo, setReplyTo] = useState<FormComment | null>(null);
     const [editingComment, setEditingComment] = useState<FormComment | null>(null);
     const listRef = useRef<HTMLDivElement>(null);
@@ -58,15 +56,11 @@ export default function CommentPanel({
         setReplyTo(comment);
     };
 
-    const existingTypes = new Set(comments.map(c => c.comment_type));
-    const visibleFilters: Array<CommentType | 'all'> = [
-        'all',
-        ...FILTER_TYPES.filter(t => t !== 'all' && existingTypes.has(t as CommentType)) as CommentType[],
-    ];
-
-    const filtered = filterType === 'all'
-        ? comments
-        : comments.filter(c => c.comment_type === filterType);
+    const filtered = comments.filter(c => {
+        const jsonStr = JSON.stringify(c.content || {});
+        if (jsonStr.includes('Application submitted.')) return false;
+        return true;
+    });
 
     return (
         <div
@@ -144,31 +138,7 @@ export default function CommentPanel({
                 </div>
             )}
 
-            {/* ── Filter pills ──────────────────────────────────────────────── */}
-            <div style={{
-                display: 'flex', gap: '16px', padding: '10px 14px',
-                overflowX: 'auto', background: '#fff',
-                borderBottom: '1px solid #e2e8f0', flexShrink: 0,
-            }}>
-                {visibleFilters.map(type => {
-                    const isActive = filterType === type;
-                    const cfg = type !== 'all' ? COMMENT_TYPE_CONFIG[type] : null;
-                    return (
-                        <button
-                            key={type}
-                            className={isActive ? "text-sm font-medium text-blue-600 border-b-2 border-blue-600 pb-2" : "text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 border-transparent pb-2"}
-                            onClick={() => setFilterType(type)}
-                            style={{
-                                flexShrink: 0,
-                                background: 'transparent',
-                                cursor: 'pointer', transition: 'all 0.15s',
-                            }}
-                        >
-                            {type === 'all' ? 'All' : COMMENT_TYPE_CONFIG[type].label}
-                        </button>
-                    );
-                })}
-            </div>
+
 
             {/* ── Comment list ──────────────────────────────────────────────── */}
             <div ref={listRef} style={{
@@ -201,9 +171,7 @@ export default function CommentPanel({
                             No comments yet
                         </p>
                         <p style={{ fontSize: '12px', margin: 0 }}>
-                            {filterType === 'all'
-                                ? 'Be the first to leave a comment.'
-                                : `No ${COMMENT_TYPE_CONFIG[filterType as CommentType]?.label} comments.`}
+                            Be the first to leave a comment.
                         </p>
                     </div>
                 )}
