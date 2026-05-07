@@ -30,6 +30,8 @@ export default function PendingWorkDetailPage() {
     const [actionLoading, setActionLoading] = useState(false);
     const [panelOpen, setPanelOpen] = useState(true);
     const [activeTab, setActiveTab] = useState<'timeline' | 'comments'>('timeline');
+    const [timelineItems, setTimelineItems] = useState<any[]>([]);
+    const [loadingTimeline, setLoadingTimeline] = useState(false);
 
     // Comment count badge
     const { totalCount: commentCount } = useFormComments(appId || 0);
@@ -38,6 +40,47 @@ export default function PendingWorkDetailPage() {
         fetchApplications();
         fetchProfile();
     }, [fetchApplications, fetchProfile]);
+
+    useEffect(() => {
+        if (!appId || activeTab !== 'timeline') return;
+        let isMounted = true;
+        const fetchHistory = async () => {
+            setLoadingTimeline(true);
+            try {
+                const api = (await import('@/lib/api')).default;
+                const res = await api.get(`/forms/${appId}/history`);
+                const historyArr = res.data.history || [];
+                const forwardsArr = res.data.forwards || [];
+                
+                const merged = historyArr.map((h: any) => {
+                    const enriched: any = {
+                        ...h,
+                        acting_users: h.acting_users ?? null,
+                        acting_role_label: h.acting_role_label ?? null,
+                    };
+                    if (h.action === 'forwarded' || h.action === 'approved' || h.action === 'rejected') {
+                        const match = forwardsArr.find((f: any) => 
+                            f.action === h.action && 
+                            Math.abs(new Date(f.forwarded_at).getTime() - new Date(h.created_at).getTime()) < 5000
+                        );
+                        if (match?.to_user) {
+                            enriched.target_user = match.to_user;
+                        }
+                    }
+                    return enriched;
+                });
+                
+                const ascHistory = [...merged].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                if (isMounted) setTimelineItems(ascHistory);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                if (isMounted) setLoadingTimeline(false);
+            }
+        };
+        fetchHistory();
+        return () => { isMounted = false; };
+    }, [appId, activeTab]);
 
     const selectedApp = applications.find(a => a.id === appId);
     const storedRoles = userRoles.map(r => (typeof r === 'string' ? r.toUpperCase() : ''));
@@ -136,26 +179,6 @@ export default function PendingWorkDetailPage() {
     }
 
     const historyArr = selectedApp.form_history || [];
-    const forwardsArr = selectedApp.form_forwards || [];
-    const mergedHistory = historyArr.map((h: any) => {
-        const enriched: any = {
-            ...h,
-            // Always carry acting context if present
-            acting_users: h.acting_users ?? null,
-            acting_role_label: h.acting_role_label ?? null,
-        };
-        if (h.action === 'forwarded' || h.action === 'approved' || h.action === 'rejected') {
-            const match = forwardsArr.find((f: any) => 
-                f.action === h.action && 
-                Math.abs(new Date(f.forwarded_at).getTime() - new Date(h.created_at).getTime()) < 5000
-            );
-            if (match?.to_user) {
-                enriched.target_user = match.to_user;
-            }
-        }
-        return enriched;
-    });
-    const ascHistory = [...mergedHistory].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: '#f1f5f9' }}>
@@ -235,7 +258,8 @@ export default function PendingWorkDetailPage() {
                     title={selectedApp.form_types?.name || 'Application'}
                     latestAction={historyArr[0]?.action || selectedApp.current_status}
                     applicantName={selectedApp.users ? `${selectedApp.users.first_name} ${selectedApp.users.last_name}` : 'Unknown User'}
-                    timelineData={ascHistory}
+                    loadingTimeline={loadingTimeline}
+                    timelineData={timelineItems}
                     currentUserId={user?.id}
                     isAdmin={storedRoles.includes('ADMIN') || storedRoles.includes('SUPER_ADMIN')}
                 />
