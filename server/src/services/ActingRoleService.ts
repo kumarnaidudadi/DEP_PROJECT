@@ -5,7 +5,22 @@ import { EmailService } from './EmailService';
 export class ActingRoleService {
     constructor(private prisma: PrismaClient, private emailService?: EmailService) {}
 
+    private async autoUpdateCompleted() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        await this.prisma.acting_role_requests.updateMany({
+            where: {
+                status: 'accepted',
+                until_date: { lt: today }
+            },
+            data: {
+                status: 'completed'
+            }
+        });
+    }
+
     async getSentRequests(userId: number) {
+        await this.autoUpdateCompleted();
         return this.prisma.acting_role_requests.findMany({
             where: { requester_id: userId },
             include: {
@@ -23,6 +38,7 @@ export class ActingRoleService {
     }
 
     async getReceivedRequests(userId: number) {
+        await this.autoUpdateCompleted();
         return this.prisma.acting_role_requests.findMany({
             where: { target_user_id: userId },
             include: {
@@ -44,6 +60,7 @@ export class ActingRoleService {
     }
 
     async getActiveActingRoles(userId: number) {
+        await this.autoUpdateCompleted();
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
