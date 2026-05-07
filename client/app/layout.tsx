@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "LTMS - IIT ROPAR",
   description: "A comprehensive portal for managing departmental forms, approvals, and office orders.",
+  icons: {
+    icon: '/iit-ropar.jpg',
+  },
 };
 
 export default function RootLayout({

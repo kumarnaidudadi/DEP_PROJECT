@@ -15,6 +15,7 @@ export default function LoginPage() {
     const [showOtp, setShowOtp] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isOtpFocused, setIsOtpFocused] = useState(false);
 
     // ─── STEP 1: SEND OTP ──────────────────────────────────────────────
     const handleSendOtp = async (e: React.FormEvent) => {
@@ -161,7 +162,10 @@ export default function LoginPage() {
                         <form onSubmit={handleVerifyOtp} className="space-y-5">
                             <div className="space-y-2.5">
                                 <div className="flex justify-between items-center px-1">
-                                    <Label htmlFor="otp" className="text-[10px] font-bold uppercase tracking-widest text-gray-500">One-Time Password</Label>
+                                    <Label htmlFor="otp" className="text-[10px] font-bold tracking-widest text-gray-500 text-left truncate pr-2">
+                                        <span className="uppercase">Enter OTP sent to </span>
+                                        <span className="normal-case tracking-normal">{email}</span>
+                                    </Label>
                                     <button
                                         type="button"
                                         onClick={() => { setStep('email'); setError(null); }}
@@ -182,24 +186,27 @@ export default function LoginPage() {
                                                 const val = e.target.value.replace(/[^0-9]/g, '');
                                                 if (val.length <= 6) setOtp(val);
                                             }}
+                                            onFocus={() => setIsOtpFocused(true)}
+                                            onBlur={() => setIsOtpFocused(false)}
                                             required
                                             disabled={isLoading}
                                             className="absolute inset-0 w-full h-full opacity-0 cursor-text z-20"
                                             autoComplete="one-time-code"
+                                            autoFocus
                                         />
 
                                         {/* 6 Squares */}
                                         <div className="flex w-full justify-between gap-2 relative z-10 pointer-events-none">
                                             {Array.from({ length: 6 }).map((_, i) => {
                                                 const char = otp[i];
-                                                const isActive = otp.length === i; // currently focused/typing box
+                                                const isActive = isOtpFocused && otp.length === i; // currently focused/typing box
                                                 return (
                                                     <div
                                                         key={i}
                                                         className={`flex-1 aspect-square max-h-14 border-2 rounded-[12px] flex items-center justify-center text-2xl transition-all duration-200 ${
                                                             char ? 'border-[#1A62FF] bg-blue-50/40 text-blue-700 font-bold' 
-                                                            : isActive ? 'border-blue-400 ring-[3px] ring-blue-500/10' 
-                                                            : 'border-gray-200 bg-white shadow-sm'
+                                                            : isActive ? 'border-[#1A62FF] ring-[4px] ring-blue-500/20 bg-blue-50/10' 
+                                                            : 'border-gray-300 bg-gray-50/50 shadow-sm'
                                                         }`}
                                                     >
                                                         {char ? (showOtp ? char : <span className="font-extrabold pb-2">.</span>) : ''}

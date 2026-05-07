@@ -123,7 +123,7 @@ export default function Sidebar({ canApprove, pendingCount, onLogout, isMobileOp
         }}>
             {/* Logo */}
             <div style={{ padding: '20px 0', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '68px', position: 'relative' }}>
-                <Building2 size={24} style={{ color: '#3b82f6', flexShrink: 0 }} />
+                <img src="/iit-ropar.jpg" alt="IIT Ropar Logo" style={{ width: '36px', height: '36px', objectFit: 'contain', flexShrink: 0 }} />
                 {isMobileOpen && (
                     <button
                         onClick={onCloseMobile}
