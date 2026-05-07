@@ -149,7 +149,6 @@ export default function Sidebar({ canApprove, pendingCount, onLogout, isMobileOp
                 {/* Acting pending work — one entry per active acting role */}
                 {actingRoles.map(ar => actingNavBtn(ar))}
                 {/* Divider between work + tools */}
-                <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 12px' }} />
                 {navBtn('/dashboard/new', <FilePlus size={20} />, 'New Application', 'New')}
                 {isAdmin && (
                     <>
