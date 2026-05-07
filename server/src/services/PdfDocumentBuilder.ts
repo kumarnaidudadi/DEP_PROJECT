@@ -117,7 +117,7 @@ export class PdfDocumentBuilder {
             const d = new Date(form.submitted_at || form.created_at);
             date = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
         }
-        pg.drawText(`${docId}   |   Status: ${status}   |   Date: ${date}`, { x: ML, y, size: 8, font: R, color: GREY });
+        pg.drawText(`APPL NO: ${docId}   |   Status: ${status}   |   Date: ${date}`, { x: ML, y, size: 8, font: R, color: GREY });
 
         y -= 10;
         pg.drawLine({ start: { x: ML, y }, end: { x: PW - MR, y }, thickness: 0.4, color: LGREY });
@@ -344,20 +344,35 @@ export class PdfDocumentBuilder {
         pg.drawLine({ start: { x: (PW - tW) / 2, y }, end: { x: (PW + tW) / 2, y }, thickness: 0.75, color: NAVY });
         y -= 20;
 
-        const steps = [
-            {
+        const rawForwards = form.form_forwards || [];
+        const isFirstFwdApplicant = rawForwards.length > 0 && rawForwards[0].from_user?.id === form.users?.id && String(rawForwards[0].action).toLowerCase() === 'forwarded';
+
+        const steps: any[] = [];
+        if (!isFirstFwdApplicant) {
+            steps.push({
                 action: 'SUBMITTED',
                 actor: [form.users?.first_name, form.users?.last_name].filter(Boolean).join(' ') || 'Applicant',
                 role: form.users?.user_roles?.map((ur: any) => ur.roles?.name).filter(Boolean).join(', ') || '',
-                ts: form.created_at, remarks: 'Application submitted.',
-            },
-            ...(form.form_forwards || []).map((fwd: any) => ({
-                action: String(fwd.action || 'FORWARDED').toUpperCase(),
+                ts: form.submitted_at || form.created_at, remarks: 'Application submitted.',
+            });
+        }
+
+        rawForwards.forEach((fwd: any, i: number) => {
+            let action = String(fwd.action || 'FORWARDED').toUpperCase();
+            if (i === 0 && isFirstFwdApplicant) {
+                action = 'SUBMITTED AND FORWARDED';
+            } else if (action === 'PARTIALLY_APPROVED') {
+                action = 'PARTIALLY APPROVED AND FORWARDED';
+            }
+            
+            steps.push({
+                action,
                 actor: [fwd.from_user?.first_name, fwd.from_user?.last_name].filter(Boolean).join(' ') || 'System',
                 role: fwd.from_user?.user_roles?.map((ur: any) => ur.roles?.name).filter(Boolean).join(', ') || '',
-                ts: fwd.forwarded_at, remarks: fwd.remarks || fwd.comment || '',
-            })),
-        ];
+                ts: fwd.created_at || fwd.forwarded_at || form.submitted_at || form.created_at,
+                remarks: fwd.remarks || fwd.comment || '',
+            });
+        });
 
         const SPINE = ML + 20;
         pg.drawLine({ start: { x: SPINE, y }, end: { x: SPINE, y: 80 }, thickness: 1, color: LGREY });
@@ -375,10 +390,14 @@ export class PdfDocumentBuilder {
             pg.drawRectangle({ x: CX, y: y - CARD_H, width: 3, height: CARD_H, color: dotC });
             pg.drawCircle({ x: SPINE, y: y - 16, size: 9, color: dotC });
             pg.drawText(String(i + 1), { x: SPINE - (i < 9 ? 3 : 5), y: y - 20, size: 7, font: B, color: WHITE });
-            pg.drawRectangle({ x: CX + 8, y: y - 18, width: 80, height: 14, color: dotC });
-            pg.drawText(s.action, { x: CX + 12, y: y - 12, size: 7, font: B, color: WHITE });
+            
+            const actionWidth = ctx.B.widthOfTextAtSize(s.action, 7);
+            const boxWidth = actionWidth + 8;
+            pg.drawRectangle({ x: CX + 8, y: y - 18, width: boxWidth, height: 14, color: dotC });
+            pg.drawText(s.action, { x: CX + 12, y: y - 12, size: 7, font: ctx.B, color: WHITE });
+            
             const ts = s.ts ? new Date(s.ts).toLocaleString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
-            pg.drawText(ts, { x: CX + 96, y: y - 12, size: 7, font: R, color: GREY });
+            pg.drawText(ts, { x: CX + 8 + boxWidth + 8, y: y - 12, size: 7, font: ctx.R, color: GREY });
             pg.drawText(this.s(s.actor), { x: CX + 10, y: y - 32, size: 9, font: B, color: BLACK });
             if (s.role) pg.drawText(this.s(s.role), { x: CX + 10, y: y - 44, size: 7, font: R, color: GREY });
             if (s.remarks) {
@@ -393,7 +412,9 @@ export class PdfDocumentBuilder {
     private drawFooter(pg: PDFPage, ctx: Ctx, n: number, total: number, form: any): void {
         pg.drawLine({ start: { x: ML, y: 38 }, end: { x: PW - MR, y: 38 }, thickness: 0.4, color: GREY });
         pg.drawText('LTMS — Official Document', { x: ML, y: 24, size: 6.5, font: ctx.R, color: GREY });
-        pg.drawText(`DOC-${String(form.id).padStart(5,'0')}`, { x: PW/2 - 25, y: 24, size: 6.5, font: ctx.B, color: GREY });
+        const appNoText = `APPL NO: ${form.reference_number || `DOC-${String(form.id).padStart(5,'0')}`}`;
+        const textWidth = ctx.B.widthOfTextAtSize(appNoText, 6.5);
+        pg.drawText(appNoText, { x: PW/2 - textWidth/2, y: 24, size: 6.5, font: ctx.B, color: GREY });
         pg.drawText(`Page ${n} of ${total}`, { x: PW - MR - 45, y: 24, size: 6.5, font: ctx.R, color: GREY });
     }
 
