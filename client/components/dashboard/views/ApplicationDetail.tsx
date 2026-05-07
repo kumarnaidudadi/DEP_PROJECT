@@ -517,7 +517,7 @@ export default function ApplicationDetail({
 
         const value = formData[field.key];
 
-        if (typeof value === 'string' && value.includes('/uploads/signatures')) {
+        if (typeof value === 'string' && value.startsWith('data:image/')) {
             return (
                 <div style={{
                     display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -728,7 +728,7 @@ export default function ApplicationDetail({
                                     const rawValue = field.type === 'date_from_to'
                                         ? `${formData[`${field.key}_from`] || ''}${formData[`${field.key}_to`] || ''}`
                                         : formData[field.key];
-                                    const isWide = Array.isArray(rawValue) || (typeof rawValue === 'string' && rawValue.length > 50 && !rawValue.startsWith('/uploads/signatures')) || ['textarea', 'tuple', 'list', 'signature', 'date_from_to', 'paragraph_blanks'].includes(field.type);
+                                    const isWide = Array.isArray(rawValue) || (typeof rawValue === 'string' && rawValue.length > 50 && !rawValue.startsWith('data:image/')) || ['textarea', 'tuple', 'list', 'signature', 'date_from_to', 'paragraph_blanks'].includes(field.type);
 
                                     return (
                                         <div key={field.key} style={{ gridColumn: isWide ? 'span 2' : 'auto' }}>
@@ -770,13 +770,13 @@ export default function ApplicationDetail({
                             <Panel key={approval.id} title={`${approval.stage?.replace(/_/g, ' ') || 'Review'} — ${approverName}`}>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                                     {entries.map(([k, v], idx) => {
-                                        const isWide = Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('/uploads/signatures'));
+                                        const isWide = Array.isArray(v) || (String(v).length > 50 && !String(v).startsWith('data:image/'));
                                         return (
                                             <div key={k} style={{ gridColumn: isWide ? 'span 2' : 'auto' }}>
                                                 <div style={{ fontSize: '10px', color: '#9ca3af', fontWeight: 600, marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                                                     {formatTitleCase(k)}
                                                 </div>
-                                                {typeof v === 'string' && v.includes('/uploads/signatures') ? (
+                                                {typeof v === 'string' && v.startsWith('data:image/') ? (
                                                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', background: '#ecfdf5', color: '#059669', borderRadius: '6px', fontSize: '11px', fontWeight: 600, border: '1px solid #d1fae5' }}>
                                                         <ShieldCheck size={12} /> Digitally Signed by {approverName}
                                                     </div>
