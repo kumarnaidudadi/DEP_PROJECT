@@ -65,7 +65,7 @@ model users {
   reactivation_requests reactivation_requests[] @relation("UserReactivationRequests")
   user_activity_logs    user_activity_logs[]
   user_roles            user_roles[]
-  departments           departments?            @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  department            departments?            @relation(fields: [department_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
 model department_heads {

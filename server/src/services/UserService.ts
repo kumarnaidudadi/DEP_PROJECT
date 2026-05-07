@@ -58,7 +58,7 @@ export class UserService {
         return this.prisma.users.findMany({
             where: { is_active: false },
             include: {
-                departments: true,
+                department: true,
                 user_roles: {
                     include: { roles: true }
                 },
@@ -73,7 +73,7 @@ export class UserService {
     async getAllUsers(): Promise<any[]> {
         return this.prisma.users.findMany({
             include: {
-                departments: true,
+                department: true,
                 user_roles: {
                     include: { roles: true }
                 },

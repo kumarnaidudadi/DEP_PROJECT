@@ -155,7 +155,7 @@ export default function UserManagementPage() {
     const filteredUsers = users.filter(u => {
         const matchesFilter = filter === 'all' || (filter === 'active' ? u.is_active : !u.is_active);
         const roleName = u.user_roles?.[0]?.roles?.name || '';
-        const deptName = u.departments?.name || '';
+        const deptName = u.department?.name || '';
         const searchContent = `${u.first_name} ${u.last_name} ${u.email} ${u.emp_code || ''} ${roleName} ${deptName}`.toLowerCase();
         const matchesSearch = searchContent.includes(searchQuery.toLowerCase());
         return matchesFilter && matchesSearch;
@@ -206,7 +206,7 @@ export default function UserManagementPage() {
                                 </td>
                                 <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9' }}>
                                     <div style={{ fontSize: '13px', color: '#475569' }}>
-                                        {user.departments?.name || '---'}
+                                        {user.department?.name || '---'}
                                     </div>
                                 </td>
                                 <td style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9' }}>
