@@ -6,12 +6,11 @@ import {
     ChevronDown,
     ChevronRight,
     Copy,
-    Eye,
-    EyeOff,
     GripVertical,
     Loader2,
     Plus,
     Trash2,
+    X,
 } from 'lucide-react';
 import FormBuilderPreview from '@/components/ui/FormBuilderPreview';
 import FieldTypePicker from '@/components/ui/FieldTypePicker';
@@ -129,7 +128,6 @@ export default function CreateFormView({
     const paragraphTemplateRefs = React.useRef<Record<string, HTMLTextAreaElement | null>>({});
 
     const [isMobile, setIsMobile] = React.useState(false);
-    const [leftOpen, setLeftOpen] = React.useState(false);
     const [rightOpen, setRightOpen] = React.useState(false);
     const [showAllRoles, setShowAllRoles] = React.useState(false);
 
@@ -246,96 +244,81 @@ export default function CreateFormView({
         };
     }, [draggedIdx]);
 
-    const flexLayoutProps = isMobile ? { justifyContent: 'center' } : {};
-
-    const leftAsideStyle: React.CSSProperties = isMobile ? {
-        position: 'fixed',
-        left: leftOpen ? 0 : '-300px',
-        top: 0,
-        bottom: 0,
-        width: '260px',
-        zIndex: 50,
-        background: '#f8fafc',
-        boxShadow: '4px 0 16px rgba(0,0,0,0.15)',
-        transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        padding: '24px 16px',
-        overflowY: 'auto'
-    } : {
-        width: '240px', flexShrink: 0, position: 'sticky', top: '24px', alignSelf: 'flex-start', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto'
-    };
-
     /* ─── Render ──────────────────────────────────────────────────────────── */
 
     return (
-        <div style={{ display: 'flex', gap: '24px', padding: '24px', maxWidth: '1720px', margin: '0 auto', ...flexLayoutProps, position: 'relative' }}>
-            {isMobile && (
-                <div style={{ position: 'fixed', inset: '0', pointerEvents: 'none', zIndex: 40 }}>
-                    {!leftOpen && (
-                        <button type="button" onClick={() => setLeftOpen(true)} style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'auto', background: '#2563eb', color: '#fff', border: 'none', padding: '12px 4px', borderTopRightRadius: '8px', borderBottomRightRadius: '8px', boxShadow: '2px 0 8px rgba(0,0,0,0.15)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ writingMode: 'vertical-rl', transform: 'scale(-1, -1)', fontSize: '11px', fontWeight: 600, letterSpacing: '1px', marginBottom: '8px' }}>ACTIONS</span>
-                        </button>
-                    )}
-                    {!rightOpen && (
-                        <button type="button" onClick={() => setRightOpen(true)} style={{ position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'auto', background: '#2563eb', color: '#fff', border: 'none', padding: '12px 4px', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px', boxShadow: '-2px 0 8px rgba(0,0,0,0.15)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ writingMode: 'vertical-rl', fontSize: '11px', fontWeight: 600, letterSpacing: '1px', marginBottom: '8px' }}>PREVIEW</span>
-                        </button>
-                    )}
-                </div>
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', background: '#f8fafc' }}>
+
+            {/* Mobile preview backdrop */}
+            {isMobile && rightOpen && (
+                <div onClick={() => setRightOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 45, backdropFilter: 'blur(2px)' }} />
             )}
 
-            {isMobile && leftOpen && (
-                <div onClick={() => setLeftOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 45, backdropFilter: 'blur(2px)' }} />
-            )}
-
-            {/* ── LEFT SIDEBAR: Actions ──────────────────────────── */}
-            <aside style={leftAsideStyle}>
-                {isMobile && (
-                    <button type="button" onClick={() => setLeftOpen(false)} style={{ marginBottom: '16px', background: 'none', border: 'none', fontSize: '13px', fontWeight: 600, color: '#4b5563', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span>Close Actions →</span>
-                    </button>
-                )}
-                <div style={cardStyle}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '16px' }}>
-                        Form Actions
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <button type="button" onClick={() => onSave('published')} disabled={creating}
-                            style={{ ...btnPrimary, width: '100%', justifyContent: 'center', opacity: creating ? 0.7 : 1, cursor: creating ? 'not-allowed' : 'pointer' }}>
-                            {creating ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={14} />}
-                            {creating ? 'Saving...' : isEdit ? 'Update Form' : 'Publish Form'}
-                        </button>
-                        <button type="button" onClick={() => onSave('drafted')} disabled={creating}
-                            style={{ ...btnSecondary, width: '100%', justifyContent: 'center', opacity: creating ? 0.7 : 1, cursor: creating ? 'not-allowed' : 'pointer' }}>
-                            Save as Draft
-                        </button>
-                        <button type="button" onClick={onCancel} style={{ ...btnSecondary, width: '100%', justifyContent: 'center', marginTop: '8px' }}>
-                            Cancel
-                        </button>
-                    </div>
+            {/* ── STICKY TOP ACTION BAR ───────────────────────────────── */}
+            <div style={{
+                position: 'sticky', top: 0, zIndex: 30,
+                background: '#fff', borderBottom: '1px solid #e5e7eb',
+                padding: '10px 24px', display: 'flex', alignItems: 'center',
+                justifyContent: 'space-between', gap: '12px',
+                boxShadow: '0 1px 6px rgba(0,0,0,0.06)',
+            }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <h1 style={{ fontSize: '15px', fontWeight: 700, color: '#1f2937', margin: 0 }}>
+                        {isEdit ? 'Edit Form Type' : 'Create New Form Type'}
+                    </h1>
+                    <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                        Define fields and approval roles for your form.
+                    </p>
                 </div>
-            </aside>
-
-            {/* ── MAIN CONTENT ────────────────────────────────────────────────── */}
-            <main style={{ flex: 1, minWidth: 0, maxWidth: '860px', width: '100%' }}>
-
-                <div style={{ ...cardStyle, marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                        <h1 style={{ fontSize: '18px', fontWeight: 700, color: '#1f2937', margin: 0 }}>
-                            {isEdit ? 'Edit Form Type' : 'Create New Form Type'}
-                        </h1>
-                        <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>
-                            Define fields and approval roles for your form.
-                        </p>
-                    </div>
-                    <button type="button" onClick={() => setPreviewEnabled(c => !c)}
-                        style={{ ...btnSmall, padding: '6px 10px', borderRadius: '8px' }}
-                        title={previewEnabled ? 'Hide preview' : 'Show preview'}>
-                        {previewEnabled ? <Eye size={16} /> : <EyeOff size={16} />}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                    {!isMobile && (
+                        <button type="button" onClick={() => setPreviewEnabled(c => !c)}
+                            style={{ ...btnSecondary, fontSize: '12px', padding: '6px 12px' }}>
+                            {previewEnabled ? 'Hide Preview' : 'Show Preview'}
+                        </button>
+                    )}
+                    <div style={{ width: '1px', height: '24px', background: '#e5e7eb' }} />
+                    <button type="button" onClick={() => { if (window.confirm('Are you sure you want to save this form as a draft?')) onSave('drafted'); }} disabled={creating}
+                        style={{ ...btnSecondary, fontSize: '12px', padding: '6px 14px', opacity: creating ? 0.7 : 1, cursor: creating ? 'not-allowed' : 'pointer' }}>
+                        Save as Draft
                     </button>
+                    <button type="button" onClick={() => { if (window.confirm(`Are you sure you want to ${isEdit ? 'update' : 'publish'} this form?`)) onSave('published'); }} disabled={creating}
+                        style={{ ...btnPrimary, fontSize: '12px', padding: '6px 14px', opacity: creating ? 0.7 : 1, cursor: creating ? 'not-allowed' : 'pointer' }}>
+                        {creating ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <CheckCircle size={13} />}
+                        {creating ? 'Saving...' : isEdit ? 'Update Form' : 'Publish Form'}
+                    </button>
+                    <button type="button" onClick={() => { if (window.confirm('Are you sure you want to cancel? Your changes will not be saved.')) onCancel(); }}
+                        style={{ ...btnSecondary, fontSize: '12px', padding: '6px 14px' }}>
+                        Cancel
+                    </button>
+                    {isMobile && (
+                        <button type="button" onClick={() => setRightOpen(true)}
+                            style={{ ...btnSecondary, fontSize: '12px', padding: '6px 12px' }}>
+                            Preview
+                        </button>
+                    )}
                 </div>
+            </div>
+
+            {/* ── MAIN CONTENT ROW ────────────────────────────────────── */}
+            <div style={{
+                display: 'flex', gap: '24px', padding: '24px',
+                flexGrow: 1, flexShrink: 1, flexBasis: 'auto',
+                alignItems: 'flex-start',
+                justifyContent: previewEnabled ? 'flex-start' : 'center',
+            }}>
+            <main style={{
+                flexGrow: previewEnabled ? 1 : 0,
+                flexShrink: 1,
+                flexBasis: previewEnabled ? '0%' : 'auto',
+                minWidth: 0, width: '100%',
+                maxWidth: previewEnabled ? '860px' : '900px',
+                margin: previewEnabled ? '0' : '0 auto',
+                transition: 'max-width 0.35s cubic-bezier(0.4,0,0.2,1), margin 0.35s cubic-bezier(0.4,0,0.2,1)',
+            }}>
 
                 {createSuccess && (
+
                     <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', fontWeight: 500, color: '#15803d', marginBottom: '16px' }}>
                         Form {isEdit ? 'updated' : 'created'} successfully.
                     </div>
@@ -683,12 +666,10 @@ export default function CreateFormView({
                 </div>
             </main>
 
-            {/* ── RIGHT PANEL: Preview ────────────────────────────────────────── */}
+            {/* ── RIGHT PANEL: Preview ──────────────────────────────── */}
             <FormBuilderPreview
                 formName={newFormName}
                 formDescription={newFormDesc}
-                // we wrap our single list of fields into a virtual 'step' 
-                // so the preview renderer can show the fields without refactoring it.
                 steps={[{ status: 'Form Fields', approval_roles: approvalRoles, fields: formFields }]}
                 previewEnabled={previewEnabled}
                 previewData={previewData}
@@ -699,6 +680,7 @@ export default function CreateFormView({
                 rightOpen={rightOpen}
                 setRightOpen={setRightOpen}
             />
+            </div>
         </div>
     );
 }
