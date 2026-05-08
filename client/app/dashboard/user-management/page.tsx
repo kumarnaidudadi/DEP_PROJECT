@@ -393,11 +393,10 @@ export default function UserManagementPage() {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#f1f5f9' }}>
             {/* Header / Action Bar */}
-            <div style={{ padding: '20px 32px 20px', background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '20px 32px 0', background: '#fff', borderBottom: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <div>
-                        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Users size={24} style={{ color: '#3b82f6' }} />
+                        <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
                             User Management
                         </h1>
                         <p style={{ fontSize: '13px', color: '#94a3b8', margin: '2px 0 0' }}>
@@ -457,7 +456,7 @@ export default function UserManagementPage() {
                         })}
                     </div>
 
-                    <div style={{ display: 'flex', gap: '10px', paddingBottom: '8px' }}>
+                    <div style={{ display: 'flex', gap: '10px' }}>
                         <button
                             onClick={() => userAdminService.downloadTemplate()}
                             style={{
