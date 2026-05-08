@@ -124,6 +124,9 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
     const { applications, loading, fetchApplications } = useForms(actingRoleAssignment?.requester_id);
     const { fetchProfile } = useProfile();
 
+    const isActing = !!actingRoleAssignment;
+    const accentColor = isActing ? '#7c3aed' : '#2563eb';
+
     const [searchQuery, setSearchQuery]       = useState('');
     const [filterFormType, setFilterFormType]  = useState<string>('all');
     const [filterStatus, setFilterStatus]      = useState<string>('all');
@@ -191,6 +194,10 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
         if (!actingRoleAssignment) router.push(`/dashboard/pending?tab=${tab}`);
     };
 
+    // ── Derived acting state (must be declared before filters that use it) ────
+    const isActing = !!actingRoleAssignment;
+    const accentColor = isActing ? '#7c3aed' : '#2563eb';
+
     // ── Filtering ──────────────────────────────────────────────────────────────
     const pendingApps = applications.filter(a => {
         const status = getApplicationStatus(a);
@@ -201,6 +208,15 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
     const processedApps = applications.filter(a => {
         const status = getApplicationStatus(a);
         if (getApplicationSubmitterId(a) === effectiveUserId) return false;
+
+        // If acting, only show forms processed by THIS specific acting user
+        if (isActing) {
+            return (a.form_history || []).some((h: any) => 
+                Number(h.changed_by) === Number(user?.id) &&
+                Number(h.acting_on_behalf_of) === Number(effectiveUserId)
+            );
+        }
+
         return (a.form_forwards || []).some((fwd: any) =>
             Number(fwd.forwarded_by) === effectiveUserId &&
             ['approved', 'rejected'].includes(String(fwd.action || '').toLowerCase())

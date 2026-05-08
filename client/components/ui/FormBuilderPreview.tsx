@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+
+
 import FieldRenderer from './FieldRenderer';
 import { BuilderStep, FieldDef, isFieldVisible } from '@/types';
 
@@ -82,19 +83,39 @@ export default function FormBuilderPreview({
         padding: '24px 16px',
         overflowY: 'auto'
     } : {
-        width: '340px', flexShrink: 0, position: 'sticky', top: '24px', alignSelf: 'flex-start', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto'
+        /* Use individual flex properties — avoid shorthand+flexShrink conflict */
+        flexGrow: previewEnabled ? 1 : 0,
+        flexShrink: 0,
+        flexBasis: previewEnabled ? '400px' : '0px',
+        /* Sticky column starts below 60px top bar, scrolls independently */
+        position: 'sticky',
+        top: '60px',
+        height: 'calc(100vh - 60px)',
+        overflowY: previewEnabled ? 'auto' : 'hidden',
+        overflowX: 'hidden',
+        minWidth: previewEnabled ? '320px' : '0px',
+        maxWidth: previewEnabled ? '50%' : '0px',
+        transition: 'flex-basis 0.35s cubic-bezier(0.4,0,0.2,1), min-width 0.35s cubic-bezier(0.4,0,0.2,1), max-width 0.35s cubic-bezier(0.4,0,0.2,1)',
+        opacity: previewEnabled ? 1 : 0,
+        pointerEvents: previewEnabled ? 'auto' : 'none',
     };
+
 
     return (
         <React.Fragment>
             {isMobile && rightOpen && (
                 <div onClick={() => setRightOpen?.(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 45, backdropFilter: 'blur(2px)' }} />
             )}
+
             <aside style={asideStyle}>
                 {isMobile && (
-                    <button type="button" onClick={() => setRightOpen?.(false)} style={{ marginBottom: '16px', background: 'none', border: 'none', fontSize: '13px', fontWeight: 600, color: '#4b5563', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span>← Back to Form Setup</span>
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#4b5563' }}>Live Preview</span>
+                        <button type="button" onClick={() => setRightOpen?.(false)}
+                            style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '6px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6b7280', fontSize: '16px' }}>
+                            ×
+                        </button>
+                    </div>
                 )}
                 <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                     {/* Header */}
@@ -103,10 +124,14 @@ export default function FormBuilderPreview({
                             <div style={{ fontSize: '11px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Live Preview</div>
                             <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Applicant experience</div>
                         </div>
-                        <button type="button" onClick={onToggle}
-                            style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#6b7280' }}>
-                            {previewEnabled ? <Eye size={14} /> : <EyeOff size={14} />}
-                            {previewEnabled ? 'Hide' : 'Show'}
+                        {/* − button — minimises the preview panel */}
+                        <button
+                            type="button"
+                            onClick={onToggle}
+                            title="Minimise Live Preview"
+                            style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '5px', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#9ca3af', fontSize: '14px', lineHeight: 1, padding: 0 }}
+                        >
+                            −
                         </button>
                     </div>
 

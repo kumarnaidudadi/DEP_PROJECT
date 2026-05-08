@@ -143,7 +143,7 @@ export default function Sidebar({ canApprove, pendingCount, onLogout, isMobileOp
             {/* Nav */}
             <nav style={{ flex: 1, padding: '12px 0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {/* Standard nav items */}
-                {navBtn('/dashboard/all', <FileText size={20} />, 'All Applications', 'All')}
+                {navBtn('/dashboard/all', <FileText size={20} />, 'My Forms', 'My Forms')}
                 {/* Own pending work — only for native approvers */}
                 {canApprove && navBtn('/dashboard/pending', <ClipboardList size={20} />, 'Pending Work', 'Pending', pendingCount || undefined)}
                 {/* Acting pending work — one entry per active acting role */}

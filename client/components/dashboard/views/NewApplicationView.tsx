@@ -3,7 +3,7 @@
 // Renders the form-type picker (middle panel) and form-fill panel (right panel).
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronRight, FileText, Plus, Send, Loader2, Upload, Trash2, ToggleLeft, ToggleRight, Clock } from 'lucide-react';
+import { ChevronRight, FileText, Plus, Send, Loader2, Upload, Trash2, ToggleLeft, ToggleRight, Clock, AlertTriangle } from 'lucide-react';
 import { FormType, Profile, getSchemaFields, buildAutoFillData, isFieldVisible, UserSearchResult } from '@/types';
 import ListItem from '../ListItem';
 import StatusBadge from '../StatusBadge';
@@ -140,6 +140,10 @@ export default function NewApplicationView({
 
     // Tracks which field keys were auto-filled from profile so FieldRenderer can badge them
     const [autoFilledKeys, setAutoFilledKeys] = useState<Set<string>>(new Set());
+    // Tracks out-of-range fields the user has actually touched/filled
+    const [touchedOutOfRangeKeys, setTouchedOutOfRangeKeys] = useState<Set<string>>(new Set());
+    // Ref so handleFieldChange can access the latest outOfRangeKeys without stale closure
+    const outOfRangeKeysRef = useRef<Set<string>>(new Set());
 
     const autoFillProcessed = useRef<number | null>(null);
     const [showApprovalStep, setShowApprovalStep] = useState(false);
@@ -175,6 +179,7 @@ export default function NewApplicationView({
         setSelectedRecipient(null);
         setSubmissionNote('');
         setShowDropdown(false);
+        setTouchedOutOfRangeKeys(new Set());
     }, [selectedFormType?.id]);
 
     const handleUserSearch = (query: string) => {
@@ -213,8 +218,26 @@ export default function NewApplicationView({
         return true;
     };
 
+    const [showOutOfRangeNotice, setShowOutOfRangeNotice] = useState(false);
+
     const handleFinalSubmit = (fieldsToValidate: ReturnType<typeof getSchemaFields>) => {
         if (!validateFormFields(fieldsToValidate)) return;
+
+        // Check if any out-of-range (beyond applicant limit) fields were filled
+        const limit = (selectedFormType?.approval_rules as any)?.applicant_fields_limit;
+        if (limit && typeof limit === 'number') {
+            const visibleFields = fieldsToValidate.filter(f => isFieldVisible(f, formData) && f.type !== 'heading');
+            const hasOutOfRangeFilled = visibleFields.some((f, idx) => {
+                if (idx < limit) return false;
+                const val = f.type === 'date_from_to' ? (formData[`${f.key}_from`] || formData[`${f.key}_to`]) : formData[f.key];
+                return val !== undefined && val !== '' && val !== null;
+            });
+            if (hasOutOfRangeFilled) {
+                setShowOutOfRangeNotice(true);
+                return;
+            }
+        }
+
         setShowApprovalStep(true);
     };
 
@@ -268,6 +291,20 @@ export default function NewApplicationView({
             const nextKeys = new Set(autoFilledKeys);
             nextKeys.delete(key);
             setAutoFilledKeys(nextKeys);
+        }
+        // Show red warning only when an out-of-range field has a non-empty value;
+        // hide it again when cleared back to empty.
+        if (outOfRangeKeysRef.current.has(key)) {
+            const isEmpty = value === '' || value === null || value === undefined;
+            if (!isEmpty) {
+                setTouchedOutOfRangeKeys(prev => new Set([...prev, key]));
+            } else {
+                setTouchedOutOfRangeKeys(prev => {
+                    const next = new Set(prev);
+                    next.delete(key);
+                    return next;
+                });
+            }
         }
     };
 
@@ -355,6 +392,20 @@ export default function NewApplicationView({
     if (!selectedFormType) return <>{middlePanel}</>;
 
     const fields = getSchemaFields((selectedFormType as any).schema_definition ?? (selectedFormType as any).schema ?? {});
+    const applicantFieldsLimit = (selectedFormType?.approval_rules as any)?.applicant_fields_limit ?? null;
+    // Build a set of keys that are out-of-range so handleFieldChange can mark them as touched
+    let visibleNonHeadingCount = 0;
+    const outOfRangeKeys = new Set<string>();
+    if (applicantFieldsLimit !== null) {
+        let count = 0;
+        fields.forEach(f => {
+            if (!isFieldVisible(f, formData) || f.type === 'heading') return;
+            if (count >= applicantFieldsLimit) outOfRangeKeys.add(f.key);
+            count++;
+        });
+    }
+    // Keep ref in sync so handleFieldChange can access without stale closure
+    outOfRangeKeysRef.current = outOfRangeKeys;
 
     const rightPanel = submitSuccess ? <SuccessMsg /> : (
         <div style={{ padding: '32px 40px', maxWidth: '1000px', margin: '0 auto' }}>
@@ -430,29 +481,50 @@ export default function NewApplicationView({
                             );
                         }
 
+                        // Track visible non-heading field index for limit checking
+                        const fieldVisibleIndex = visibleNonHeadingCount++;
+                        const isOutOfRange = applicantFieldsLimit !== null && fieldVisibleIndex >= applicantFieldsLimit;
+                        // Only show red warning if the user has actually touched/filled this field
+                        const isTouchedOutOfRange = isOutOfRange && touchedOutOfRangeKeys.has(f.key);
+
                         return (
                             <div key={uniqueKey} style={{ gridColumn: ['textarea', 'list', 'tuple', 'date_from_to', 'signature', 'name', 'paragraph_blanks'].includes(f.type) || f.label.length > 50 ? 'span 2' : 'auto' }}>
-                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>
+                                <label style={{ fontSize: '12px', fontWeight: 600, color: isTouchedOutOfRange ? '#b45309' : '#374151', marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                     {f.label} {f.required && <span style={{ color: '#ef4444' }}>*</span>}
+                                    {isOutOfRange && (
+                                        <span
+                                            title="This field is not intended for applicants to fill. It is usually completed by an approver. Please fill only if you are certain."
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', background: '#fef3c7', border: '1px solid #fde68a', color: '#d97706', borderRadius: '4px', padding: '1px 6px', fontSize: '10px', fontWeight: 700 }}
+                                        >
+                                            <AlertTriangle size={10} /> Not for applicant
+                                        </span>
+                                    )}
                                 </label>
                                 {f.helpText && (
                                     <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#6b7280', lineHeight: 1.5 }}>
                                         {f.helpText}
                                     </p>
                                 )}
-                                <FieldRenderer
-                                    field={f}
-                                    value={f.type === 'date_from_to' ? undefined : formData[f.key]}
-                                    fromValue={formData[`${f.key}_from`]}
-                                    toValue={formData[`${f.key}_to`]}
-                                    onChange={handleFieldChange}
-                                    profileSignatureUrl={profile?.signature_url}
-                                    onSignatureUpload={onSigUpload}
-                                    sigUploading={sigUploading}
-                                    availableDepartments={availableDepartments}
-                                    availableRoles={availableRoles}
-                                    isAutoFilled={autoFilledKeys.has(f.key)}
-                                />
+                                <div style={isTouchedOutOfRange ? { border: '1.5px solid #fca5a5', borderRadius: '8px', padding: '1px', background: '#fff8f8' } : {}}>
+                                    <FieldRenderer
+                                        field={f}
+                                        value={f.type === 'date_from_to' ? undefined : formData[f.key]}
+                                        fromValue={formData[`${f.key}_from`]}
+                                        toValue={formData[`${f.key}_to`]}
+                                        onChange={handleFieldChange}
+                                        profileSignatureUrl={profile?.signature_url}
+                                        onSignatureUpload={onSigUpload}
+                                        sigUploading={sigUploading}
+                                        availableDepartments={availableDepartments}
+                                        availableRoles={availableRoles}
+                                        isAutoFilled={autoFilledKeys.has(f.key)}
+                                    />
+                                </div>
+                                {isTouchedOutOfRange && (
+                                    <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#b45309', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <AlertTriangle size={11} /> This field is not intended for the applicant — fill consciously.
+                                    </p>
+                                )}
                             </div>
                         );
                     })}
@@ -489,6 +561,40 @@ export default function NewApplicationView({
                     </BtnPrimary>
                 </div>
             </div>
+
+            {/* Out-of-range fields notice */}
+            <Modal
+                isOpen={showOutOfRangeNotice}
+                onClose={() => setShowOutOfRangeNotice(false)}
+                title="Notice: Fields Outside Applicant Range"
+                maxWidth="480px"
+            >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '16px' }}>
+                        <AlertTriangle size={22} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
+                        <div>
+                            <div style={{ fontSize: '14px', fontWeight: 700, color: '#92400e', marginBottom: '6px' }}>You've filled fields not intended for applicants</div>
+                            <div style={{ fontSize: '13px', color: '#78350f', lineHeight: 1.6 }}>
+                                Some fields you filled (highlighted in red) are typically meant to be completed by an approver, not the applicant. You can still proceed if this is intentional.
+                            </div>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                            onClick={() => setShowOutOfRangeNotice(false)}
+                            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontWeight: 600, cursor: 'pointer', fontSize: '13px' }}
+                        >
+                            Go Back & Fix
+                        </button>
+                        <button
+                            onClick={() => { setShowOutOfRangeNotice(false); setShowApprovalStep(true); }}
+                            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                        >
+                            <Send size={14} /> Proceed Anyway
+                        </button>
+                    </div>
+                </div>
+            </Modal>
 
             {/* Approval Step Modal */}
             <Modal

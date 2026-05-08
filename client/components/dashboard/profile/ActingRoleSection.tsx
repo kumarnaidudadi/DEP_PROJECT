@@ -219,7 +219,7 @@ export default function ActingRoleSection({ currentUser }: { currentUser: any })
                     ) : (
                         <div>
                             <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '0 0 16px', color: '#0f172a' }}>Assign New Acting Role</h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: '16px', alignItems: 'end' }}>
                                 
                                 <div style={{ position: 'relative' }}>
                                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '8px' }}>Assign To</label>
@@ -295,15 +295,21 @@ export default function ActingRoleSection({ currentUser }: { currentUser: any })
                                         style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', width: '100%', fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: '#0f172a' }}
                                     />
                                 </div>
-                            </div>
-                            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-                                <button 
-                                    onClick={handleSendRequest}
-                                    disabled={loading || !targetUserId}
-                                    style={{ background: '#3b82f6', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: loading || !targetUserId ? 'not-allowed' : 'pointer', opacity: loading || !targetUserId ? 0.7 : 1 }}
-                                >
-                                    {loading ? 'Sending...' : 'Send Request'}
-                                </button>
+                                <div>
+                                    <button 
+                                        onClick={handleSendRequest}
+                                        disabled={loading || !targetUserId}
+                                        style={{ 
+                                            background: '#3b82f6', color: '#fff', border: 'none', 
+                                            width: '100%', padding: '10px 20px', borderRadius: '8px', 
+                                            fontSize: '14px', fontWeight: 600, 
+                                            cursor: loading || !targetUserId ? 'not-allowed' : 'pointer', 
+                                            opacity: loading || !targetUserId ? 0.7 : 1, height: '40px' 
+                                        }}
+                                    >
+                                        {loading ? 'Sending...' : 'Assign'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
