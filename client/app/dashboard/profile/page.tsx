@@ -10,7 +10,11 @@ export default function ProfilePage() {
     const { user } = useAuth();
     const { profile, sigUploading, decryptedSigUrl, fetchProfile, handleSigUpload } = useProfile();
 
-    useEffect(() => { fetchProfile(); }, [fetchProfile]);
+    useEffect(() => { 
+        fetchProfile(); 
+        // Dispatch custom event to clear notification dot
+        window.dispatchEvent(new Event('profile-viewed'));
+    }, [fetchProfile]);
 
     return (
         <main style={{ flex: 1, overflowY: 'auto', background: '#f8fafc' }}>

@@ -18,11 +18,12 @@ interface SidebarProps {
     isMobileOpen?: boolean;
     onCloseMobile?: () => void;
     actingRoles?: any[];
+    profileNotificationDot?: boolean;
 }
 
 const SB_W = 64;
 
-export default function Sidebar({ canApprove, pendingCount, onLogout, isMobileOpen = false, onCloseMobile, actingRoles = [] }: SidebarProps) {
+export default function Sidebar({ canApprove, pendingCount, onLogout, isMobileOpen = false, onCloseMobile, actingRoles = [], profileNotificationDot = false }: SidebarProps) {
     const router   = useRouter();
     const pathname = usePathname();
 
@@ -35,7 +36,7 @@ export default function Sidebar({ canApprove, pendingCount, onLogout, isMobileOp
     }, [pathname]);
 
     // ── Nav button (blue, standard) ───────────────────────────────────────────
-    const navBtn = (href: string, icon: React.ReactNode, label: string, shortLabel: string, badge?: number) => {
+    const navBtn = (href: string, icon: React.ReactNode, label: string, shortLabel: string, badge?: number | boolean) => {
         const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
         return (
             <div key={href} style={{ position: 'relative' }} className="group">
@@ -57,9 +58,19 @@ export default function Sidebar({ canApprove, pendingCount, onLogout, isMobileOp
                     <span style={{ fontSize: '9px', fontWeight: 600, marginTop: '2px', textAlign: 'center', lineHeight: '1.1', maxWidth: '56px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {shortLabel}
                     </span>
-                    {badge && (
-                        <span style={{ position: 'absolute', top: '4px', right: '12px', background: '#ef4444', color: '#fff', fontSize: '9px', fontWeight: 700, padding: '2px 5px', borderRadius: '10px' }}>
-                            {badge}
+                    {badge !== undefined && badge !== false && (
+                        <span style={{ 
+                            position: 'absolute', 
+                            top: typeof badge === 'boolean' ? '8px' : '4px', 
+                            right: typeof badge === 'boolean' ? '24px' : '12px', 
+                            background: '#ef4444', color: '#fff', 
+                            fontSize: '9px', fontWeight: 700, 
+                            padding: typeof badge === 'boolean' ? '0' : '2px 5px', 
+                            width: typeof badge === 'boolean' ? '6px' : 'auto',
+                            height: typeof badge === 'boolean' ? '6px' : 'auto',
+                            borderRadius: '10px' 
+                        }}>
+                            {typeof badge === 'number' ? badge : ''}
                         </span>
                     )}
                 </button>
@@ -161,7 +172,7 @@ export default function Sidebar({ canApprove, pendingCount, onLogout, isMobileOp
 
             {/* Bottom: profile + logout */}
             <div style={{ padding: '12px 0', borderTop: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {navBtn('/dashboard/profile', <User size={20} />, 'Profile', 'Profile')}
+                {navBtn('/dashboard/profile', <User size={20} />, 'Profile', 'Profile', profileNotificationDot)}
                 <div style={{ position: 'relative' }} className="group">
                     <button
                         onClick={() => { if (window.confirm('Are you sure you want to sign out?')) onLogout(); }}
