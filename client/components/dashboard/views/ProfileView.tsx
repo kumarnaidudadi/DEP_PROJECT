@@ -75,61 +75,71 @@ export default function ProfileView({ user, profile, sigUploading, onSigUpload, 
             <div style={{
                 background: '#ffffff', borderRadius: '12px', padding: '24px 32px', marginBottom: '20px',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1px solid #e5e7eb'
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1px solid #e5e7eb', flexWrap: 'wrap', gap: '24px'
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                {/* Left side: Avatar + Basic Info */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
                     {/* Avatar */}
                     <div style={{
-                        width: '64px', height: '64px', borderRadius: '50%',
+                        width: '76px', height: '76px', borderRadius: '50%',
                         background: '#eff6ff', color: '#2563eb',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '24px', fontWeight: 700, flexShrink: 0
+                        fontSize: '28px', fontWeight: 700, flexShrink: 0
                     }}>
-                        {initials || <User size={28} />}
+                        {initials || <User size={32} />}
                     </div>
 
                     {/* Info */}
                     <div>
-                        <div style={{ fontSize: '20px', fontWeight: 800, color: '#1f2937', marginBottom: '6px' }}>
-                            {displayName}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                            <div style={{ fontSize: '22px', fontWeight: 800, color: '#1f2937' }}>
+                                {displayName}
+                            </div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, background: '#e0e7ff', color: '#4f46e5', padding: '4px 10px', borderRadius: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                {primaryRole}
+                            </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '16px', fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <Mail size={14} /> {profile?.email || user?.email || '—'}
-                            </span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <Briefcase size={14} /> {primaryRole}
-                            </span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <Activity size={14} /> Status: <span style={{ color: isActive ? '#10b981' : '#ef4444', fontWeight: 600 }}>{isActive ? 'Active' : 'Inactive'}</span>
-                            </span>
-                            {profile?.emp_code && (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <Hash size={14} /> {profile.emp_code}
-                                </span>
-                            )}
-                            {profile?.department && (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <Building2 size={14} /> {profile.department}
-                                </span>
-                            )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', color: '#6b7280', fontWeight: 500 }}>
+                            <Mail size={15} /> {profile?.email || user?.email || '—'}
                         </div>
                     </div>
                 </div>
 
-                {/* Last Active */}
-                <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-                        LAST ACTIVE
+                {/* Right side: Extended Info */}
+                <div style={{ display: 'flex', gap: '48px', alignItems: 'center' }}>
+                    <div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                            Status
+                        </div>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: isActive ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {isActive ? <CheckCircle size={16} /> : <XCircle size={16} />}
+                            {isActive ? 'Active' : 'Inactive'}
+                        </div>
                     </div>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#1f2937' }}>
-                        {profile?.last_active ? (
-                            new Date(profile.last_active).toLocaleString('en-GB', {
-                                day: '2-digit', month: 'short', year: 'numeric',
-                                hour: '2-digit', minute: '2-digit', hour12: true
-                            }).replace(',', ' at').toUpperCase()
-                        ) : '—'}
-                    </div>
+                    
+                    {profile?.department && (
+                        <div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                                Department
+                            </div>
+                            <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Building2 size={16} />
+                                {profile.department}
+                            </div>
+                        </div>
+                    )}
+
+                    {profile?.emp_code && (
+                        <div>
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                                Employee ID
+                            </div>
+                            <div style={{ fontSize: '14px', fontWeight: 600, color: '#374151', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Hash size={16} />
+                                {profile.emp_code}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
