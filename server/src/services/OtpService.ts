@@ -37,9 +37,16 @@ export class OtpService {
             secure: true, // SSL
             auth: { user: emailUser, pass: emailPass },
             tls: { rejectUnauthorized: false },
+            connectionTimeout: 10000,  // 10s timeout for connection
+            greetingTimeout: 10000,    // 10s for greeting
+            socketTimeout: 15000,      // 15s socket timeout
         });
 
         try {
+            console.log('[OtpService] Verifying SMTP connection...');
+            await transporter.verify();
+            console.log('[OtpService] ✅ SMTP connection verified successfully');
+
             const info = await transporter.sendMail({
                 from: `"DEP Portal" <${emailUser}>`,
                 to: email,
@@ -55,11 +62,12 @@ export class OtpService {
                     </div>
                 `,
             });
-            console.log(`[OtpService] ✅ OTP email sent successfully to ${email}. MessageId: ${info.messageId}`);
+            console.log(`[OtpService] ✅ OTP email sent to ${email}. MessageId: ${info.messageId}`);
         } catch (error: any) {
-            console.error(`[OtpService] ❌ SMTP send failed: ${error.message}`);
-            console.error(`[OtpService] Error code: ${error.code}, Response: ${error.response}`);
-            // CRITICAL FALLBACK: Always log OTP so admin can manually relay it if email fails
+            console.error(`[OtpService] ❌ SMTP failed: ${error.message}`);
+            console.error(`[OtpService] Error code: ${error.code}, errno: ${error.errno}, syscall: ${error.syscall}`);
+            console.error(`[OtpService] Full error:`, JSON.stringify({ code: error.code, response: error.response, responseCode: error.responseCode }));
+            // CRITICAL FALLBACK: Log OTP so admin can see it in Render logs
             console.log(`[OtpService] ⚠️ FALLBACK - OTP for ${email} is: ${otp} (expires in 5 minutes)`);
         }
     }
