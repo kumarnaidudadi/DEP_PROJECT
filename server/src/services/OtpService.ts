@@ -31,21 +31,17 @@ export class OtpService {
         console.log(`[OtpService] EMAIL_USER configured: ${emailUser ? 'YES (' + emailUser + ')' : 'NO - EMAIL_USER not set!'}`);
         console.log(`[OtpService] EMAIL_PASS configured: ${emailPass ? 'YES (length=' + emailPass.length + ')' : 'NO - EMAIL_PASS not set!'}`);
 
-        const transporter = nodemailer.createTransport({
-            host: 'smtp.gmail.com',
-            port: 465,
-            secure: true, // SSL
-            auth: { user: emailUser, pass: emailPass },
-            tls: { rejectUnauthorized: false },
-            connectionTimeout: 10000,  // 10s timeout for connection
-            greetingTimeout: 10000,    // 10s for greeting
-            socketTimeout: 15000,      // 15s socket timeout
-        });
-
-        try {
-            console.log('[OtpService] Verifying SMTP connection...');
-            await transporter.verify();
-            console.log('[OtpService] ✅ SMTP connection verified successfully');
+        // OTP is already saved in DB — email is best-effort, don't hang the request
+        const sendEmailPromise = (async () => {
+            const transporter = nodemailer.createTransport({
+                host: 'smtp.gmail.com',
+                port: 465,
+                secure: true,
+                auth: { user: emailUser, pass: emailPass },
+                tls: { rejectUnauthorized: false },
+                connectionTimeout: 5000,  // fail fast if SMTP port is blocked
+                socketTimeout: 5000,
+            });
 
             const info = await transporter.sendMail({
                 from: `"DEP Portal" <${emailUser}>`,
@@ -63,12 +59,23 @@ export class OtpService {
                 `,
             });
             console.log(`[OtpService] ✅ OTP email sent to ${email}. MessageId: ${info.messageId}`);
+        })();
+
+        // Race against a 6-second timeout — never block the API response for SMTP
+        const timeoutPromise = new Promise<void>((_, reject) =>
+            setTimeout(() => reject(new Error('SMTP_TIMEOUT')), 6000)
+        );
+
+        try {
+            await Promise.race([sendEmailPromise, timeoutPromise]);
         } catch (error: any) {
-            console.error(`[OtpService] ❌ SMTP failed: ${error.message}`);
-            console.error(`[OtpService] Error code: ${error.code}, errno: ${error.errno}, syscall: ${error.syscall}`);
-            console.error(`[OtpService] Full error:`, JSON.stringify({ code: error.code, response: error.response, responseCode: error.responseCode }));
-            // CRITICAL FALLBACK: Log OTP so admin can see it in Render logs
-            console.log(`[OtpService] ⚠️ FALLBACK - OTP for ${email} is: ${otp} (expires in 5 minutes)`);
+            if (error.message === 'SMTP_TIMEOUT') {
+                console.error(`[OtpService] ⏱️ SMTP connection timed out (port likely blocked by hosting provider).`);
+            } else {
+                console.error(`[OtpService] ❌ SMTP send failed: ${error.message} | code: ${error.code}`);
+            }
+            // FALLBACK: OTP is in DB — log it so it can be retrieved from server logs
+            console.log(`[OtpService] ⚠️ FALLBACK - OTP for ${email} is: ${otp} (valid 5 min)`);
         }
     }
 
