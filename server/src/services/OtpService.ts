@@ -24,14 +24,24 @@ export class OtpService {
             data: { otp_code: otp, otp_expiry: expiry }
         });
 
+        const emailUser = process.env.EMAIL_USER;
+        const emailPass = process.env.EMAIL_PASS;
+
+        console.log(`[OtpService] Attempting to send OTP to ${email}`);
+        console.log(`[OtpService] EMAIL_USER configured: ${emailUser ? 'YES (' + emailUser + ')' : 'NO - EMAIL_USER not set!'}`);
+        console.log(`[OtpService] EMAIL_PASS configured: ${emailPass ? 'YES (length=' + emailPass.length + ')' : 'NO - EMAIL_PASS not set!'}`);
+
         const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true, // SSL
+            auth: { user: emailUser, pass: emailPass },
+            tls: { rejectUnauthorized: false },
         });
 
         try {
-            await transporter.sendMail({
-                from: `"DEP Portal" <${process.env.EMAIL_USER}>`,
+            const info = await transporter.sendMail({
+                from: `"DEP Portal" <${emailUser}>`,
                 to: email,
                 subject: 'Your Login OTP — DEP Portal',
                 html: `
@@ -45,10 +55,12 @@ export class OtpService {
                     </div>
                 `,
             });
-            console.log(`[OtpService] OTP email sent successfully to ${email}`);
+            console.log(`[OtpService] ✅ OTP email sent successfully to ${email}. MessageId: ${info.messageId}`);
         } catch (error: any) {
-            console.error('[OtpService] Failed to send OTP email via SMTP:', error.message);
-            console.log(`[OtpService] FALLBACK OTP for ${email}: ${otp}`);
+            console.error(`[OtpService] ❌ SMTP send failed: ${error.message}`);
+            console.error(`[OtpService] Error code: ${error.code}, Response: ${error.response}`);
+            // CRITICAL FALLBACK: Always log OTP so admin can manually relay it if email fails
+            console.log(`[OtpService] ⚠️ FALLBACK - OTP for ${email} is: ${otp} (expires in 5 minutes)`);
         }
     }
 
