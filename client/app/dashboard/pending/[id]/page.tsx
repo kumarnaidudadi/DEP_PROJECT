@@ -214,8 +214,8 @@ export default function PendingWorkDetailPage() {
             )}
 
             {/* Detail content */}
-            <div style={{ flex: 1, overflowY: 'auto', background: '#f1f5f9', padding: '24px', display: 'flex', gap: '20px', alignItems: 'flex-start', position: 'relative' }}>
-                <div style={{ flex: 1, minWidth: 0, background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+            <div style={{ flex: 1, overflow: 'hidden', background: '#f1f5f9', padding: '24px', display: 'flex', gap: '20px', alignItems: 'stretch', position: 'relative' }}>
+                <div style={{ flex: 1, minWidth: 0, background: '#fff', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', overflowY: 'auto', border: '1px solid #e2e8f0' }}>
                     <ApplicationDetail
                         app={selectedApp}
                         canApprove={canApprove}
