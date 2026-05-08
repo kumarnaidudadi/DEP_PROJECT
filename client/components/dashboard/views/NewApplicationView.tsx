@@ -489,7 +489,7 @@ export default function NewApplicationView({
 
                         return (
                             <div key={uniqueKey} style={{ gridColumn: ['textarea', 'list', 'tuple', 'date_from_to', 'signature', 'name', 'paragraph_blanks'].includes(f.type) || f.label.length > 50 ? 'span 2' : 'auto' }}>
-                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: isTouchedOutOfRange ? '#b45309' : '#374151', marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <label style={{ fontSize: '12px', fontWeight: 600, color: isTouchedOutOfRange ? '#b45309' : '#374151', marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '5px' }}>
                                     {isOutOfRange && (
                                         <span
                                             title="This field is not intended for applicants to fill. It is usually completed by an approver. Please fill only if you are certain."
