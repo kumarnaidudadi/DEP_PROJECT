@@ -43,6 +43,7 @@ router.post('/:id/forward', verifyToken, controller.forwardForm);
 router.get('/system/logs', verifyToken, controller.getSystemLogs);
 router.get('/:id/history', verifyToken, controller.getFormHistory);
 router.delete('/:id', verifyToken, controller.deleteForm);
+router.post('/:id/withdraw', verifyToken, controller.withdrawForm);
 router.get('/:id/download', verifyToken, controller.downloadPdf);
 
 export default router;

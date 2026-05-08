@@ -103,6 +103,14 @@ export function useForms(actingForUserId?: number) {
         setApplications(prev => prev.filter(app => app.id !== formId));
     }, []);
 
+    const withdrawApplication = useCallback(async (formId: number) => {
+        const result = await formSvc.withdrawForm(formId);
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('applications-updated'));
+        }
+        return result;
+    }, []);
+
     return {
         formTypes, setFormTypes,
         applications, setApplications,
@@ -116,5 +124,6 @@ export function useForms(actingForUserId?: number) {
         searchUsers,
         triggerDownloadPdf,
         deleteApplication,
+        withdrawApplication,
     };
 }

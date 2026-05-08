@@ -14,7 +14,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { Application, AppTab } from '@/types';
 import StatusBadge from '@/components/dashboard/StatusBadge';
 
-const isTerminal = (s: string) => ['APPROVED', 'REJECTED'].includes(s);
+const isTerminal = (s: string) => ['APPROVED', 'REJECTED', 'WITHDRAWN'].includes(s);
 
 // ── Coloured file icon ────────────────────────────────────────────────────────
 function FormIcon({ status }: { status: string }) {
@@ -143,7 +143,7 @@ function AllApplicationsContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user, userRoles } = useAuth();
-    const { applications, loading, fetchApplications, deleteApplication } = useForms();
+    const { applications, loading, fetchApplications, deleteApplication, withdrawApplication } = useForms();
     const { profile, fetchProfile } = useProfile();
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -410,6 +410,35 @@ function AllApplicationsContent() {
                                             onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.background = 'none'; }}
                                         >
                                             <Trash2 size={15} />
+                                        </button>
+                                    )}
+
+                                    {!isTerminal(app.current_status) && app.current_status !== 'DRAFT' && (
+                                        <button
+                                            title="Withdraw application"
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                if (!window.confirm('Are you sure you want to withdraw this application? This action cannot be undone.')) return;
+                                                try {
+                                                    await withdrawApplication(app.id);
+                                                    await fetchApplications();
+                                                } catch (err) {
+                                                    console.error('Failed to withdraw application', err);
+                                                    alert('Failed to withdraw application. Please try again.');
+                                                }
+                                            }}
+                                            style={{
+                                                background: 'none', border: '1px solid #e2e8f0', cursor: 'pointer',
+                                                color: '#475569', padding: '4px 10px', borderRadius: '6px',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: '12px', fontWeight: 600,
+                                                transition: 'all 0.15s',
+                                                marginRight: '4px',
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.color = '#b91c1c'; e.currentTarget.style.borderColor = '#fca5a5'; e.currentTarget.style.background = '#fef2f2'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.color = '#475569'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = 'none'; }}
+                                        >
+                                            Withdraw
                                         </button>
                                     )}
 

@@ -16,6 +16,7 @@ export interface IFormService {
     createForm(dto: CreateFormDto, id?: number): Promise<any>;
     saveDraft(dto: CreateFormDto, id?: number): Promise<any>;
     deleteForm(id: number, roles: string[], userId?: number): Promise<void>;
+    withdrawForm(id: number, userId: number): Promise<any>;
 
     // Dynamic Forwarding
     forwardForm(dto: ForwardFormDto): Promise<any>;
