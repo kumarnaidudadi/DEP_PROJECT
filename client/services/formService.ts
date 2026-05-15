@@ -142,3 +142,8 @@ export async function downloadPdf(formId: number): Promise<string> {
 export async function deleteForm(formId: number): Promise<void> {
     await api.delete(`/forms/${formId}`);
 }
+
+export async function withdrawForm(formId: number): Promise<Application> {
+    const res = await api.post(`/forms/${formId}/withdraw`);
+    return normalizeApplication(res.data);
+}

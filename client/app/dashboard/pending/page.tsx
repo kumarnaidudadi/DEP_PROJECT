@@ -24,7 +24,7 @@ function FormIcon({ status }: { status: string }) {
     const ok = status === 'APPROVED';
     const no = status === 'REJECTED';
     const bg = ok ? '#dcfce7' : no ? '#fee2e2' : '#fef3c7';
-    const c  = ok ? '#16a34a' : no ? '#dc2626' : '#d97706';
+    const c = ok ? '#16a34a' : no ? '#dc2626' : '#d97706';
     return (
         <div style={{ width: 42, height: 42, borderRadius: '10px', flexShrink: 0, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <FileText size={19} style={{ color: c }} />
@@ -125,17 +125,17 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
     const { fetchProfile } = useProfile();
 
     const isActing = !!actingRoleAssignment;
-    const accentColor = isActing ? '#7c3aed' : '#2563eb';
+    const accentColor = '#2563eb';
 
-    const [searchQuery, setSearchQuery]       = useState('');
-    const [filterFormType, setFilterFormType]  = useState<string>('all');
-    const [filterStatus, setFilterStatus]      = useState<string>('all');
-    const [sortOrder, setSortOrder]            = useState<'desc' | 'asc'>('desc');
-    const [appTab, setAppTab]                  = useState<AppTab>((searchParams.get('tab') as AppTab) || 'ongoing');
-    const [hoveredId, setHoveredId]            = useState<number | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterFormType, setFilterFormType] = useState<string>('all');
+    const [filterStatus, setFilterStatus] = useState<string>('all');
+    const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+    const [appTab, setAppTab] = useState<AppTab>((searchParams.get('tab') as AppTab) || 'ongoing');
+    const [hoveredId, setHoveredId] = useState<number | null>(null);
     // Active delegations the current user has SENT (they are the requester)
     const [activeDelegations, setActiveDelegations] = useState<any[]>([]);
-    const [revoking, setRevoking]              = useState<number | null>(null);
+    const [revoking, setRevoking] = useState<number | null>(null);
 
     const fetchDelegations = async () => {
         try {
@@ -145,7 +145,7 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
                 r.status === 'accepted' && r.until_date.slice(0, 10) >= todayStr
             );
             setActiveDelegations(active);
-        } catch {}
+        } catch { }
     };
 
     const handleRevoke = async (id: number) => {
@@ -173,7 +173,7 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
                     );
                     setActiveDelegations(active);
                 })
-                .catch(() => {});
+                .catch(() => { });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -195,6 +195,7 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
     };
 
 
+
     // ── Filtering ──────────────────────────────────────────────────────────────
     const pendingApps = applications.filter(a => {
         const status = getApplicationStatus(a);
@@ -208,7 +209,7 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
 
         // If acting, only show forms processed by THIS specific acting user
         if (isActing) {
-            return (a.form_history || []).some((h: any) => 
+            return (a.form_history || []).some((h: any) =>
                 Number(h.changed_by) === Number(user?.id) &&
                 Number(h.acting_on_behalf_of) === Number(effectiveUserId)
             );
@@ -243,14 +244,15 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
 
     const allViewApps = [...pendingApps, ...processedApps];
     const uniqueFormTypes = Array.from(new Set(allViewApps.map(a => a.form_types?.name).filter(Boolean))) as string[];
-    const uniqueStatuses  = Array.from(new Set(allViewApps.map(a => getApplicationStatus(a)).filter(Boolean))) as string[];
+    const uniqueStatuses = Array.from(new Set(allViewApps.map(a => getApplicationStatus(a)).filter(Boolean))) as string[];
 
     const formTypeOptions = [{ value: 'all', label: 'All Form Types' }, ...uniqueFormTypes.map(ft => ({ value: ft, label: ft }))];
-    const statusOptions   = [{ value: 'all', label: 'All Statuses'    }, ...uniqueStatuses.map(s => ({ value: s, label: s.replace(/_/g, ' ') }))];
-    const sortOptions     = [{ value: 'desc', label: 'Newest First' }, { value: 'asc', label: 'Oldest First' }];
+    const statusOptions = [{ value: 'all', label: 'All Statuses' }, ...uniqueStatuses.map(s => ({ value: s, label: s.replace(/_/g, ' ') }))];
+    const sortOptions = [{ value: 'desc', label: 'Newest First' }, { value: 'asc', label: 'Oldest First' }];
 
     const fmtDate = (iso: string) =>
         new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
 
 
     return (
@@ -267,42 +269,45 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
                         <div key={d.id} style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             gap: '16px',
-                            background: 'linear-gradient(90deg, #fffbeb 0%, #fef3c7 100%)',
-                            border: '1px solid #fde68a',
-                            borderRadius: '10px',
-                            padding: '12px 18px',
-                            margin: '14px 0',
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            padding: '12px 16px',
+                            margin: '16px 0',
                             fontSize: '13px',
-                            color: '#92400e',
+                            color: '#475569',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <UserCheck size={18} style={{ color: '#d97706', flexShrink: 0 }} />
-                                <span>
-                                    <strong>Active Delegation:</strong>{' '}
-                                    <strong>{d.target_user?.first_name} {d.target_user?.last_name}</strong>{' '}
-                                    is currently acting as{' '}
-                                    <strong>{d.acting_role}</strong>{' '}
-                                    on your behalf.
-                                    &nbsp;
-                                    <span style={{ color: '#b45309' }}>
-                                        Valid until{' '}
-                                        {new Date(d.until_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}.
-                                    </span>
-                                </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                                <div style={{ background: '#eff6ff', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <UserCheck size={16} style={{ color: '#3b82f6', flexShrink: 0 }} />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <div style={{ color: '#0f172a', fontWeight: 600, fontSize: '14px', marginBottom: '2px' }}>
+                                        {d.target_user?.first_name} {d.target_user?.last_name} is acting as {d.acting_role}
+                                    </div>
+                                    <div style={{ color: '#64748b', fontSize: '13px' }}>
+                                        On your behalf · Expires {new Date(d.until_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </div>
+                                </div>
                             </div>
                             <button
                                 onClick={() => handleRevoke(d.id)}
                                 disabled={revoking === d.id}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: '6px',
-                                    background: revoking === d.id ? '#fde68a' : '#dc2626',
-                                    color: revoking === d.id ? '#92400e' : '#fff',
-                                    border: 'none', borderRadius: '7px',
-                                    padding: '7px 14px', fontSize: '12px', fontWeight: 700,
+                                    background: revoking === d.id ? '#f8fafc' : '#fff',
+                                    color: revoking === d.id ? '#94a3b8' : '#ef4444',
+                                    border: revoking === d.id ? '1px solid #e2e8f0' : '1px solid #fecaca',
+                                    borderRadius: '6px',
+                                    padding: '6px 12px', fontSize: '12px', fontWeight: 600,
                                     cursor: revoking === d.id ? 'not-allowed' : 'pointer',
                                     whiteSpace: 'nowrap', flexShrink: 0,
                                     transition: 'all 0.15s',
+                                    boxShadow: revoking === d.id ? 'none' : '0 1px 2px rgba(0,0,0,0.02)'
                                 }}
+                                onMouseEnter={(e) => { if (revoking !== d.id) e.currentTarget.style.background = '#fef2f2'; }}
+                                onMouseLeave={(e) => { if (revoking !== d.id) e.currentTarget.style.background = '#fff'; }}
                             >
                                 {revoking === d.id
                                     ? <><Loader2 size={13} className="animate-spin" /> Revoking…</>
@@ -320,26 +325,49 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
                 {/* Acting mode banner */}
                 {isActing && (
                     <div style={{
-                        background: 'linear-gradient(90deg, #f5f3ff 0%, #ede9fe 100%)',
-                        border: '1px solid #ddd6fe', padding: '10px 16px', borderRadius: '8px',
-                        marginBottom: '16px', color: '#5b21b6', fontSize: '13px',
-                        display: 'flex', alignItems: 'center', gap: '8px'
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        marginBottom: '16px',
+                        color: '#475569',
+                        fontSize: '13px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                     }}>
-                        <Clock size={14} style={{ flexShrink: 0 }} />
-                        <span>
-                            <strong>Acting Mode</strong> — You are reviewing as{' '}
-                            <strong>{actingRoleAssignment.acting_role}</strong>{' '}
-                            on behalf of{' '}
-                            <strong>
-                                {actingRoleAssignment.requester?.first_name}{' '}
-                                {actingRoleAssignment.requester?.last_name}
-                            </strong>.
-                            &nbsp;Valid until{' '}
-                            <strong>
-                                {new Date(actingRoleAssignment.until_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            </strong>.
-                            &nbsp;Actions taken here are attributed to you in an acting capacity.
-                        </span>
+                        <div style={{ background: '#f1f5f9', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Clock size={16} style={{ color: '#64748b', flexShrink: 0 }} />
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ color: '#0f172a', fontWeight: 600, fontSize: '14px', marginBottom: '2px' }}>
+                                Acting as {actingRoleAssignment.acting_role}
+                            </div>
+                            <div style={{ color: '#64748b', fontSize: '13px' }}>
+                                On behalf of {actingRoleAssignment.requester?.first_name} {actingRoleAssignment.requester?.last_name} · Expires {new Date(actingRoleAssignment.until_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => router.push('/dashboard/pending')}
+                            style={{
+                                padding: '6px 14px',
+                                background: '#fff',
+                                color: '#334155',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '6px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                transition: 'all 0.15s',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                        >
+                            Withdraw Access
+                        </button>
                     </div>
                 )}
 
@@ -347,16 +375,10 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                     <div>
                         <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                            {isActing ? `Acting Pending Work · ${actingRoleAssignment.acting_role}` : 'Pending Work'}
+                            {isActing ? `Pending Work · ${actingRoleAssignment.acting_role}` : 'Pending Work'}
                         </h1>
                         <p style={{ fontSize: '13px', color: '#94a3b8', margin: '2px 0 0' }}>
                             {list.length} {appTab === 'ongoing' ? 'pending' : 'processed'} application{list.length !== 1 ? 's' : ''}
-                            {isActing && (
-                                <span style={{
-                                    marginLeft: '8px', background: '#ede9fe', color: '#7c3aed',
-                                    fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '10px'
-                                }}>ACTING</span>
-                            )}
                         </p>
                     </div>
 
@@ -372,8 +394,8 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
                             />
                         </div>
                         <Dropdown label="All Form Types" value={filterFormType} options={formTypeOptions} onChange={setFilterFormType} minWidth={150} />
-                        <Dropdown label="All Statuses"   value={filterStatus}   options={statusOptions}   onChange={setFilterStatus}   minWidth={130} />
-                        <Dropdown label="Sort"           value={sortOrder}       options={sortOptions}     onChange={v => setSortOrder(v as 'asc' | 'desc')} minWidth={130} alignRight />
+                        <Dropdown label="All Statuses" value={filterStatus} options={statusOptions} onChange={setFilterStatus} minWidth={130} />
+                        <Dropdown label="Sort" value={sortOrder} options={sortOptions} onChange={v => setSortOrder(v as 'asc' | 'desc')} minWidth={130} alignRight />
                     </div>
                 </div>
 
@@ -382,7 +404,7 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
                     {(['ongoing', 'completed'] as AppTab[]).map(tab => {
                         const active = appTab === tab;
                         const isPending = tab === 'ongoing';
-                        const activeCol = isActing ? '#7c3aed' : (isPending ? '#2563eb' : '#059669');
+                        const activeCol = isPending ? '#2563eb' : '#059669';
                         return (
                             <button
                                 key={tab}
@@ -435,7 +457,7 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
                                         background: isHovered ? '#f8fafc' : '#fff',
                                         borderBottom: isLast ? 'none' : '1px solid #f1f5f9',
                                         transition: 'background 0.15s',
-                                        borderLeft: isActing ? `3px solid #7c3aed` : 'none',
+                                        borderLeft: isActing ? `3px solid #64748b` : 'none',
                                     }}
                                 >
                                     <FormIcon status={getApplicationStatus(app)} />
@@ -475,7 +497,8 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
                 )}
             </main>
 
-            <style dangerouslySetInnerHTML={{ __html: `
+            <style dangerouslySetInnerHTML={{
+                __html: `
                 @keyframes dropIn {
                     from { transform: translateY(-6px); opacity: 0; }
                     to   { transform: translateY(0);    opacity: 1; }

@@ -229,6 +229,24 @@ export class FormController {
         }
     }
 
+    withdrawForm = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+        const id = Number(req.params.id);
+        const userId = req.user?.userId;
+
+        if (!userId) { res.status(401).json({ error: 'Unauthorized' }); return; }
+
+        try {
+            const form = await this.formService.withdrawForm(id, userId);
+            res.json(form);
+        } catch (e: any) {
+            console.error('[FormController] withdrawForm:', e.message);
+            if (e.message === 'FORM_NOT_FOUND') res.status(404).json({ error: 'Form not found' });
+            else if (e.message === 'UNAUTHORIZED') res.status(403).json({ error: 'Only the applicant can withdraw this form' });
+            else if (e.message === 'FORM_ALREADY_FINALIZED') res.status(400).json({ error: 'Cannot withdraw an already finalized form' });
+            else res.status(500).json({ error: 'Failed to withdraw form' });
+        }
+    }
+
     // ── Forward Form ──────────────────────────────────────────────────────
 
     forwardForm = async (req: AuthenticatedRequest, res: Response): Promise<void> => {

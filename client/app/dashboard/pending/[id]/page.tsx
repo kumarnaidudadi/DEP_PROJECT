@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
-import { Loader2, X, MessageSquare } from 'lucide-react';
+import { Loader2, X, MessageSquare, Clock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useForms } from '@/hooks/useForms';
 import { useProfile } from '@/hooks/useProfile';
@@ -208,8 +208,11 @@ export default function PendingWorkDetailPage() {
             </div>
             
             {actingFor && (
-                <div style={{ background: '#fef2f2', borderBottom: '1px solid #fca5a5', padding: '10px 24px', color: '#991b1b', fontSize: '13px', fontWeight: 600 }}>
-                    Acting Mode Active. You are taking actions on behalf of another user.
+                <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '12px 24px', color: '#475569', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ background: '#f1f5f9', padding: '4px', borderRadius: '4px', display: 'flex' }}>
+                        <Clock size={14} style={{ color: '#64748b' }} />
+                    </div>
+                    <span><strong style={{ color: '#0f172a' }}>Acting Mode Active</strong> — You are reviewing forms on behalf of another user.</span>
                 </div>
             )}
 

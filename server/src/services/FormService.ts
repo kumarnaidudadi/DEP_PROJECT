@@ -558,4 +558,56 @@ export class FormService implements IFormService {
         }
         await this.formRepo.delete(id);
     }
+
+    async withdrawForm(id: number, userId: number): Promise<any> {
+        const form = await this.formRepo.findById(id);
+        if (!form) throw new Error('FORM_NOT_FOUND');
+
+        // Only the applicant can withdraw
+        if (Number(form.applicant_id) !== userId) {
+            throw new Error('UNAUTHORIZED');
+        }
+
+        // Cannot withdraw if already approved/rejected/withdrawn
+        if (['approved', 'rejected', 'withdrawn'].includes((form.status || '').toLowerCase())) {
+            throw new Error('FORM_ALREADY_FINALIZED');
+        }
+
+        const oldStatus = form.status;
+
+        // Log the withdrawal as a forward to self
+        await this.formRepo.createForward({
+            form_id: id,
+            forwarded_by: userId,
+            forwarded_to: userId,
+            action: 'withdrawn',
+            remarks: 'Applicant withdrew the form',
+        });
+
+        // Update status to withdrawn
+        const result = await this.formRepo.updateStatus(id, 'withdrawn');
+
+        const applicant = await this.formRepo.findUserById(userId);
+        const applicantName = applicant
+            ? [applicant.first_name, applicant.last_name].filter(Boolean).join(' ') || 'User'
+            : 'User';
+
+        await this.formRepo.createActionComment({
+            historyData: {
+                applied_form_id: id,
+                action: 'withdrawn',
+                changed_by: userId,
+                old_data: { status: oldStatus },
+                new_data: { status: 'withdrawn' },
+                remarks: 'Application withdrawn by applicant',
+                ip_address: null,
+            },
+            commentType: 'general',
+            contentText: `${applicantName} withdrew the application.`,
+            commentedBy: userId,
+            receiverId: null,
+        });
+
+        return result;
+    }
 }

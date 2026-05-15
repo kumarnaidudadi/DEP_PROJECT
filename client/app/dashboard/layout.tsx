@@ -15,6 +15,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const { applications, fetchApplications } = useForms();
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [actingRoles, setActingRoles] = useState<any[]>([]);
+    const [profileNotificationDot, setProfileNotificationDot] = useState(false);
 
     useEffect(() => {
         fetchApplications();
@@ -23,21 +24,47 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             fetchApplications();
         };
 
+        const handleProfileViewed = () => {
+            setProfileNotificationDot(false);
+            localStorage.setItem('last_seen_acting_roles', Date.now().toString());
+        };
+
         window.addEventListener('applications-updated', handleUpdate);
+        window.addEventListener('profile-viewed', handleProfileViewed);
         
-        const fetchActingRoles = async () => {
+        const fetchActingRolesData = async () => {
             try {
-                const res = await api.get('/acting-roles/active');
-                setActingRoles(res.data);
+                const [activeRes, sentRes, receivedRes] = await Promise.all([
+                    api.get('/acting-roles/active').catch(() => ({ data: [] })),
+                    api.get('/acting-roles/sent').catch(() => ({ data: [] })),
+                    api.get('/acting-roles/received').catch(() => ({ data: [] }))
+                ]);
+                setActingRoles(activeRes.data);
+
+                const pendingReceived = (receivedRes.data || []).filter((r: any) => r.status === 'pending');
+                const acceptedSent = (sentRes.data || []).filter((r: any) => r.status === 'accepted');
+                
+                const relevantRequests = [...pendingReceived, ...acceptedSent];
+                if (relevantRequests.length > 0) {
+                    const latestUpdate = Math.max(...relevantRequests.map((r: any) => new Date(r.updated_at || r.created_at || new Date()).getTime()));
+                    const lastSeen = parseInt(localStorage.getItem('last_seen_acting_roles') || '0', 10);
+                    if (latestUpdate > lastSeen) {
+                        setProfileNotificationDot(true);
+                    }
+                }
             } catch (err) {
                 console.error('Failed to load acting roles', err);
             }
         };
+        
         if (user) {
-            fetchActingRoles();
+            fetchActingRolesData();
         }
 
-        return () => window.removeEventListener('applications-updated', handleUpdate);
+        return () => {
+            window.removeEventListener('applications-updated', handleUpdate);
+            window.removeEventListener('profile-viewed', handleProfileViewed);
+        };
     }, [fetchApplications, user]);
 
     // Close mobile sidebar on route change

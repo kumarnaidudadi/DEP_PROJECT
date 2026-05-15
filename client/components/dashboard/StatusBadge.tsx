@@ -39,13 +39,15 @@ export default function StatusBadge({ status, action, lg, truncate }: Props) {
     const no = s === 'REJECTED' || s === 'INACTIVE';
     const dr = s === 'DRAFT';
     const partial = s === 'PARTIALLY_APPROVED';
-    const bg = ok ? '#dcfce7' : no ? '#fee2e2' : dr ? '#f1f5f9' : partial ? '#fff7ed' : '#fef3c7';
-    const c = ok ? '#16a34a' : no ? '#dc2626' : dr ? '#64748b' : partial ? '#ea580c' : '#d97706';
-    const Icon = ok ? CheckCircle : no ? XCircle : Clock;
+    const wd = s === 'WITHDRAWN';
+    const bg = ok ? '#dcfce7' : no ? '#fee2e2' : dr ? '#f1f5f9' : partial ? '#fff7ed' : wd ? '#f3f4f6' : '#fef3c7';
+    const c = ok ? '#16a34a' : no ? '#dc2626' : dr ? '#64748b' : partial ? '#ea580c' : wd ? '#6b7280' : '#d97706';
+    const Icon = ok ? CheckCircle : no ? XCircle : wd ? XCircle : Clock;
     const label = ok ? (s === 'ACTIVE' ? 'Active' : 'Approved') : 
                   no ? (s === 'INACTIVE' ? 'Inactive' : 'Rejected') : 
                   dr ? 'Draft' : 
                   partial ? 'Partially Approved' : 
+                  wd ? 'Withdrawn' : 
                   s.replace(/_/g, ' ');
     return (
         <span

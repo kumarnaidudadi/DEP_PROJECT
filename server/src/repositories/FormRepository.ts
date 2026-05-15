@@ -417,7 +417,16 @@ export class FormRepository implements IFormRepository {
             },
         });
 
-        return histories.map((h: any) => ({
+        const seenForms = new Set<number>();
+        const uniqueHistories = [];
+        for (const h of histories) {
+            if (h.applied_forms?.id && !seenForms.has(h.applied_forms.id)) {
+                seenForms.add(h.applied_forms.id);
+                uniqueHistories.push(h);
+            }
+        }
+
+        return uniqueHistories.map((h: any) => ({
             id: h.id,                                              // history entry ID (unique key per row)
             form_id: h.applied_forms?.id ?? null,                  // actual form ID (used for sidebar)
             reference_number: h.applied_forms?.reference_number,

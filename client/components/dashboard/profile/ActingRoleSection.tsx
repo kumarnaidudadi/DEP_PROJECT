@@ -42,6 +42,10 @@ export default function ActingRoleSection({ currentUser }: { currentUser: any })
         const defaultRole = `Acting ${roleSource}`;
         setActingRole(defaultRole);
 
+        // Keep dates empty initially as requested
+        setFromDate('');
+        setUntilDate('');
+
         // Non-approvers default to the Requests Received tab
         if (!nativeCanDelegate) setActiveTab('received');
         
@@ -282,7 +286,12 @@ export default function ActingRoleSection({ currentUser }: { currentUser: any })
                                         type="date"
                                         value={fromDate}
                                         onChange={e => setFromDate(e.target.value)}
-                                        style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', width: '100%', fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: '#0f172a' }}
+                                        style={{ 
+                                            border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', width: '100%', 
+                                            fontSize: '14px', outline: 'none', boxSizing: 'border-box', 
+                                            color: fromDate ? '#0f172a' : 'rgba(15, 23, 42, 0.3)',
+                                            fontWeight: fromDate ? 600 : 400
+                                        }}
                                     />
                                 </div>
 
@@ -292,7 +301,12 @@ export default function ActingRoleSection({ currentUser }: { currentUser: any })
                                         type="date"
                                         value={untilDate}
                                         onChange={e => setUntilDate(e.target.value)}
-                                        style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', width: '100%', fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: '#0f172a' }}
+                                        style={{ 
+                                            border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', width: '100%', 
+                                            fontSize: '14px', outline: 'none', boxSizing: 'border-box', 
+                                            color: untilDate ? '#0f172a' : 'rgba(15, 23, 42, 0.3)',
+                                            fontWeight: untilDate ? 600 : 400
+                                        }}
                                     />
                                 </div>
                                 <div>
