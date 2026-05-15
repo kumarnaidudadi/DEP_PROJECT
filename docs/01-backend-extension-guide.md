@@ -254,7 +254,7 @@ router.get('/reports', verifyToken, checkRole(['ADMIN', 'SUPER_ADMIN']), control
 ```
 
 #### Acting-Role Delegation
-For actions where a user is acting on behalf of someone else (e.g., a secretary acting as HOD), role checks are handled dynamically inside the Controller or Service by verifying active `acting_role_requests`. See `FormController.ts` (`updateFormStatus` method) for the implementation pattern of temporarily elevating/aliasing `userId` and logging the `actingOriginalUserId`.
+For actions where a user is acting on behalf of someone else (e.g., a HOD delegating his role to another instructor), role checks are handled dynamically inside the Controller or Service by verifying active `acting_role_requests`. See `FormController.ts` (`updateFormStatus` method) for the implementation pattern of temporarily elevating/aliasing `userId` and logging the `actingOriginalUserId`.
 
 #### Common Mistakes
 - **Do NOT** put role check logic in the Repository layer.
