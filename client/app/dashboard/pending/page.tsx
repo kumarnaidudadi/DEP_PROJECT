@@ -194,9 +194,6 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
         if (!actingRoleAssignment) router.push(`/dashboard/pending?tab=${tab}`);
     };
 
-    // ── Derived acting state (must be declared before filters that use it) ────
-    const isActing = !!actingRoleAssignment;
-    const accentColor = isActing ? '#7c3aed' : '#2563eb';
 
     // ── Filtering ──────────────────────────────────────────────────────────────
     const pendingApps = applications.filter(a => {
@@ -255,8 +252,6 @@ export function PendingWorkContent({ actingRoleAssignment }: { actingRoleAssignm
     const fmtDate = (iso: string) =>
         new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
-    const isActing = !!actingRoleAssignment;
-    const accentColor = isActing ? '#7c3aed' : '#2563eb';
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#f1f5f9' }}>
