@@ -18,7 +18,7 @@ import actingRolesRoutes from './routes/actingRoles';
 import path from 'path';
 
 // Fix BigInt serialization: Express res.json() will use this to convert BigInts to numbers/strings!
-(BigInt.prototype as any).toJSON = function() {
+(BigInt.prototype as any).toJSON = function () {
     return Number(this);
 };
 
@@ -33,7 +33,9 @@ app.use(cors({
     },
     credentials: true,
 }));
-app.use(express.json());
+
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ limit: '5mb', extended: true }));
 
 // ─── Routes ───────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
